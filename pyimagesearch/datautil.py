@@ -18,7 +18,8 @@ import cv2
 class DataUtil(object):
 
     def __init__(self, train_path: str,
-                 label_col: list,
+                 label_col: list = None,
+                 feature_col: list = None,
                  normalise=2,
                  val_path=None, test_path=None,
                  train_split=0.8, val_split=0.05, test_split=0.15, split_mode=False, month_sep=None, keep_date=False):
@@ -71,23 +72,32 @@ class DataUtil(object):
         ######################資料集切分
         ## split 照比例分
         if (split_mode == "all_year"):
-            self.train_df, self.val_df = train_test_split(self.train_df, test_size=val_split + test_split,
-                                                          shuffle=False)
-            self.val_df, self.test_df = train_test_split(self.val_df, test_size=test_split / (val_split + test_split),
-                                                         shuffle=False)
-            
-        elif (split_mode == "month"):
-            if (month_sep != None):
-                vmonth = month_sep - 2
-                train_month = month_sep - 1
-                if vmonth <= 0:
-                    vmonth = parameter.tailMonth + vmonth
-                if train_month <= 0:
-                    train_month = parameter.tailMonth + train_month
+            if parameter.input_days is None or parameter.output_days is None:
+                self.train_df, self.val_df = train_test_split(self.train_df, test_size=val_split + test_split,
+                                                              shuffle=False)
+                self.val_df, self.test_df = train_test_split(self.val_df, test_size=test_split / (val_split + test_split),
+                                                            shuffle=False)
+            else:
+                assert month_sep is not None and type(month_sep) is int
                 self.test_df = self.train_df[self.train_df.index.month == month_sep]
-                self.val_df = self.train_df[self.train_df.index.month == vmonth]
-                # self.val_df = self.test_df
-                self.train_df = self.train_df[self.train_df.index.month == train_month]
+                self.train_df = self.train_df[self.train_df.index.month != month_sep]
+                all_dates = np.unique(self.train_df.index.date)
+                train_dates = all_dates[:int((1-val_split)*len(all_dates))]
+                val_dates = all_dates[int((1 - val_split) * len(all_dates)):]
+                self.val_df = self.train_df[[True if (_ in val_dates) else False for _ in self.train_df.index.date]]
+                self.train_df = self.train_df[[True if (_ in train_dates) else False for _ in self.train_df.index.date]]
+        elif (split_mode == "month"):
+            assert month_sep is not None and type(month_sep) is int
+            vmonth = month_sep - 2
+            train_month = month_sep - 1
+            if vmonth <= 0:
+                vmonth = parameter.tailMonth + vmonth
+            if train_month <= 0:
+                train_month = parameter.tailMonth + train_month
+            self.test_df = self.train_df[self.train_df.index.month == month_sep]
+            self.val_df = self.train_df[self.train_df.index.month == vmonth]
+            # self.val_df = self.test_df
+            self.train_df = self.train_df[self.train_df.index.month == train_month]
         ######################資料急保留時間欄目
         if (keep_date):
             try:
@@ -97,10 +107,16 @@ class DataUtil(object):
             except:
                 log.debug("keep_date some dataset miss")
         #防呆 如果沒有輸入label_col就全部都作為label
-        if label_col is not None:
-            self.label_col = label_col
-        else:
+        if label_col is None:
             self.label_col = list(self.train_df.columns)
+            self.feature_col = list(self.train_df.columns)
+        else:
+            if feature_col is None:
+                self.label_col = label_col
+                self.feature_col = list(set(list(self.train_df.columns)) - set(label_col))
+            else:
+                self.label_col = label_col
+                self.feature_col = feature_col
         # 如果有需要 會分割time_step轉成需要的欄目
         '''if (parameter.dataUtilParam.time_features):
             self.train_df = self.timeFeatureProcess(self.train_df)
@@ -118,10 +134,11 @@ class DataUtil(object):
             self.val_df = self.val_df.between_time('08:00:01', '17:00:00')
             self.test_df = self.test_df.between_time('08:00:01', '17:00:00')
 
-        self.train_df_cloud = self.train_df["twoClass"].astype(np.str)     
-        self.val_df_cloud = self.val_df["twoClass"].astype(np.str)
-        self.test_df_cloud = self.test_df["twoClass"].astype(np.str)
+
         if parameter.dynamic_model=="two" or ("twoClass" in parameter.inputs):
+            self.train_df_cloud = self.train_df["twoClass"].astype(np.str)
+            self.val_df_cloud = self.val_df["twoClass"].astype(np.str)
+            self.test_df_cloud = self.test_df["twoClass"].astype(np.str)
             self.train_df_cloud[self.train_df_cloud.isin(['a'])] = 1
             self.train_df_cloud[self.train_df_cloud.isin(['c'])] = 0
             self.train_df_cloud = self.train_df_cloud.astype(np.float32)
@@ -137,10 +154,10 @@ class DataUtil(object):
             self.test_df_cloud = self.test_df_cloud.astype(np.float32)
             # self.test_df_cloud = np.expand_dims(self.test_df_cloud, axis=-1)
             #
-        self.train_df_average = self.train_df["sun_average"].astype(np.str)     
-        self.val_df_average = self.val_df["sun_average"].astype(np.str)
-        self.test_df_average = self.test_df["sun_average"].astype(np.str)
         if ("sun_average" in parameter.inputs):
+            self.train_df_average = self.train_df["sun_average"].astype(np.str)
+            self.val_df_average = self.val_df["sun_average"].astype(np.str)
+            self.test_df_average = self.test_df["sun_average"].astype(np.str)
             self.train_df_average[self.train_df_average.isin(["221-240","201-220","176-200","151-175","0-150"])] = 0
             self.train_df_average[self.train_df_average.isin(["251-255","241-250"])] = 1
             self.train_df_average = self.train_df_average.astype(np.float32)
@@ -157,7 +174,7 @@ class DataUtil(object):
             # self.test_df_average = np.expand_dims(self.test_df_average, axis=-1)
             #
         ##filter data
-        self.filter_data()
+        # self.filter_data()
         # self.column_indices = {name: i for i, name in enumerate(self.train_df.columns)}
         self.normalise_data()
         print("data Preprocess")
@@ -182,7 +199,7 @@ class DataUtil(object):
         data['weekday'] = data.index.weekday
         data['hour'] = data.index.hour
         # data['minute'] = dates.date.apply(lambda row: row.minute, 1)
-        data['minute'] = dates.index.minute
+        data['minute'] = data.index.minute
 
         return data
 
@@ -223,16 +240,25 @@ class DataUtil(object):
         if self.normalise_mode == 2:  # minmax scaler
             self.scaler = MinMaxScaler()
             self.labelScaler = MinMaxScaler()
-        feature_scale_col = self.label_col.copy()
+        # feature_scale_col = self.label_col.copy()
         '''if parameter.dataUtilParam.time_features:
             feature_scale_col = feature_scale_col + parameter.dataUtilParam.time_features_col'''
         self.labelScaler.fit(self.train_df[self.label_col])
-        self.scaler.fit(self.train_df[feature_scale_col])
-        self.train_df[feature_scale_col] = self.scaler.transform(self.train_df[feature_scale_col])
+        self.train_df[self.label_col] = self.labelScaler.transform(self.train_df[self.label_col])
         if (self.val_df is not None):
-            self.val_df[feature_scale_col] = self.scaler.transform(self.val_df[feature_scale_col])
+            self.val_df[self.label_col] = self.labelScaler.transform(self.val_df[self.label_col])
         if (self.test_df is not None):
-            self.test_df[feature_scale_col] = self.scaler.transform(self.test_df[feature_scale_col])
+            self.test_df[self.label_col] = self.labelScaler.transform(self.test_df[self.label_col])
+        # exclude label column to avoid repeatedly normalized
+        feature_col_excluding_label = list(set(self.feature_col) - set(self.label_col))
+        if len(feature_col_excluding_label) > 0:
+            self.scaler.fit(self.train_df[feature_col_excluding_label])
+            self.train_df[feature_col_excluding_label] = self.scaler.transform(
+                self.train_df[feature_col_excluding_label])
+            if (self.val_df is not None):
+                self.val_df[feature_col_excluding_label] = self.scaler.transform(self.val_df[feature_col_excluding_label])
+            if (self.test_df is not None):
+                self.test_df[feature_col_excluding_label] = self.scaler.transform(self.test_df[self.feature_col_excluding_label])
 
     def __repr__(self):
         return '\n'.join([
@@ -287,6 +313,8 @@ class DataUtil(object):
         df.index = df.index.tz_localize(parameter.timezone)
         # loop over the indexes of the houses
         for i in df.index:
+            if not parameter.is_using_image_data:
+                break
             # print(str(df["datetime"][i])[5:7])
             m = str(i)[5:7] + str(i)[8:10]
             n = str(i)[11:13] + str(i)[14:16]
