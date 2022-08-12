@@ -1,8 +1,11 @@
 # import the necessary packages
+import sys
+
+import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import BatchNormalization, Conv2D, MaxPooling2D, Activation, Dropout, Dense, Flatten, Input
-from tensorflow.keras.layers import Conv1D, MaxPooling1D, GRU, ZeroPadding1D, Reshape, ZeroPadding2D
+from tensorflow.keras.layers import BatchNormalization, Conv2D, MaxPooling2D, Concatenate, Dropout, Dense, Flatten, Input, Add
+from tensorflow.keras.layers import Conv1D, MaxPooling1D, GRU, LayerNormalization, Reshape, ZeroPadding2D, MultiHeadAttention
 from tensorflow.keras.models import Model
 import tensorflow.keras.backend as K
 from pyimagesearch import parameter
@@ -89,6 +92,82 @@ def cnnlstm_david(SequenceLength, num, predict_length=parameter.label_width, reg
 	# print(model.summary())
 	return model
 
+def simple_transformer(model_dim, heads, model_depth, input_dim, target_dim, cloud_data_dim = None, seq_len = None, out_seq_len = None):
+	def positional_encoding(position, d_model):
+		def get_angles(pos, i, d_model):
+			angle_rates = 1 / np.power(10000, (2 * (i // 2)) / np.float32(d_model))
+			return pos * angle_rates
+		angle_rads = get_angles(np.arange(position)[:, np.newaxis],
+								np.arange(d_model)[np.newaxis, :],
+								d_model)
+
+		# apply sin to even indices in the array; 2i
+		angle_rads[:, 0::2] = np.sin(angle_rads[:, 0::2])
+
+		# apply cos to odd indices in the array; 2i+1
+		angle_rads[:, 1::2] = np.cos(angle_rads[:, 1::2])
+
+		pos_encoding = angle_rads[np.newaxis, ...]
+
+		return tf.cast(pos_encoding, dtype=tf.float32)
+	def attention_masking(size):
+		mask = tf.linalg.band_part(tf.ones((size, size)), -1, 0)
+		return mask  # (seq_len, seq_len)
+
+	k_dim = int(model_dim / heads)
+	v_dim = k_dim
+	input_data = Input(shape=(seq_len, input_dim))
+	if cloud_data_dim != None:
+		cloud_data_input = Input(shape=(seq_len, cloud_data_dim))
+		inputs = [input_data, cloud_data_input]
+		concat = Concatenate()([input_data, cloud_data_input])
+	else:
+		inputs = input_data
+		concat = input_data
+	x = Conv1D(filters=model_dim, kernel_size=3, strides=1, padding="causal", activation='elu')(concat)
+	input_pos_enocoded = positional_encoding(seq_len, model_dim)
+	input_pos_enocoded = tf.repeat(input_pos_enocoded, tf.shape(x)[0], axis=0)
+	x = Add()([x, input_pos_enocoded])
+	for _ in range(model_depth):
+		# encoder
+		original = x
+		x = MultiHeadAttention(num_heads=heads, key_dim=k_dim, value_dim=v_dim)(x, x)
+		x = Add()([original, x])
+		x = LayerNormalization()(x)
+		original = x
+		x = Dense(2 * model_dim, "elu")(x)
+		x = Dense(model_dim)(x)
+		x = Add()([original, x])
+		x = LayerNormalization()(x)
+	enc_out = x
+	# generate decoder's input (zero tensor)
+	decoder_input = tf.stack([tf.shape(x)[0], out_seq_len, input_dim + (cloud_data_dim if cloud_data_dim is not None else 0)])
+	decoder_input = tf.fill(decoder_input, 0.0)
+	decoder_input = tf.concat([concat, decoder_input], axis=1)
+	decoder_input = Conv1D(filters=model_dim, kernel_size=3, strides=1, padding="causal", activation='elu')(decoder_input)
+	decoder_input_pos_enocoded = positional_encoding(seq_len+out_seq_len, model_dim)
+	decoder_input_pos_enocoded = tf.repeat(decoder_input_pos_enocoded, tf.shape(x)[0], axis=0)
+	x = Add()([decoder_input, decoder_input_pos_enocoded])
+	for _ in range(model_depth):
+		# decoder
+		original = x
+		mask = tf.repeat(attention_masking(tf.shape(x)[1])[tf.newaxis, :], tf.shape(x)[0], axis=0)
+		x = MultiHeadAttention(num_heads=heads, key_dim=k_dim, value_dim=v_dim)(x, x, x, mask)
+		x = Add()([original, x])
+		x = LayerNormalization()(x)
+		original = x
+		x = MultiHeadAttention(num_heads=heads, key_dim=k_dim, value_dim=v_dim)(x, enc_out)
+		x = Add()([original, x])
+		x = LayerNormalization()(x)
+		original = x
+		x = Dense(2 * model_dim, "elu")(x)
+		x = Dense(model_dim)(x)
+		x = Add()([original, x])
+		x = LayerNormalization()(x)
+	out = Dense(target_dim)(x)
+	out = out[:, seq_len:, :]
+	model = Model(inputs, out)
+	return model
 '''Model: "model_1"
 _________________________________________________________________
 Layer (type)                 Output Shape              Param #
