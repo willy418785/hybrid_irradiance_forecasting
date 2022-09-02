@@ -15,6 +15,7 @@ import os
 import glob
 import cv2
 
+
 class DataUtil(object):
 
     def __init__(self, train_path: str,
@@ -23,7 +24,7 @@ class DataUtil(object):
                  normalise=2,
                  val_path=None, test_path=None,
                  train_split=0.8, val_split=0.05, test_split=0.15, split_mode=False, month_sep=None, keep_date=False):
-        #0.8,0.05,0.15
+        # 0.8,0.05,0.15
         """
         使用的天氣欄目
         weather_col
@@ -45,6 +46,7 @@ class DataUtil(object):
         self.train_df_average = None
         self.val_df_average = None
         self.test_df_average = None
+        self.labelScaler = MinMaxScaler()  # TODO: make the label normalizer customizable
         # read_dataset
         try:
             self.train_df = pd.read_csv(
@@ -75,14 +77,15 @@ class DataUtil(object):
             if parameter.input_days is None or parameter.output_days is None:
                 self.train_df, self.val_df = train_test_split(self.train_df, test_size=val_split + test_split,
                                                               shuffle=False)
-                self.val_df, self.test_df = train_test_split(self.val_df, test_size=test_split / (val_split + test_split),
-                                                            shuffle=False)
+                self.val_df, self.test_df = train_test_split(self.val_df,
+                                                             test_size=test_split / (val_split + test_split),
+                                                             shuffle=False)
             else:
                 assert month_sep is not None and type(month_sep) is int
                 self.test_df = self.train_df[self.train_df.index.month == month_sep]
                 self.train_df = self.train_df[self.train_df.index.month != month_sep]
                 all_dates = np.unique(self.train_df.index.date)
-                train_dates = all_dates[:int((1-val_split)*len(all_dates))]
+                train_dates = all_dates[:int((1 - val_split) * len(all_dates))]
                 val_dates = all_dates[int((1 - val_split) * len(all_dates)):]
                 self.val_df = self.train_df[[True if (_ in val_dates) else False for _ in self.train_df.index.date]]
                 self.train_df = self.train_df[[True if (_ in train_dates) else False for _ in self.train_df.index.date]]
@@ -106,14 +109,14 @@ class DataUtil(object):
                 self.val_df["datetime"] = self.val_df.index
             except:
                 log.debug("keep_date some dataset miss")
-        #防呆 如果沒有輸入label_col就全部都作為label
+        # 防呆 如果沒有輸入label_col就全部都作為label
         if label_col is None:
             self.label_col = list(self.train_df.columns)
             self.feature_col = list(self.train_df.columns)
         else:
             if feature_col is None:
                 self.label_col = label_col
-                self.feature_col = list(set(list(self.train_df.columns)) - set(label_col))
+                self.feature_col = [ele for ele in list(self.train_df.columns) if ele not in label_col]
             else:
                 self.label_col = label_col
                 self.feature_col = feature_col
@@ -134,8 +137,7 @@ class DataUtil(object):
             self.val_df = self.val_df.between_time('08:00:01', '17:00:00')
             self.test_df = self.test_df.between_time('08:00:01', '17:00:00')
 
-
-        if parameter.dynamic_model=="two" or ("twoClass" in parameter.inputs):
+        if parameter.dynamic_model == "two" or ("twoClass" in parameter.inputs):
             self.train_df_cloud = self.train_df["twoClass"].astype(np.str)
             self.val_df_cloud = self.val_df["twoClass"].astype(np.str)
             self.test_df_cloud = self.test_df["twoClass"].astype(np.str)
@@ -158,23 +160,23 @@ class DataUtil(object):
             self.train_df_average = self.train_df["sun_average"].astype(np.str)
             self.val_df_average = self.val_df["sun_average"].astype(np.str)
             self.test_df_average = self.test_df["sun_average"].astype(np.str)
-            self.train_df_average[self.train_df_average.isin(["221-240","201-220","176-200","151-175","0-150"])] = 0
-            self.train_df_average[self.train_df_average.isin(["251-255","241-250"])] = 1
+            self.train_df_average[self.train_df_average.isin(["221-240", "201-220", "176-200", "151-175", "0-150"])] = 0
+            self.train_df_average[self.train_df_average.isin(["251-255", "241-250"])] = 1
             self.train_df_average = self.train_df_average.astype(np.float32)
             # self.train_df_average = np.expand_dims(self.train_df_average, axis=-1)
             #
-            self.val_df_average[self.val_df_average.isin(["221-240","201-220","176-200","151-175","0-150"])] = 0
-            self.val_df_average[self.val_df_average.isin(["251-255","241-250"])] = 1
+            self.val_df_average[self.val_df_average.isin(["221-240", "201-220", "176-200", "151-175", "0-150"])] = 0
+            self.val_df_average[self.val_df_average.isin(["251-255", "241-250"])] = 1
             self.val_df_average = self.val_df_average.astype(np.float32)
             # self.val_df_average = np.expand_dims(self.val_df_average, axis=-1)
             #
-            self.test_df_average[self.test_df_average.isin(["221-240","201-220","176-200","151-175","0-150"])] = 0
-            self.test_df_average[self.test_df_average.isin(["251-255","241-250"])] = 1
+            self.test_df_average[self.test_df_average.isin(["221-240", "201-220", "176-200", "151-175", "0-150"])] = 0
+            self.test_df_average[self.test_df_average.isin(["251-255", "241-250"])] = 1
             self.test_df_average = self.test_df_average.astype(np.float32)
             # self.test_df_average = np.expand_dims(self.test_df_average, axis=-1)
             #
         ##filter data
-        # self.filter_data()
+        self.filter_data()
         # self.column_indices = {name: i for i, name in enumerate(self.train_df.columns)}
         self.normalise_data()
         print("data Preprocess")
@@ -191,8 +193,6 @@ class DataUtil(object):
         self.valImages = self.load_house_images(self.val_df, parameter.datasetPath)
         self.testImages = self.load_house_images(self.test_df, parameter.datasetPath)
 
-
-
     def timeFeatureProcess(self, data):
         data['month'] = data.index.month
         data['day'] = data.index.day
@@ -207,17 +207,16 @@ class DataUtil(object):
         if parameter.smoothing_type == "MA":
             smoothed = series.rolling(parameter.smoothing_mode["MA"]["num_of_entries"]).mean()
         elif parameter.smoothing_type == "EMA":
-            smoothed = series.ewm(span = parameter.smoothing_mode["EMA"]["span"]).mean()
+            smoothed = series.ewm(span=parameter.smoothing_mode["EMA"]["span"]).mean()
         else:
             smoothed = series
         return smoothed
-    
+
     # 只保留需要的label
     def filter_data(self):
         # log.debug("Normalise: %d", normalise)
         # contain_col = self.label_col + self.weather_col
-        contain_col = self.label_col
-
+        contain_col = [ele for ele in list(self.train_df.columns) if (ele in self.feature_col or ele in self.label_col)]
         '''
         if parameter.dataUtilParam.time_features:
             contain_col = contain_col + parameter.dataUtilParam.time_features_col'''
@@ -226,39 +225,47 @@ class DataUtil(object):
             self.val_df = self.val_df[contain_col]
         if (self.test_df is not None):
             self.test_df = self.test_df[contain_col]
-            
-    # norm
+        # test if all input data is numerical data, exit if not
+        numerical_col = [col_name for col_name, col_type in self.train_df.dtypes.items() if
+                         np.issubdtype(col_type, np.number)]
+        assert (len(contain_col) == len(numerical_col))
+
     def normalise_data(self):
-        # log.debug("Normalise: %s", self.norm_type_list[self.normalise_mode])
+        # normalize label by the scaler specified by user's config
+        if self.labelScaler is not None:
+            all_data = self.train_df if self.val_df is None else pd.concat([self.train_df, self.val_df], axis=0)
+            all_data = all_data if self.test_df is None else pd.concat([all_data, self.test_df], axis=0)
+            self.labelScaler.fit(all_data[self.label_col])
+            self.train_df[self.label_col] = self.labelScaler.transform(self.train_df[self.label_col])
+            if (self.val_df is not None):
+                self.val_df[self.label_col] = self.labelScaler.transform(self.val_df[self.label_col])
+            if (self.test_df is not None):
+                self.test_df[self.label_col] = self.labelScaler.transform(self.test_df[self.label_col])
+            # log.debug("Normalise: %s", self.norm_type_list[self.normalise_mode])
+        # assign different feature scaler corresponding to user input
         if self.normalise_mode == 0:  # do not normalise
             self.scaler = None
-            self.labelScaler = None
             return
         if self.normalise_mode == 1:  # stand scaler
             self.scaler = StandardScaler()
-            self.labelScaler = StandardScaler()
         if self.normalise_mode == 2:  # minmax scaler
             self.scaler = MinMaxScaler()
-            self.labelScaler = MinMaxScaler()
         # feature_scale_col = self.label_col.copy()
         '''if parameter.dataUtilParam.time_features:
             feature_scale_col = feature_scale_col + parameter.dataUtilParam.time_features_col'''
-        self.labelScaler.fit(self.train_df[self.label_col])
-        self.train_df[self.label_col] = self.labelScaler.transform(self.train_df[self.label_col])
-        if (self.val_df is not None):
-            self.val_df[self.label_col] = self.labelScaler.transform(self.val_df[self.label_col])
-        if (self.test_df is not None):
-            self.test_df[self.label_col] = self.labelScaler.transform(self.test_df[self.label_col])
         # exclude label column to avoid repeatedly normalized
-        feature_col_excluding_label = list(set(self.feature_col) - set(self.label_col))
+        feature_col_excluding_label = [ele for ele in self.feature_col if ele not in self.label_col]
         if len(feature_col_excluding_label) > 0:
-            self.scaler.fit(self.train_df[feature_col_excluding_label])
+            # normalize features and fill nan with zero
+            self.scaler.fit(all_data[feature_col_excluding_label])
             self.train_df[feature_col_excluding_label] = self.scaler.transform(
                 self.train_df[feature_col_excluding_label])
             if (self.val_df is not None):
-                self.val_df[feature_col_excluding_label] = self.scaler.transform(self.val_df[feature_col_excluding_label])
+                self.val_df[feature_col_excluding_label] = self.scaler.transform(
+                    self.val_df[feature_col_excluding_label])
             if (self.test_df is not None):
-                self.test_df[feature_col_excluding_label] = self.scaler.transform(self.test_df[self.feature_col_excluding_label])
+                self.test_df[feature_col_excluding_label] = self.scaler.transform(
+                    self.test_df[self.feature_col_excluding_label])
 
     def __repr__(self):
         return '\n'.join([
@@ -271,11 +278,11 @@ class DataUtil(object):
             f'##################################################################################################'
         ])
 
-    def mask(self, image, x0=32, y0=22, r=26): #(image, x0=32, y0=22, r=26):
+    def mask(self, image, x0=32, y0=22, r=26):  # (image, x0=32, y0=22, r=26):
         mask = np.zeros(image.shape[:2], dtype="uint8")
         cv2.circle(mask, (x0, y0), r, 255, -1)
         masked = cv2.bitwise_and(image, image, mask=mask)
-        if(masked.ndim < 3):
+        if (masked.ndim < 3):
             masked = np.expand_dims(masked, axis=-1)
         return masked
 
@@ -318,7 +325,7 @@ class DataUtil(object):
             # print(str(df["datetime"][i])[5:7])
             m = str(i)[5:7] + str(i)[8:10]
             n = str(i)[11:13] + str(i)[14:16]
-            basePath = os.path.sep.join(["../skyImage/2020/2020{}/".format(m)+"NCU_skyimg_2020{}_{}*".format(m,n)])
+            basePath = os.path.sep.join(["../skyImage/2020/2020{}/".format(m) + "NCU_skyimg_2020{}_{}*".format(m, n)])
             housePaths = sorted(list(glob.glob(basePath)))
             for housePath in housePaths:
                 # load the input image, resize it to be 32 32, and then
