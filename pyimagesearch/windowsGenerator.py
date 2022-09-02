@@ -24,6 +24,7 @@ class WindowGenerator():
         self.image_input_width = image_input_width
         self.label_width = label_width
         self.shift = shift
+        self.batch_size = batch_size
 
         self.total_window_size = self.input_width + self.shift + self.label_width - 1
         if parameter.between8_17:
@@ -164,19 +165,16 @@ class WindowGenerator():
         #     labels = labels[:, -1, :]
         return labels
 
-
     def input_dataset(self, data, label, cloudData=None, image=None, ganIndex=False,
                       sequence_stride=parameter.label_width, use_shuffle=False):
         ds_t, ds_u, ds_c, ds_v = None, None, None, None
         rows_counter = 0
         if ganIndex:
-            data['timestamp'] = data.index.values.astype(int)
-            data = data[['timestamp']]
-            label['timestamp'] = label.index.values.astype(int)
-            label = label[['timestamp']]
-        else:
-            data = data[parameter.target]
-            label = label[parameter.target]
+            data = pd.DataFrame(data.index.values.astype(int), index=data.index, columns=['timestamp'])
+            # data = data[['timestamp']]
+            label = pd.DataFrame(label.index.values.astype(int), index=label.index, columns=['timestamp'])
+            # label = label[['timestamp']]
+
         for date in np.unique(data.index.date):
             num_of_rows = len(data[data.index.date == date].index)
             data_on_date = data[
@@ -248,8 +246,8 @@ class WindowGenerator():
                 c = tf.data.Dataset.zip((ds_t, ds_u, ds_c))
                 c = tf.data.Dataset.zip((c, ds_v))
         if use_shuffle:
-            c = c.shuffle(parameter.batchsize)
-        c = c.batch(parameter.batchsize)
+            c = c.shuffle(self.batch_size)
+        c = c.batch(self.batch_size)
         print(c)
         return c
 
@@ -319,7 +317,7 @@ class WindowGenerator():
             sequence_length=self.total_window_size,
             sequence_stride=self.label_width,
             shuffle=parameter.dynamic_suffle,
-            batch_size=parameter.batchsize)
+            batch_size=self.batch_size)
 
         ds_t = tf.keras.preprocessing.timeseries_dataset_from_array(
             data=image,
@@ -327,7 +325,7 @@ class WindowGenerator():
             sequence_length=self.total_window_size,
             sequence_stride=self.label_width,
             shuffle=parameter.dynamic_suffle,
-            batch_size=parameter.batchsize)
+            batch_size=self.batch_size)
         ds_t = tf.data.Dataset.zip((ds_t, ds_c))  ######
         ds_t = ds_t.map(
             lambda x, cloud: self.cloud_image_split_window(x, cloud, allowed_labels=allowed_labels))  #######
@@ -338,7 +336,7 @@ class WindowGenerator():
             sequence_length=self.total_window_size,
             sequence_stride=self.label_width,
             shuffle=parameter.dynamic_suffle,
-            batch_size=parameter.batchsize)
+            batch_size=self.batch_size)
         # print(ds_u)
         ds_u = tf.data.Dataset.zip((ds_u, ds_c))  #####
         ds_u = ds_u.map(lambda x, cloud: self.cloud_data_split_window(x, cloud, allowed_labels=allowed_labels))  #######
@@ -353,7 +351,7 @@ class WindowGenerator():
             sequence_length=self.total_window_size,
             sequence_stride=self.label_width,
             shuffle=parameter.dynamic_suffle,
-            batch_size=parameter.batchsize)
+            batch_size=self.batch_size)
         ds_a = tf.data.Dataset.zip((ds_a, ds_c))  #####
         ds_a = ds_a.map(
             lambda x, cloud: self.cloud_data_split_window(x, cloud, allowed_labels=allowed_labels))  #######
@@ -365,7 +363,7 @@ class WindowGenerator():
             sequence_length=self.total_window_size,
             sequence_stride=self.label_width,
             shuffle=parameter.dynamic_suffle,
-            batch_size=parameter.batchsize)
+            batch_size=self.batch_size)
         # print(ds_v)
         ds_v = tf.data.Dataset.zip((ds_v, ds_c))  ######
         ds_v = ds_v.map(lambda x, cloud: self.cloud_label_split_window(x, cloud, allowed_labels=allowed_labels))  ######
@@ -403,7 +401,7 @@ class WindowGenerator():
             sequence_length=self.total_window_size,
             sequence_stride=self.label_width,
             shuffle=parameter.dynamic_suffle,
-            batch_size=parameter.batchsize)
+            batch_size=self.batch_size)
 
         ds_u = tf.keras.preprocessing.timeseries_dataset_from_array(
             data=data,
@@ -411,7 +409,7 @@ class WindowGenerator():
             sequence_length=self.total_window_size,
             sequence_stride=self.label_width,
             shuffle=parameter.dynamic_suffle,
-            batch_size=parameter.batchsize)
+            batch_size=self.batch_size)
         # print(ds_u)
         ds_u = tf.data.Dataset.zip((ds_u, ds_c))
         ds_u = ds_u.map(lambda x, cloud: self.cloud_data_split_window(x, cloud, allowed_labels=allowed_labels))
@@ -424,7 +422,7 @@ class WindowGenerator():
             sequence_length=self.total_window_size,
             sequence_stride=self.label_width,
             shuffle=parameter.dynamic_suffle,
-            batch_size=parameter.batchsize)
+            batch_size=self.batch_size)
         ds_a = tf.data.Dataset.zip((ds_a, ds_c))  #####
         ds_a = ds_a.map(
             lambda x, cloud: self.cloud_data_split_window(x, cloud, allowed_labels=allowed_labels))  #######
@@ -435,7 +433,7 @@ class WindowGenerator():
             sequence_length=self.total_window_size,
             sequence_stride=self.label_width,
             shuffle=parameter.dynamic_suffle,
-            batch_size=parameter.batchsize)
+            batch_size=self.batch_size)
         # print(ds_v)
         ds_v = tf.data.Dataset.zip((ds_v, ds_c))
         ds_v = ds_v.map(lambda x, cloud: self.cloud_label_split_window(x, cloud, allowed_labels=allowed_labels))
