@@ -117,7 +117,7 @@ def simple_transformer(model_dim, heads, model_depth, input_dim, target_dim, clo
 	k_dim = int(model_dim / heads)
 	v_dim = k_dim
 	input_data = Input(shape=(seq_len, input_dim))
-	if cloud_data_dim != None:
+	if cloud_data_dim is not None:
 		cloud_data_input = Input(shape=(seq_len, cloud_data_dim))
 		inputs = [input_data, cloud_data_input]
 		concat = Concatenate()([input_data, cloud_data_input])

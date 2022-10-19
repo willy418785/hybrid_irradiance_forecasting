@@ -17,7 +17,7 @@ class WindowGenerator():
                  trainImages, trainData, trainCloud, trainAverage, trainY,
                  valImage, valData, valCloud, valAverage, valY,
                  testImage, testData, testCloud, testAverage, testY,
-                 batch_size=32, label_columns=None):
+                 batch_size=32, label_columns=None, samples_per_day=None):
 
         # Work out the window parameters.
         self.input_width = input_width
@@ -25,12 +25,9 @@ class WindowGenerator():
         self.label_width = label_width
         self.shift = shift
         self.batch_size = batch_size
-
-        self.total_window_size = self.input_width + self.shift + self.label_width - 1
-        if parameter.between8_17:
-            self.is_sampling_within_day = True if self.total_window_size <= 540 else False
-        else:
-            self.is_sampling_within_day = True if self.total_window_size <= 1440 else False
+        self.total_window_size = self.input_width + self.label_width
+        self.samples_per_day = samples_per_day
+        self.is_sampling_within_day = True if self.total_window_size <= self.samples_per_day else False
 
         self.input_slice = slice(0, self.input_width)
         self.input_indices = np.arange(self.total_window_size)[self.input_slice]
@@ -79,7 +76,7 @@ class WindowGenerator():
             f'Label indices: {self.label_indices}',
             f'Label column name(s): {self.label_columns}'])
 
-    def plotPredictUnit(self, model, dataset, name):
+    def plotPredictUnit(self, model, dataset, datamode):
         all_y = None
         all_pred = None
         for inputs, targets in dataset.as_numpy_iterator():
@@ -87,10 +84,7 @@ class WindowGenerator():
             # inputs, targets = batch
             # print(inputs)
             # print("$targets.shape$", targets.shape)
-            if name == "MA" or name == "Persistence":
-                print("$data prediction inputs shape", inputs.shape)
-                data = inputs
-            elif name == "datamodel_CL" or name == "simple_transformer":
+            if datamode == "data":
                 if parameter.addAverage:
                     data, average = inputs
                     print("$combined  data prediction inputs shape", data.shape)
@@ -98,7 +92,7 @@ class WindowGenerator():
                 else:
                     data = inputs
                     print("$combined  data prediction inputs shape", data.shape)
-            elif name == "Resnet50_c_cnnlstm" or name == "conv3D_c_cnnlstm" or name == "Cnn3dLSTM_c_cnnlstm":
+            elif datamode == "combined":
                 if parameter.addAverage:
                     image, data, average = inputs
                     print("$combined image prediction inputs shape", image.shape)
@@ -118,7 +112,7 @@ class WindowGenerator():
                 # print(all_y.shape) 
 
                 pred = model.predict(inputs)
-                pred = pred.reshape((-1, 1))
+                pred = pred.reshape((-1, pred.shape[-1]))
                 print("#pred.shape#", pred.shape)
                 if all_pred is None:
                     all_pred = pred
@@ -465,13 +459,12 @@ class WindowGenerator():
                 return self.input_dataset(self.trainDataX, self.trainY_nor,
                                           sequence_stride=1, use_shuffle=parameter.is_using_shuffle)
         else:
-            stride = 540 if parameter.between8_17 else 1440
             if addcloud:
                 return self.input_dataset(self.trainDataX, self.trainY_nor, cloudData=self.trainCloudX,
-                                          sequence_stride=stride, use_shuffle=parameter.is_using_shuffle)
+                                          sequence_stride=self.samples_per_day, use_shuffle=parameter.is_using_shuffle)
             else:
                 return self.input_dataset(self.trainDataX, self.trainY_nor,
-                                          sequence_stride=stride, use_shuffle=parameter.is_using_shuffle)
+                                          sequence_stride=self.samples_per_day, use_shuffle=parameter.is_using_shuffle)
 
     def valData(self, sepMode: str = "all", addcloud=False):
         # return self.input_dataset_2(self.valDataX, self.valCloudX, self.valY_nor, addcloud=addcloud, sequence_stride=1)
@@ -483,13 +476,12 @@ class WindowGenerator():
                 return self.input_dataset(self.valDataX, self.valY_nor,
                                           sequence_stride=1)
         else:
-            stride = 540 if parameter.between8_17 else 1440
             if addcloud:
                 return self.input_dataset(self.valDataX, self.valY_nor, cloudData=self.valCloudX,
-                                          sequence_stride=stride)
+                                          sequence_stride=self.samples_per_day)
             else:
                 return self.input_dataset(self.valDataX, self.valY_nor,
-                                          sequence_stride=stride)
+                                          sequence_stride=self.samples_per_day)
 
     def testData(self, sepMode: str = "all", ganIndex=False, addcloud=False):
         # return self.input_dataset_2(self.testDataX, self.testCloudX, self.testY, ganIndex=ganIndex, addcloud=addcloud,
@@ -755,32 +747,25 @@ class WindowGenerator():
         log = logging.getLogger(parameter.experient_label)
         if len(model) == 1:
             if datamode == "data":  # persistence, moving average
-                if name == "Persistence" or name == "MA":
-                    all_pred, all_y = self.plotPredictUnit(model[0],
-                                                           self.testData(sepMode="all", ganIndex=False, addcloud=False),
-                                                           name=name)
-                    _, all_y_index = self.getlabelDataIndex(self.testData(sepMode="all", ganIndex=True, addcloud=False),
-                                                            name)
-                else:
-                    all_pred, all_y = self.plotPredictUnit(model[0], self.testData(sepMode="all", ganIndex=False,
-                                                                                   addcloud=parameter.addAverage),
-                                                           name=name)
-                    _, all_y_index = self.getlabelDataIndex_withData(
-                        self.testData(sepMode="all", ganIndex=True, addcloud=parameter.addAverage), name)
-                # print(all_y_index)
+                all_pred, all_y = self.plotPredictUnit(model[0], self.testData(sepMode="all", ganIndex=False,
+                                                                               addcloud=parameter.addAverage),
+                                                       datamode=datamode)
+                _, all_y_index = self.getlabelDataIndex_withData(
+                    self.testData(sepMode="all", ganIndex=True, addcloud=parameter.addAverage), name)
             elif datamode == "combined":
                 all_pred, all_y = self.plotPredictUnit(model[0], self.test(sepMode="all", ganIndex=False,
-                                                                           addcloud=parameter.addAverage), name=name)
+                                                                           addcloud=parameter.addAverage),
+                                                       datamode=datamode)
                 _, all_y_index = self.getlabelDataIndex_withImage(
                     self.test(sepMode="all", ganIndex=True, addcloud=parameter.addAverage), name)
         elif len(model) == 2:
             if datamode == "data":  # cnnlstm
                 cloudA_pred, cloudA_y = self.plotPredictUnit(model[0],
                                                              self.testDataAC(sepMode="cloudA", ganIndex=False),
-                                                             name=name)
+                                                             datamode=datamode)
                 cloudC_pred, cloudC_y = self.plotPredictUnit(model[1],
                                                              self.testDataAC(sepMode="cloudC", ganIndex=False),
-                                                             name=name)
+                                                             datamode=datamode)
 
                 _, cloudA_label_index = self.getlabelDataIndex_withData(
                     self.testDataAC(sepMode="cloudA", ganIndex=True), name)
@@ -800,7 +785,7 @@ class WindowGenerator():
                     log.info("A is none and cloudC_y shape: {}".format(cloudC_y.shape))
                     # print("####################################")
                     all_pred, all_y = self.plotPredictUnit(model[1], self.testDataAC(sepMode="cloudC", ganIndex=False),
-                                                           name=name)
+                                                           datamode=datamode)
                     _, all_y_index = self.getlabelDataIndex_withData(self.testDataAC(sepMode="cloudC", ganIndex=True),
                                                                      name)
                 else:
@@ -817,9 +802,9 @@ class WindowGenerator():
 
             elif datamode == "combined":  # conv3D_c_cnnlstm
                 cloudA_pred, cloudA_y = self.plotPredictUnit(model[0], self.testAC(sepMode="cloudA", ganIndex=False),
-                                                             name=name)
+                                                             datamode=datamode)
                 cloudC_pred, cloudC_y = self.plotPredictUnit(model[1], self.testAC(sepMode="cloudC", ganIndex=False),
-                                                             name=name)
+                                                             datamode=datamode)
                 # print(cloudC_y.shape)
                 # print(cloudA_y.shape)
 
@@ -833,7 +818,7 @@ class WindowGenerator():
                     log.info("C is none and cloudA_y shape: {}".format(cloudA_y.shape))
                     # print("####################################")
                     all_pred, all_y = self.plotPredictUnit(model[0], self.testAC(sepMode="cloudA", ganIndex=False),
-                                                           name=name)
+                                                           datamode=datamode)
                     _, all_y_index = self.getlabelDataIndex_withImage(self.testAC(sepMode="cloudA", ganIndex=True),
                                                                       name)
                 elif cloudA_y is None:  # todo if cloudA data not enough
@@ -841,7 +826,7 @@ class WindowGenerator():
                     log.info("A is none and cloudC_y shape: {}".format(cloudC_y.shape))
                     # print("####################################")
                     all_pred, all_y = self.plotPredictUnit(model[1], self.testAC(sepMode="cloudC", ganIndex=False),
-                                                           name=name)
+                                                           datamode=datamode)
                     _, all_y_index = self.getlabelDataIndex_withImage(self.testAC(sepMode="cloudC", ganIndex=True),
                                                                       name)
                 else:
@@ -878,10 +863,13 @@ class WindowGenerator():
         df_gt = pd.DataFrame(all_y, columns=parameter.target, index=all_y_index.ravel()).sort_index()
         # df.index = all_y_index.ravel()
         # df = df.sort_index()
+        if parameter.test_between8_17:
+            df_pred = df_pred.between_time(parameter.start, parameter.end)
+            df_gt = df_gt.between_time(parameter.start, parameter.end)
 
         # post process
         tdf = [df_gt, df_pred]
-        tdf[1][tdf[1] < 0.0] = 0.0  # 預測負值 轉 0.0
+        # tdf[1][tdf[1] < 0.0] = 0.0  # 預測負值 轉 0.0
 
         log = logging.getLogger(parameter.experient_label)
         metircs_dist = my_metrics.log_metrics(tdf, name)

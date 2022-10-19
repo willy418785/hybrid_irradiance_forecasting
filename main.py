@@ -1,5 +1,7 @@
 # python main.py -d  ../skyImage
 # import the necessary packages
+import datetime
+
 import tensorflow as tf
 from pyimagesearch import datasets
 from pyimagesearch import models
@@ -10,6 +12,7 @@ from pyimagesearch import model_conv3D
 from pyimagesearch import model_cnnLSTM
 from pyimagesearch import model_multiCnnLSTM
 from pyimagesearch import model_3Dresnet
+from pyimagesearch import model_transformer, model_convGRU
 
 from pyimagesearch import my_metrics
 from pyimagesearch import Msglog
@@ -68,17 +71,20 @@ def ModelTrainer(dataGnerator: WindowGenerator,
                             validation_data=dataGnerator.val(addcloud=parameter.addAverage),
                             epochs=testEpoch, batch_size=parameter.batchsize, callbacks=[parameter.earlystoper])
         all_pred, all_y = dataGnerator.plotPredictUnit(model, dataGnerator.val(addcloud=parameter.addAverage),
-                                                       name=name)
+                                                       datamode=generatorMode)
     # history = model.fit(dataGnerator.train(), validation_data=dataGnerator.val(),
     # 			epochs=testEpoch, batch_size=parameter.batchsize, callbacks=[parameter.earlystoper])
     # all_pred, all_y = dataGnerator.plotPredictUnit(model, dataGnerator.val())
 
     elif generatorMode == "data":
+        # log_dir = "logs/fit/{}_".format(name) + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
         history = model.fit(dataGnerator.trainData(addcloud=parameter.addAverage),
                             validation_data=dataGnerator.valData(addcloud=parameter.addAverage),
-                            epochs=testEpoch, batch_size=parameter.batchsize, callbacks=[parameter.earlystoper])
+                            epochs=testEpoch, batch_size=parameter.batchsize,
+                            callbacks=[parameter.earlystoper])  # [tensorboard_callback, parameter.earlystoper]
         all_pred, all_y = dataGnerator.plotPredictUnit(model, dataGnerator.valData(addcloud=parameter.addAverage),
-                                                       name=name)
+                                                       datamode=generatorMode)
     # history = model.fit(dataGnerator.trainData(), validation_data=dataGnerator.valData(),
     # 			epochs=testEpoch, batch_size=parameter.batchsize, callbacks=[parameter.earlystoper])
     # all_pred, all_y = dataGnerator.plotPredictUnit(model, dataGnerator.valData())
@@ -86,7 +92,7 @@ def ModelTrainer(dataGnerator: WindowGenerator,
     elif generatorMode == "image":
         history = model.fit(dataGnerator.trainWithArg, validation_data=dataGnerator.valWithArg,
                             epochs=testEpoch, batch_size=parameter.batchsize, callbacks=[parameter.earlystoper])
-        all_pred, all_y = dataGnerator.plotPredictUnit(model, dataGnerator.valWithArg, name=name)
+        all_pred, all_y = dataGnerator.plotPredictUnit(model, dataGnerator.valWithArg, datamode=generatorMode)
 
     # test_performance = model.evaluate(dataGnerator.test)
     # print(test_performance)
@@ -138,11 +144,11 @@ def ModelTrainer_cloud(dataGnerator: WindowGenerator,
         tf.compat.v1.get_default_graph().finalize()'''
         model1.fit(dataGnerator.trainAC(sepMode="cloudA"), validation_data=dataGnerator.valAC(sepMode="cloudA"),
                    epochs=testEpoch, batch_size=parameter.batchsize, callbacks=[parameter.earlystoper])
-        A_pred, A_y = dataGnerator.plotPredictUnit(model1, dataGnerator.valAC(sepMode="cloudA"), name=name)
+        A_pred, A_y = dataGnerator.plotPredictUnit(model1, dataGnerator.valAC(sepMode="cloudA"), datamode=generatorMode)
 
         model2.fit(dataGnerator.trainAC(sepMode="cloudC"), validation_data=dataGnerator.valAC(sepMode="cloudC"),
                    epochs=testEpoch, batch_size=parameter.batchsize, callbacks=[parameter.earlystoper])
-        C_pred, C_y = dataGnerator.plotPredictUnit(model2, dataGnerator.valAC(sepMode="cloudC"), name=name)
+        C_pred, C_y = dataGnerator.plotPredictUnit(model2, dataGnerator.valAC(sepMode="cloudC"), datamode=generatorMode)
     # objgraph.show_growth()
     elif generatorMode == "data":
         tf.keras.backend.clear_session()
@@ -164,12 +170,14 @@ def ModelTrainer_cloud(dataGnerator: WindowGenerator,
         # print(C_pred, C_y)'''
         model1.fit(dataGnerator.trainDataAC(sepMode="cloudA"), validation_data=dataGnerator.valDataAC(sepMode="cloudA"),
                    epochs=testEpoch, batch_size=parameter.batchsize, callbacks=[parameter.earlystoper])
-        A_pred, A_y = dataGnerator.plotPredictUnit(model1, dataGnerator.valDataAC(sepMode="cloudA"), name=name)
+        A_pred, A_y = dataGnerator.plotPredictUnit(model1, dataGnerator.valDataAC(sepMode="cloudA"),
+                                                   datamode=generatorMode)
         # print(A_pred, A_y)
 
         model2.fit(dataGnerator.trainDataAC(sepMode="cloudC"), validation_data=dataGnerator.valDataAC(sepMode="cloudC"),
                    epochs=testEpoch, batch_size=parameter.batchsize, callbacks=[parameter.earlystoper])
-        C_pred, C_y = dataGnerator.plotPredictUnit(model2, dataGnerator.valDataAC(sepMode="cloudC"), name=name)
+        C_pred, C_y = dataGnerator.plotPredictUnit(model2, dataGnerator.valDataAC(sepMode="cloudC"),
+                                                   datamode=generatorMode)
     # print(C_pred, C_y)
 
     val_performance = []
@@ -209,42 +217,63 @@ def run():
     # log.info("static_suffle: {}".format(parameter.static_suffle))
     # log.info("dynamic_suffle: {}".format(parameter.dynamic_suffle))
     log.info("timeseries: {}".format(parameter.timeseries))
-    log.info("input_width: {}".format(parameter.input_width))
-    log.info("image_input_width: {}".format(parameter.image_input_width3D))
-    log.info("image_depth: {}".format(parameter.image_depth))
+    log.info("input features: {}".format(parameter.features))
+    log.info("targets: {}".format(parameter.target))
+    if parameter.is_using_image_data:
+        log.info("image_input_width: {}".format(parameter.image_input_width3D))
+        log.info("image_depth: {}".format(parameter.image_depth))
     log.info("after_minutes: {}".format(parameter.after_minutes))
     log.info("batchsize: {}".format(parameter.batchsize))
-    log.info("early stop: Yes")
+    log.info("early stop: {}".format(parameter.earlystoper is not None))
     log.info("model_list: {}".format(parameter.model_list))
     # log.info("class_type: {}".format(parameter.class_type))
     log.info("epoch list: {}".format(parameter.epoch_list))
     log.info("normalization: {}".format(parameter.normalization))
     log.info("split mode: {}".format(parameter.split_mode))
     log.info("test month: {}".format(parameter.test_month))
-    log.info("target: {}".format(parameter.target))
     log.info("data input: {}".format(parameter.inputs))
     log.info("Add sun_average: {}".format(parameter.addAverage))
     log.info("Model nums: {}".format(parameter.dynamic_model))
     log.info("Using shuffle: {}".format(parameter.is_using_shuffle))
     log.info("smoothing type: {}".format(parameter.smoothing_type))
-    log.info("moving average window size: {}".format(parameter.MA_width))
+    log.info("csv file name: {}".format(parameter.csv_name))
+    log.info("only using daytime data: {}".format(parameter.between8_17))
+    log.info("only evaluate daytime prediction: {}".format(parameter.test_between8_17))
+    log.info("time granularity: {}".format(parameter.time_granularity))
 
     # construct the path to the input .txt file that contains information
     # on each house in the dataset and then load the dataset
     log.info("loading cloud attributes...")
-    train_path = os.path.sep.join(["2020new.csv"])  # ["2020final.csv","2020new","2020shuffleDay"]
+    train_path = os.path.sep.join([parameter.csv_name])
     val_path = None
     test_path = None
 
-    dataUtil = DataUtil(train_path=train_path,
-                        val_path=val_path,
-                        test_path=test_path,
-                        normalise=parameter.norm_mode,
-                        label_col=parameter.target,
-                        keep_date=True,
-                        split_mode=parameter.split_mode,
-                        month_sep=parameter.test_month)
+    data_with_weather_info = DataUtil(train_path=train_path,
+                                      val_path=val_path,
+                                      test_path=test_path,
+                                      normalise=parameter.norm_mode,
+                                      label_col=parameter.target,
+                                      feature_col=parameter.features,
+                                      split_mode=parameter.split_mode,
+                                      month_sep=parameter.test_month)
 
+    # data_with_cloud_info = DataUtil(train_path=train_path,
+    #                                 val_path=val_path,
+    #                                 test_path=test_path,
+    #                                 normalise=parameter.norm_mode,
+    #                                 label_col=parameter.target,
+    #                                 feature_col=parameter.target,
+    #                                 split_mode=parameter.split_mode,
+    #                                 month_sep=parameter.test_month)
+
+    data_for_baseline = DataUtil(train_path=train_path,
+                                 val_path=val_path,
+                                 test_path=test_path,
+                                 normalise=parameter.norm_mode,
+                                 label_col=parameter.target,
+                                 feature_col=parameter.target,
+                                 split_mode=parameter.split_mode,
+                                 month_sep=parameter.test_month)
     '''trainImages = dataUtil.load_house_images(dataUtil.train_df, parameter.datasetPath)
     train_df = dataUtil.train_df
     train_df_cloud = dataUtil.train_df_cloud######
@@ -272,13 +301,36 @@ def run():
     # windows generator#########################################################################################################################
     modelMetricsRecorder = {}
     if parameter.timeseries:
+        dataUtil = data_with_weather_info
         # trainY_nor = np.expand_dims(trainY_nor, axis=-1)
         # valY_nor = np.expand_dims(valY_nor, axis=-1)
         # testY = np.expand_dims(testY, axis=-1)
-        input_width = parameter.input_width
-        image_input_width = parameter.image_input_width3D
-        label_width = parameter.label_width
-        MA_width = parameter.MA_width
+        if parameter.input_days is None or parameter.output_days is None:
+            assert type(parameter.input_width) is int
+            assert type(parameter.image_input_width3D) is int
+            assert type(parameter.label_width) is int
+            assert dataUtil.samples_per_day >= (
+                    max(parameter.image_input_width3D, parameter.input_width) + parameter.label_width)
+            input_width = parameter.input_width
+            image_input_width = parameter.image_input_width3D
+            label_width = parameter.label_width
+            MA_width = parameter.input_width
+            log.info("\n------In-day Prediction------")
+            log.info("input width: {}".format(input_width))
+            log.info("label width: {}".format(label_width))
+        else:
+            assert type(parameter.input_days) is int
+            assert type(parameter.output_days) is int
+            image_input_width = 0
+            input_width = int(dataUtil.samples_per_day * parameter.input_days)
+            label_width = int(dataUtil.samples_per_day * parameter.output_days)
+            log.info("\n------Cross-day Prediction------")
+            log.info("input days: {}".format(parameter.input_days))
+            log.info("output days: {}".format(parameter.output_days))
+            log.info("samples per day: {}".format(dataUtil.samples_per_day))
+            log.info("input width: {}".format(input_width))
+            log.info("label width: {}".format(label_width))
+            MA_width = input_width
         # w1 = WindowGenerator(input_width=input_width,
         # 						image_input_width=1,
         # 						label_width=label_width,
@@ -306,82 +358,88 @@ def run():
         # 						label_columns = "ShortWaveDown")
         # log.info(w1)	#2D
         # w1.checkWindow()
+
+
         w2 = WindowGenerator(input_width=input_width,
                              image_input_width=image_input_width,
                              label_width=label_width,
-                             shift=parameter.after_minutes,
+                             shift=dataUtil.samples_per_day,
 
                              trainImages=dataUtil.trainImages,
-                             trainData=dataUtil.train_df,
+                             trainData=dataUtil.train_df[dataUtil.feature_col],
                              trainCloud=dataUtil.train_df_cloud,  ######
                              trainAverage=dataUtil.train_df_average,  ######
-                             trainY=dataUtil.train_df,
+                             trainY=dataUtil.train_df[dataUtil.label_col],
 
                              valImage=dataUtil.valImages,
-                             valData=dataUtil.val_df,
+                             valData=dataUtil.val_df[dataUtil.feature_col],
                              valCloud=dataUtil.val_df_cloud,  ######
                              valAverage=dataUtil.val_df_average,  ######
-                             valY=dataUtil.val_df,
+                             valY=dataUtil.val_df[dataUtil.label_col],
 
                              testImage=dataUtil.testImages,
-                             testData=dataUtil.test_df,
+                             testData=dataUtil.test_df[dataUtil.feature_col],
                              testCloud=dataUtil.test_df_cloud,  ######
                              testAverage=dataUtil.test_df_average,  ######
-                             testY=dataUtil.test_df,
+                             testY=dataUtil.test_df[dataUtil.label_col],
 
                              batch_size=parameter.batchsize,
-                             label_columns="ShortWaveDown")
-        log.info(w2)  # 3D
+                             label_columns="ShortWaveDown",
+                            samples_per_day=dataUtil.samples_per_day)
+        # log.info(w2)  # 3D
+        dataUtil = data_for_baseline
         w_for_persistance = WindowGenerator(input_width=label_width,
                                             image_input_width=image_input_width,
                                             label_width=label_width,
-                                            shift=parameter.after_minutes,
+                                            shift=dataUtil.samples_per_day,
 
                                             trainImages=dataUtil.trainImages,
-                                            trainData=dataUtil.train_df,
+                                            trainData=dataUtil.train_df[dataUtil.feature_col],
                                             trainCloud=dataUtil.train_df_cloud,  ######
                                             trainAverage=dataUtil.train_df_average,  ######
-                                            trainY=dataUtil.train_df,
+                                            trainY=dataUtil.train_df[dataUtil.label_col],
 
                                             valImage=dataUtil.valImages,
-                                            valData=dataUtil.val_df,
+                                            valData=dataUtil.val_df[dataUtil.feature_col],
                                             valCloud=dataUtil.val_df_cloud,  ######
                                             valAverage=dataUtil.val_df_average,  ######
-                                            valY=dataUtil.val_df,
+                                            valY=dataUtil.val_df[dataUtil.label_col],
 
                                             testImage=dataUtil.testImages,
-                                            testData=dataUtil.test_df,
+                                            testData=dataUtil.test_df[dataUtil.feature_col],
                                             testCloud=dataUtil.test_df_cloud,  ######
                                             testAverage=dataUtil.test_df_average,  ######
-                                            testY=dataUtil.test_df,
+                                            testY=dataUtil.test_df[dataUtil.label_col],
 
                                             batch_size=parameter.batchsize,
-                                            label_columns="ShortWaveDown")
+                                            label_columns="ShortWaveDown",
+                                            samples_per_day=dataUtil.samples_per_day)
         w_for_MA = WindowGenerator(input_width=MA_width,
                                    image_input_width=image_input_width,
                                    label_width=label_width,
-                                   shift=parameter.after_minutes,
+                                   shift=dataUtil.samples_per_day,
 
                                    trainImages=dataUtil.trainImages,
-                                   trainData=dataUtil.train_df,
+                                   trainData=dataUtil.train_df[dataUtil.feature_col],
                                    trainCloud=dataUtil.train_df_cloud,  ######
                                    trainAverage=dataUtil.train_df_average,  ######
-                                   trainY=dataUtil.train_df,
+                                   trainY=dataUtil.train_df[dataUtil.label_col],
 
                                    valImage=dataUtil.valImages,
-                                   valData=dataUtil.val_df,
+                                   valData=dataUtil.val_df[dataUtil.feature_col],
                                    valCloud=dataUtil.val_df_cloud,  ######
                                    valAverage=dataUtil.val_df_average,  ######
-                                   valY=dataUtil.val_df,
+                                   valY=dataUtil.val_df[dataUtil.label_col],
 
                                    testImage=dataUtil.testImages,
-                                   testData=dataUtil.test_df,
+                                   testData=dataUtil.test_df[dataUtil.feature_col],
                                    testCloud=dataUtil.test_df_cloud,  ######
                                    testAverage=dataUtil.test_df_average,  ######
-                                   testY=dataUtil.test_df,
+                                   testY=dataUtil.test_df[dataUtil.label_col],
 
                                    batch_size=parameter.batchsize,
-                                   label_columns="ShortWaveDown")
+                                   label_columns="ShortWaveDown",
+                                   samples_per_day=dataUtil.samples_per_day)
         # w2.checkWindow()
         # w3 = WindowGenerator(input_width=input_width,
         # 						image_input_width=image_input_width,
@@ -414,18 +472,23 @@ def run():
         w = w2
 
         class Baseline(tf.keras.Model):
-            def __init__(self, label_index=None):
+            def __init__(self, is_within_day, label_index=None):
                 super().__init__()
                 self.label_index = label_index
+                self.is_within_day = is_within_day
 
             def call(self, inputs):
                 # inputs =
                 # print(inputs)
-                result = inputs[:, label_width * -1:, :]
+                if self.is_within_day:
+                    result = inputs[:, -1:, :]
+                    result = tf.repeat(result, label_width, axis=1)
+                else:
+                    result = inputs[:, label_width * -1:, :]
                 # print(result)
                 return result
 
-        baseline = Baseline(label_index=0)
+        baseline = Baseline(w_for_persistance.is_sampling_within_day, label_index=0)
         baseline.compile(loss=tf.losses.MeanSquaredError(),
                          metrics=[tf.metrics.MeanAbsoluteError()
                              , tf.metrics.MeanAbsolutePercentageError()
@@ -434,10 +497,10 @@ def run():
         # performance = {}
         modelList = {}
         metricsDict = w_for_persistance.allPlot(model=[baseline],
-                                                        name="Persistence",
-                                                        scaler=dataUtil.labelScaler,
-                                                        save_csv=True,
-                                                        datamode="data")
+                                                name="Persistence",
+                                                scaler=dataUtil.labelScaler,
+                                                save_csv=True,
+                                                datamode="data")
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
                 modelMetricsRecorder[logM] = {}
@@ -464,10 +527,10 @@ def run():
                                   , my_metrics.VWMAPE
                                   , my_metrics.corr])
         metricsDict = w_for_MA.allPlot(model=[movingAverage],
-                                name="MA",
-                                scaler=dataUtil.labelScaler,
-                                save_csv=True,
-                                datamode="data")
+                                       name="MA",
+                                       scaler=dataUtil.labelScaler,
+                                       save_csv=True,
+                                       datamode="data")
 
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
@@ -477,14 +540,16 @@ def run():
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
     #############################################################
     log = logging.getLogger(parameter.experient_label)
-    if parameter.dynamic_model == "two":
-        sep_trainA = w.trainAC(sepMode="cloudA")
-    elif parameter.dynamic_model == "one":
-        if parameter.addAverage:
-            sep_trainA = w.train(addcloud=True)
-        else:
-            sep_trainA = w.train(addcloud=False)
-    log.info("Dataset shape: {}".format(sep_trainA))
+    # if parameter.dynamic_model == "two":
+    #     sep_trainA = w.trainAC(sepMode="cloudA")
+    # elif parameter.dynamic_model == "one":
+    #     if parameter.addAverage:
+    #         sep_trainA = w.train(addcloud=True)
+    #     else:
+    #         sep_trainA = w.train(addcloud=False)
+    # log.info("Dataset shape: {}".format(sep_trainA))
+
+    dataUtil = data_with_weather_info
 
     if "conv3D_c_cnnlstm" in parameter.model_list:
         parameter.squeeze = False
@@ -673,7 +738,7 @@ def run():
             if modelMetricsRecorder.get(logM) is None:
                 modelMetricsRecorder[logM] = {}
             modelMetricsRecorder[logM]["Cnn3dLSTM_c_cnnlstm"] = metricsDict[logM]
-    #################################################################################3
+    #################################################################################
     if "Resnet50_c_cnnlstm" in parameter.model_list:
         parameter.squeeze = False
         best_perform, best_perform2 = None, None
@@ -941,88 +1006,306 @@ def run():
                 modelMetricsRecorder[logM] = {}
             modelMetricsRecorder[logM]["Efficient_c_cnnlstm"] = metricsDict[logM]
     ###########################################################################
-    if "data_cnnlstm" in parameter.model_list:
-        sep_trainDataA = w.trainDataAC(sepMode="cloudA")
-        sep_trainDataC = w.trainDataAC(sepMode="cloudC")
-        sep_valDataA = w.valDataAC(sepMode="cloudA")
-        sep_valDataC = w.valDataAC(sepMode="cloudC")
-        log.info("Dataset shape: {}".format(sep_trainDataA))
+    # if "data_cnnlstm" in parameter.model_list:
+    #     # sep_trainDataA = w.trainDataAC(sepMode="cloudA")
+    #     # sep_trainDataC = w.trainDataAC(sepMode="cloudC")
+    #     # sep_valDataA = w.valDataAC(sepMode="cloudA")
+    #     # sep_valDataC = w.valDataAC(sepMode="cloudC")
+    #     # log.info("Dataset shape: {}".format(sep_trainDataA))
+    #     best_perform, best_perform2 = None, None
+    #     best_model, best_model2 = None, None
+    #     log.info("training datamodel_CL...")
+    #     for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
+    #         datamodel_CL = models.cnnlstm_david(input_width, len(parameter.features), label_width, regress=False)
+    #         if parameter.addAverage == True:
+    #             if parameter.dynamic_model == "one" and parameter.addAverage == True:
+    #                 datamodel_cloud = models.cnnlstm_david(input_width, 2, label_width, regress=False)
+    #             else:
+    #                 datamodel_cloud = models.cnnlstm_david(input_width, 1, label_width, regress=False)
+    #             combinedInput = concatenate([datamodel_CL.output, datamodel_cloud.output])
+    #             print("&&&&&&", combinedInput)
+    #             z = Dense(1)(combinedInput)
+    #             print(z)
+    #             data_model = Model(inputs=[datamodel_CL.input, datamodel_cloud.input], outputs=z)
+    #         else:
+    #             data_model = datamodel_CL
+    #         if parameter.dynamic_model == "two":
+    #             datamodel_CL_2 = models.cnnlstm_david(input_width, len(parameter.features), regress=False)
+    #             if parameter.addAverage == True:
+    #                 datamodel_cloud_2 = models.cnnlstm_david(input_width, 1, regress=True)
+    #                 combinedInput_2 = concatenate([datamodel_CL_2.output, datamodel_cloud_2.output])
+    #                 print("&&&&&&", combinedInput_2)
+    #                 z = Dense(label_width)(combinedInput_2)
+    #                 print(z)
+    #                 data_model2 = Model(inputs=[datamodel_CL_2.input, datamodel_cloud_2.input], outputs=z)
+    #             else:
+    #                 data_model2 = datamodel_CL
+    #
+    #             model1, val_performance1, model2, val_performance2 = ModelTrainer_cloud(dataGnerator=w,
+    #                                                                                     model1=data_model,
+    #                                                                                     model2=data_model2,
+    #                                                                                     generatorMode="data",
+    #                                                                                     testEpoch=testEpoch,
+    #                                                                                     name="datamodel_CL")
+    #             print(val_performance1, val_performance2)
+    #             if ((best_perform == None) or (best_perform[2] > val_performance1[2])):
+    #                 best_model = model1
+    #                 best_perform = val_performance1
+    #             print(best_perform)
+    #             if ((best_perform2 == None) or (best_perform2[2] > val_performance2[2])):
+    #                 best_model2 = model2
+    #                 best_perform2 = val_performance2
+    #             print(best_perform2)
+    #             log.info("a model ok")
+    #         else:
+    #             datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=data_model,
+    #                                                                   generatorMode="data", testEpoch=testEpoch,
+    #                                                                   name="datamodel_CL")
+    #             print(datamodel_CL_performance)
+    #             if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
+    #                 best_model = datamodel_CL
+    #                 best_perform = datamodel_CL_performance
+    #             print(best_perform)
+    #             log.info("a model ok")
+    #
+    #     log.info("predicting SolarIrradiation by datamodel_CL...")
+    #     # tf.config.optimizer.set_experimental_options({'layout_optimizer': False})
+    #     # modelList["conv3D_c_cnnlstm"] = [combined2]
+    #     if parameter.dynamic_model == "two":
+    #         metricsDict = w.allPlot(model=[best_model, best_model2],
+    #                                 name="datamodel_CL",
+    #                                 scaler=dataUtil.labelScaler,
+    #                                 save_csv=True,
+    #                                 datamode="data")
+    #     elif parameter.dynamic_model == "one":
+    #         metricsDict = w.allPlot(model=[best_model],
+    #                                 name="datamodel_CL",
+    #                                 scaler=dataUtil.labelScaler,
+    #                                 save_csv=True,
+    #                                 datamode="data")
+    #     for logM in metricsDict:
+    #         if modelMetricsRecorder.get(logM) is None:
+    #             modelMetricsRecorder[logM] = {}
+    #         modelMetricsRecorder[logM]["datamodel_CL"] = metricsDict[logM]
+    #     pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
+    # if "simple_transformer" in parameter.model_list:
+    #     best_perform, best_perform2 = None, None
+    #     best_model, best_model2 = None, None
+    #     log.info("training simple_transformer model...")
+    #     for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
+    #         if parameter.addAverage == True:
+    #             if parameter.dynamic_model == "one" and parameter.addAverage == True:
+    #                 data_model = models.simple_transformer(8, 4, 3, len(parameter.features), len(parameter.target), 2,
+    #                                                        input_width, label_width)
+    #             else:
+    #                 data_model = models.simple_transformer(8, 4, 3, len(parameter.features), len(parameter.target), 1,
+    #                                                        input_width, label_width)
+    #         else:
+    #             data_model = models.simple_transformer(8, 4, 3, len(parameter.features), len(parameter.target), None,
+    #                                                    input_width, label_width)
+    #         if parameter.dynamic_model == "two":
+    #             if parameter.addAverage == True:
+    #                 data_model2 = models.simple_transformer(8, 4, 3, len(parameter.features), len(parameter.target), 1,
+    #                                                         input_width, label_width)
+    #             else:
+    #                 data_model2 = models.simple_transformer(8, 4, 3, len(parameter.features), len(parameter.target),
+    #                                                         None, input_width, label_width)
+    #
+    #             model1, val_performance1, model2, val_performance2 = ModelTrainer_cloud(dataGnerator=w,
+    #                                                                                     model1=data_model,
+    #                                                                                     model2=data_model2,
+    #                                                                                     generatorMode="data",
+    #                                                                                     testEpoch=testEpoch,
+    #                                                                                     name="simple_transformer")
+    #             print(val_performance1, val_performance2)
+    #             if ((best_perform == None) or (best_perform[2] > val_performance1[2])):
+    #                 best_model = model1
+    #                 best_perform = val_performance1
+    #             print(best_perform)
+    #             if ((best_perform2 == None) or (best_perform2[2] > val_performance2[2])):
+    #                 best_model2 = model2
+    #                 best_perform2 = val_performance2
+    #             print(best_perform2)
+    #             log.info("a model ok")
+    #         else:
+    #             datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=data_model,
+    #                                                                   generatorMode="data", testEpoch=testEpoch,
+    #                                                                   name="simple_transformer")
+    #             print(datamodel_CL_performance)
+    #             if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
+    #                 best_model = datamodel_CL
+    #                 best_perform = datamodel_CL_performance
+    #             print(best_perform)
+    #             log.info("a model ok")
+    #
+    #     log.info("predicting SolarIrradiation by simple_transformer...")
+    #     # tf.config.optimizer.set_experimental_options({'layout_optimizer': False})
+    #     # modelList["conv3D_c_cnnlstm"] = [combined2]
+    #     if parameter.dynamic_model == "two":
+    #         metricsDict = w.allPlot(model=[best_model, best_model2],
+    #                                 name="simple_transformer",
+    #                                 scaler=dataUtil.labelScaler,
+    #                                 save_csv=True,
+    #                                 datamode="data")
+    #     elif parameter.dynamic_model == "one":
+    #         metricsDict = w.allPlot(model=[best_model],
+    #                                 name="simple_transformer",
+    #                                 scaler=dataUtil.labelScaler,
+    #                                 save_csv=True,
+    #                                 datamode="data")
+    #         try:
+    #             os.mkdir(Path("model/{}".format(parameter.experient_label)))
+    #         except:
+    #             print("model path exist")
+    #         best_model.save("model/{}/{}".format(parameter.experient_label, "model"))
+    #     for logM in metricsDict:
+    #         if modelMetricsRecorder.get(logM) is None:
+    #             modelMetricsRecorder[logM] = {}
+    #         modelMetricsRecorder[logM]["simple_transformer"] = metricsDict[logM]
+    #     pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
+    if "convGRU" in parameter.model_list:
         best_perform, best_perform2 = None, None
         best_model, best_model2 = None, None
-        log.info("training datamodel_CL...")
+        log.info("convGRU")
         for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
-            datamodel_CL = models.cnnlstm_david(input_width, 1, regress=False)
-            if parameter.addAverage == True:
-                if parameter.dynamic_model == "one" and parameter.addAverage == True:
-                    datamodel_cloud = models.cnnlstm_david(input_width, 2, regress=True)
-                else:
-                    datamodel_cloud = models.cnnlstm_david(input_width, 1, regress=True)
-                combinedInput = concatenate([datamodel_CL.output, datamodel_cloud.output])
-                print("&&&&&&", combinedInput)
-                z = Dense(label_width)(combinedInput)
-                print(z)
-                data_model = Model(inputs=[datamodel_CL.input, datamodel_cloud.input], outputs=z)
-            else:
-                data_model = datamodel_CL
-            if parameter.dynamic_model == "two":
-                datamodel_CL_2 = models.cnnlstm_david(input_width, 1, regress=False)
-                if parameter.addAverage == True:
-                    datamodel_cloud_2 = models.cnnlstm_david(input_width, 1, regress=True)
-                    combinedInput_2 = concatenate([datamodel_CL_2.output, datamodel_cloud_2.output])
-                    print("&&&&&&", combinedInput_2)
-                    z = Dense(label_width)(combinedInput_2)
-                    print(z)
-                    data_model2 = Model(inputs=[datamodel_CL_2.input, datamodel_cloud_2.input], outputs=z)
-                else:
-                    data_model2 = datamodel_CL
+            model = model_convGRU.ConvGRU(num_layers=1, in_seq_len=input_width, in_dim=len(parameter.features),
+                                          out_seq_len=label_width, out_dim=len(parameter.target), units=5,
+                                          filters=100,
+                                          gen_mode='unistep',
+                                          is_seq_continuous=w.is_sampling_within_day or not parameter.between8_17, rate=0)
 
-                model1, val_performance1, model2, val_performance2 = ModelTrainer_cloud(dataGnerator=w,
-                                                                                        model1=data_model,
-                                                                                        model2=data_model2,
-                                                                                        generatorMode="data",
-                                                                                        testEpoch=testEpoch,
-                                                                                        name="datamodel_CL")
-                print(val_performance1, val_performance2)
-                if ((best_perform == None) or (best_perform[2] > val_performance1[2])):
-                    best_model = model1
-                    best_perform = val_performance1
-                print(best_perform)
-                if ((best_perform2 == None) or (best_perform2[2] > val_performance2[2])):
-                    best_model2 = model2
-                    best_perform2 = val_performance2
-                print(best_perform2)
-                log.info("a model ok")
-            else:
-                datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=data_model,
-                                                                      generatorMode="data", testEpoch=testEpoch,
-                                                                      name="datamodel_CL")
-                print(datamodel_CL_performance)
-                if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
-                    best_model = datamodel_CL
-                    best_perform = datamodel_CL_performance
-                print(best_perform)
-                log.info("a model ok")
+            datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
+                                                                  generatorMode="data", testEpoch=testEpoch,
+                                                                  name="convGRU")
+            print(datamodel_CL_performance)
+            if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
+                best_model = datamodel_CL
+                best_perform = datamodel_CL_performance
+            print(best_perform)
+            log.info("a model ok")
 
-        log.info("predicting SolarIrradiation by datamodel_CL...")
-        # tf.config.optimizer.set_experimental_options({'layout_optimizer': False})
-        # modelList["conv3D_c_cnnlstm"] = [combined2]
-        if parameter.dynamic_model == "two":
-            metricsDict = w.allPlot(model=[best_model, best_model2],
-                                    name="datamodel_CL",
-                                    scaler=dataUtil.labelScaler,
-                                    save_csv=True,
-                                    datamode="data")
-        elif parameter.dynamic_model == "one":
-            metricsDict = w.allPlot(model=[best_model],
-                                    name="datamodel_CL",
-                                    scaler=dataUtil.labelScaler,
-                                    save_csv=True,
-                                    datamode="data")
+        log.info("predicting SolarIrradiation by convGRU...")
+
+        metricsDict = w.allPlot(model=[best_model],
+                                name="convGRU",
+                                scaler=dataUtil.labelScaler,
+                                save_csv=True,
+                                datamode="data")
+
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
                 modelMetricsRecorder[logM] = {}
-            modelMetricsRecorder[logM]["datamodel_CL"] = metricsDict[logM]
+            modelMetricsRecorder[logM]["convGRU"] = metricsDict[logM]
+        pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
+    if "simple_transformer" in parameter.model_list:
+        best_perform, best_perform2 = None, None
+        best_model, best_model2 = None, None
+        log.info("training simple_transformer model...")
+        for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
+            is_using_pooling = False if parameter.input_days is None or parameter.output_days is None or parameter.time_granularity == 'H' else True
+            model = model_transformer.Transformer(num_layers=3, d_model=8, num_heads=4, dff=32, src_seq_len=input_width,
+                                                  tar_seq_len=label_width, src_dim=len(parameter.features),
+                                                  tar_dim=len(parameter.target), rate=0.1, gen_mode="unistep",
+                                                  is_seq_continuous=w.is_sampling_within_day or not parameter.between8_17,
+                                                  is_pooling=is_using_pooling)
+
+            datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
+                                                                  generatorMode="data", testEpoch=testEpoch,
+                                                                  name="simple_transformer")
+            print(datamodel_CL_performance)
+            if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
+                best_model = datamodel_CL
+                best_perform = datamodel_CL_performance
+            print(best_perform)
+            log.info("a model ok")
+
+        log.info("predicting SolarIrradiation by autoregressive_transformer...")
+
+        metricsDict = w.allPlot(model=[best_model],
+                                name="simple_transformer",
+                                scaler=dataUtil.labelScaler,
+                                save_csv=True,
+                                datamode="data")
+        for logM in metricsDict:
+            if modelMetricsRecorder.get(logM) is None:
+                modelMetricsRecorder[logM] = {}
+            modelMetricsRecorder[logM]["simple_transformer"] = metricsDict[logM]
+        pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
+
+    if "autoregressive_convGRU" in parameter.model_list:
+        best_perform, best_perform2 = None, None
+        best_model, best_model2 = None, None
+        log.info("autoregressive_convGRU")
+        for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
+            model = model_convGRU.ConvGRU(num_layers=1, in_seq_len=input_width, in_dim=len(parameter.features),
+                                          out_seq_len=label_width, out_dim=len(parameter.target), units=5,
+                                          filters=100,
+                                          gen_mode='auto',
+                                          is_seq_continuous=w.is_sampling_within_day or not parameter.between8_17, rate=0)
+
+            datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
+                                                                  generatorMode="data", testEpoch=testEpoch,
+                                                                  name="autoregressive_convGRU")
+            print(datamodel_CL_performance)
+            if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
+                best_model = datamodel_CL
+                best_perform = datamodel_CL_performance
+            print(best_perform)
+            log.info("a model ok")
+
+        log.info("predicting SolarIrradiation by autoregressive_convGRU...")
+
+        metricsDict = w.allPlot(model=[best_model],
+                                name="autoregressive_convGRU",
+                                scaler=dataUtil.labelScaler,
+                                save_csv=True,
+                                datamode="data")
+
+        for logM in metricsDict:
+            if modelMetricsRecorder.get(logM) is None:
+                modelMetricsRecorder[logM] = {}
+            modelMetricsRecorder[logM]["autoregressive_convGRU"] = metricsDict[logM]
+        pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
+
+    if "autoregressive_transformer" in parameter.model_list:
+        best_perform, best_perform2 = None, None
+        best_model, best_model2 = None, None
+        log.info("autoregressive_transformer")
+        for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
+            is_using_pooling = False if parameter.input_days is None or parameter.output_days is None or parameter.time_granularity == 'H' else True
+            model = model_transformer.Transformer(num_layers=3, d_model=8, num_heads=4, dff=32, src_seq_len=input_width,
+                                                  tar_seq_len=label_width, src_dim=len(parameter.features),
+                                                  tar_dim=len(parameter.target), rate=0.1, gen_mode="auto",
+                                                  is_seq_continuous=w.is_sampling_within_day or not parameter.between8_17,
+                                                  is_pooling=is_using_pooling)
+
+            datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
+                                                                  generatorMode="data", testEpoch=testEpoch,
+                                                                  name="autoregressive_transformer")
+            print(datamodel_CL_performance)
+            if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
+                best_model = datamodel_CL
+                best_perform = datamodel_CL_performance
+            print(best_perform)
+            log.info("a model ok")
+
+        log.info("predicting SolarIrradiation by autoregressive_transformer...")
+
+        metricsDict = w.allPlot(model=[best_model],
+                                name="autoregressive_transformer",
+                                scaler=dataUtil.labelScaler,
+                                save_csv=True,
+                                datamode="data")
+
+        for logM in metricsDict:
+            if modelMetricsRecorder.get(logM) is None:
+                modelMetricsRecorder[logM] = {}
+            modelMetricsRecorder[logM]["autoregressive_transformer"] = metricsDict[logM]
+        pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
+
+    metrics_path = "plot/{}/{}".format(parameter.experient_label, "all_metric")
+    pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
     return modelMetricsRecorder
 
 
@@ -1030,11 +1313,59 @@ if __name__ == '__main__':
     # tf.config.experimental_run_functions_eagerly(run_eagerly=True)
     # tf.data.experimental.enable_debug_mode()
     result = run()
-# python3 main.py -m 3 -n "ema_smoothed_5_to_10_test_on_Mar"
-# python3 main.py -m 4 -n "ema_smoothed_5_to_10_test_on_Apr"
-# python3 main.py -m 5 -n "ema_smoothed_5_to_10_test_on_May"
-# python3 main.py -m 6 -n "ema_smoothed_5_to_10_test_on_Jun"
-# python3 main.py -m 7 -n "ema_smoothed_5_to_10_test_on_Jul"
-# python3 main.py -m 8 -n "ema_smoothed_5_to_10_test_on_Aug"
-#
-#
+# python3 main.py -m 1 -n "ma_smoothed_8_4_3_transformer_numerical_weather_data_only_540_to_540_train_on_all_months_test_on_Jan"
+# python3 main.py -m 2 -n "ma_smoothed_8_4_3_transformer_numerical_weather_data_only_540_to_540_train_on_all_months_test_on_Feb"
+# ls
+# python3 main.py -m 1 -n "ma_smoothed_convGRU_numerical_weather_data_only_540_to_540_train_on_all_months_test_on_Jan"
+# python3 main.py -m 2 -n "ma_smoothed_convGRU_numerical_weather_data_only_540_to_540_train_on_all_months_test_on_Feb"
+# ls
+# python3 main.py -m 1 -n "ma_smoothed_auto_convGRU_target_data_only_540_to_540_test_on_Jan"
+# python3 main.py -m 2 -n "ma_smoothed_auto_convGRU_target_data_only_540_to_540_test_on_Feb"
+# python3 main.py -m 3 -n "ma_smoothed_auto_convGRU_target_data_only_540_to_540_test_on_Mar"
+# python3 main.py -m 4 -n "ma_smoothed_auto_convGRU_target_data_only_540_to_540_test_on_Apr"
+# python3 main.py -m 5 -n "ma_smoothed_auto_convGRU_target_data_only_540_to_540_test_on_May"
+# python3 main.py -m 6 -n "ma_smoothed_auto_convGRU_target_data_only_540_to_540_test_on_Jun"
+# python3 main.py -m 7 -n "ma_smoothed_auto_convGRU_target_data_only_540_to_540_test_on_Jul"
+# python3 main.py -m 8 -n "ma_smoothed_auto_convGRU_target_data_only_540_to_540_test_on_Aug"
+# ls
+
+# python3 main.py -m 1 -n "ma_smoothed_transformer_david_suggested_weather_data_only_540_to_540_test_on_Jan"
+# python3 main.py -m 2 -n "ma_smoothed_transformer_david_suggested_weather_data_only_540_to_540_test_on_Feb"
+# python3 main.py -m 3 -n "ma_smoothed_transformer_david_suggested_weather_data_only_540_to_540_test_on_Mar"
+# python3 main.py -m 4 -n "ma_smoothed_transformer_david_suggested_weather_data_only_540_to_540_test_on_Apr"
+# python3 main.py -m 5 -n "ma_smoothed_transformer_david_suggested_weather_data_only_540_to_540_test_on_May"
+# python3 main.py -m 6 -n "ma_smoothed_transformer_david_suggested_weather_data_only_540_to_540_test_on_Jun"
+# python3 main.py -m 7 -n "ma_smoothed_transformer_david_suggested_weather_data_only_540_to_540_test_on_Jul"
+# python3 main.py -m 8 -n "ma_smoothed_transformer_david_suggested_weather_data_only_540_to_540_test_on_Aug"
+# ls
+
+# python3 main.py -m 1 -n "ma_smoothed_unistep_convGRU_target_data_only_540_to_540_test_on_Jan"
+# python3 main.py -m 2 -n "ma_smoothed_unistep_convGRU_target_data_only_540_to_540_test_on_Feb"
+# python3 main.py -m 3 -n "ma_smoothed_unistep_convGRU_target_data_only_540_to_540_test_on_Mar"
+# python3 main.py -m 4 -n "ma_smoothed_unistep_convGRU_target_data_only_540_to_540_test_on_Apr"
+# python3 main.py -m 5 -n "ma_smoothed_unistep_convGRU_target_data_only_540_to_540_test_on_May"
+# python3 main.py -m 6 -n "ma_smoothed_unistep_convGRU_target_data_only_540_to_540_test_on_Jun"
+# python3 main.py -m 7 -n "ma_smoothed_unistep_convGRU_target_data_only_540_to_540_test_on_Jul"
+# python3 main.py -m 8 -n "ma_smoothed_unistep_convGRU_target_data_only_540_to_540_test_on_Aug"
+# ls
+
+# python3 main.py -m 1 -n "8to15_hourly_day2day_david_suggested_weather_data_test_on_Jan"
+# python3 main.py -m 2 -n "8to15_hourly_day2day_david_suggested_weather_data_test_on_Feb"
+# python3 main.py -m 3 -n "8to15_hourly_day2day_david_suggested_weather_data_test_on_Mar"
+# python3 main.py -m 4 -n "8to15_hourly_day2day_david_suggested_weather_data_test_on_Apr"
+# python3 main.py -m 5 -n "8to15_hourly_day2day_david_suggested_weather_data_test_on_May"
+# python3 main.py -m 6 -n "8to15_hourly_day2day_david_suggested_weather_data_test_on_Jun"
+# python3 main.py -m 7 -n "8to15_hourly_day2day_david_suggested_weather_data_test_on_Jul"
+# python3 main.py -m 8 -n "8to15_hourly_day2day_david_suggested_weather_data_test_on_Aug"
+# ls
+
+# python3 main.py -m 1 -n "8to15_hourly_day2day_renheo[2019]_david_suggested_weather_data_test_on_Jan"
+# python3 main.py -m 2 -n "8to15_hourly_day2day_renheo[2019]_david_suggested_weather_data_test_on_Feb"
+# python3 main.py -m 3 -n "8to15_hourly_day2day_renheo[2019]_david_suggested_weather_data_test_on_Mar"
+# python3 main.py -m 4 -n "8to15_hourly_day2day_renheo[2019]_david_suggested_weather_data_test_on_Apr"
+# python3 main.py -m 5 -n "8to15_hourly_day2day_renheo[2019]_david_suggested_weather_data_test_on_May"
+# python3 main.py -m 6 -n "8to15_hourly_day2day_renheo[2019]_david_suggested_weather_data_test_on_Jun"
+# python3 main.py -m 7 -n "8to15_hourly_day2day_renheo[2019]_david_suggested_weather_data_test_on_Jul"
+# python3 main.py -m 8 -n "8to15_hourly_day2day_renheo[2019]_david_suggested_weather_data_test_on_Aug"
+# ls
+

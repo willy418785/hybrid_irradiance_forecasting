@@ -1,6 +1,6 @@
 import tensorflow as tf
 from sklearn.utils import check_array,check_consistent_length
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import numpy as np
 import logging
 from pyimagesearch import parameter
@@ -18,6 +18,7 @@ def corr(y_true, y_pred):
     num = tf.keras.backend.mean(num1 * num2, axis=0)
     den = tf.keras.backend.std(y_true, axis=0) * tf.keras.backend.std(y_pred, axis=0)
     return tf.keras.backend.mean(num / den)
+
 
 def weighted_mean_absolute_percentage_error(y_true, y_pred): # senpai version error method
     y_true= check_array(y_true,ensure_2d=False)
@@ -92,15 +93,15 @@ def seperate_log_metrics(df, name, minutes):
     # tdf = df[(df.ground_Truth != 0)]
     # tdf = tdf[(df[0] != 0)]
     # df[1][df[1] < 0] = 0
-    gt = df[0]['ShortWaveDown']
-    pd = df[1]['ShortWaveDown']
+    gt = df[0][parameter.target]
+    pd = df[1][parameter.target]
     print(len(gt))
     glist = [[]for _ in range(minutes)]
     plist = [[]for _ in range(minutes)]
 
-    for i in range (len(gt)):
-        glist[i%minutes].append(gt[i])
-        plist[i%minutes].append(pd[i])
+    for i in range(len(gt)):
+        glist[i % minutes].append(gt.iloc[i])
+        plist[i % minutes].append(pd.iloc[i])
 
     # print(glist)
     # print(plist)
