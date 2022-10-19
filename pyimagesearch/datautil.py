@@ -54,6 +54,8 @@ class DataUtil(object):
                 keep_date_col=True,
                 parse_dates=["datetime"],
                 index_col="datetime")
+            assert parameter.time_granularity is not None
+            self.train_df = self.train_df.resample(parameter.time_granularity).asfreq().dropna()
             self.val_df = None
             self.test_df = None
             if (val_path != None):
@@ -61,20 +63,23 @@ class DataUtil(object):
                     val_path,
                     parse_dates=["datetime"],
                     index_col="datetime")
-
+                self.val_df = self.val_df.resample(parameter.time_granularity).asfreq().dropna()
             if (test_path != None):
                 self.test_df = pd.read_csv(
                     test_path,
                     parse_dates=["datetime"],
                     index_col="datetime")
+                self.test_df = self.test_df.resample(parameter.time_granularity).asfreq().dropna()
 
         except IOError as err:
             print("Error opening data file ... %s", err)
+            exit()
             # log.error("Error opening data file ... %s", err)
         ######################資料集切分
         ## split 照比例分
         if (split_mode == "all_year"):
             if parameter.input_days is None or parameter.output_days is None:
+                # only viable when sampling sequence within each day e.t. short term prediction
                 self.train_df, self.val_df = train_test_split(self.train_df, test_size=val_split + test_split,
                                                               shuffle=False)
                 self.val_df, self.test_df = train_test_split(self.val_df,
@@ -82,13 +87,16 @@ class DataUtil(object):
                                                              shuffle=False)
             else:
                 assert month_sep is not None and type(month_sep) is int
+                val_month = month_sep - 1 if (month_sep - 1) > 0 else month_sep + 1
                 self.test_df = self.train_df[self.train_df.index.month == month_sep]
+                self.val_df = self.train_df[self.train_df.index.month == val_month]
                 self.train_df = self.train_df[self.train_df.index.month != month_sep]
-                all_dates = np.unique(self.train_df.index.date)
-                train_dates = all_dates[:int((1 - val_split) * len(all_dates))]
-                val_dates = all_dates[int((1 - val_split) * len(all_dates)):]
-                self.val_df = self.train_df[[True if (_ in val_dates) else False for _ in self.train_df.index.date]]
-                self.train_df = self.train_df[[True if (_ in train_dates) else False for _ in self.train_df.index.date]]
+                self.train_df = self.train_df[self.train_df.index.month != val_month]
+                # all_dates = np.unique(self.train_df.index.date)
+                # train_dates = all_dates[:int((1 - val_split) * len(all_dates))]
+                # val_dates = all_dates[int((1 - val_split) * len(all_dates)):]
+                # self.val_df = self.train_df[[True if (_ in val_dates) else False for _ in self.train_df.index.date]]
+                # self.train_df = self.train_df[[True if (_ in train_dates) else False for _ in self.train_df.index.date]]
         elif (split_mode == "month"):
             assert month_sep is not None and type(month_sep) is int
             vmonth = month_sep - 2
@@ -126,16 +134,16 @@ class DataUtil(object):
             self.test_df = self.timeFeatureProcess(self.test_df)
             self.val_df = self.timeFeatureProcess(self.val_df)'''
         # smoothing target data
-        if parameter.smoothing_type in parameter.smoothing_mode:
+        if parameter.smoothing_type in parameter.smoothing_mode and (parameter.time_granularity == 'T' or parameter.time_granularity == 'min'):
             for target in parameter.target:
                 self.train_df[target] = self.smoothing(self.train_df[target])
                 self.val_df[target] = self.smoothing(self.val_df[target])
                 self.test_df[target] = self.smoothing(self.test_df[target])
             ## 24H to 10H 小時的資料
         if (parameter.between8_17):
-            self.train_df = self.train_df.between_time('08:00:01', '17:00:00')
-            self.val_df = self.val_df.between_time('08:00:01', '17:00:00')
-            self.test_df = self.test_df.between_time('08:00:01', '17:00:00')
+            self.train_df = self.train_df.between_time(parameter.start, parameter.end)
+            self.val_df = self.val_df.between_time(parameter.start, parameter.end)
+            self.test_df = self.test_df.between_time(parameter.start, parameter.end)
 
         if parameter.dynamic_model == "two" or ("twoClass" in parameter.inputs):
             self.train_df_cloud = self.train_df["twoClass"].astype(np.str)
@@ -179,6 +187,7 @@ class DataUtil(object):
         self.filter_data()
         # self.column_indices = {name: i for i, name in enumerate(self.train_df.columns)}
         self.normalise_data()
+        self.samples_per_day = len(self.train_df.groupby(self.train_df.index.time))
         print("data Preprocess")
         print(self.train_df)
         print(self.val_df)
@@ -265,7 +274,7 @@ class DataUtil(object):
                     self.val_df[feature_col_excluding_label])
             if (self.test_df is not None):
                 self.test_df[feature_col_excluding_label] = self.scaler.transform(
-                    self.test_df[self.feature_col_excluding_label])
+                    self.test_df[feature_col_excluding_label])
 
     def __repr__(self):
         return '\n'.join([
