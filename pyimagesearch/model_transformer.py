@@ -15,6 +15,13 @@ from pyimagesearch.windowsGenerator import WindowGenerator
 
 gen_modes = ['unistep', 'auto']
 
+class Config():
+    layers = 3
+    d_model = 32
+    n_heads = 4
+    dff = d_model * 4
+    embedding_kernel_size = 3
+    dropout_rate = 0.1
 
 def feed_forward(d_model, dff, dropout):
     return tf.keras.Sequential([
@@ -77,7 +84,7 @@ class Encoder(tf.keras.layers.Layer):
         self.seq_len = seq_len
         k_dim = int(d_model / num_heads)
         v_dim = k_dim
-        self.embedding = Conv1D(filters=d_model, kernel_size=3, strides=1, padding="same", activation='elu')
+        self.embedding = Conv1D(filters=d_model, kernel_size=Config.embedding_kernel_size, strides=1, padding="same", activation='elu')
         self.pos_encoding = positional_encoding(seq_len, d_model)
         self.enc_layers = [
             EncoderLayer(d_model=d_model, num_heads=num_heads, key_dim=k_dim, value_dim=v_dim, dff=dff, rate=rate)
@@ -134,7 +141,7 @@ class Decoder(tf.keras.layers.Layer):
         self.seq_len = seq_len
         k_dim = int(d_model / num_heads)
         v_dim = k_dim
-        self.embedding = Conv1D(filters=d_model, kernel_size=3, strides=1, padding="causal", activation='elu')
+        self.embedding = Conv1D(filters=d_model, kernel_size=Config.embedding_kernel_size, strides=1, padding="causal", activation='elu')
         self.pos_encoding = positional_encoding(seq_len, d_model)
 
         self.dec_layers = [
@@ -183,7 +190,7 @@ class Transformer(tf.keras.Model):
                                    num_heads=num_heads, dff=dff,
                                    seq_len=tar_seq_len, rate=rate)
         self.final_layer = Dense(tar_dim)
-        self.build(input_shape=(None, src_seq_len, src_dim))
+        # self.build(input_shape=(None, src_seq_len, src_dim))
 
     def call(self, inputs, training):
         enc_out = self.encoder(inputs, self.is_pooling, training, mask=None)

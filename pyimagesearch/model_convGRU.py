@@ -15,6 +15,12 @@ from pyimagesearch.windowsGenerator import WindowGenerator
 
 gen_modes = ['unistep', 'auto']
 
+class Config():
+    layers = 3
+    embedding_filters = 32
+    gru_units = 32
+    embedding_kernel_size = 3
+    dropout_rate = 0.1
 
 class Encoder(tf.keras.layers.Layer):
     def __init__(self, layers, units, filters=None, rate=0.1):
@@ -26,7 +32,7 @@ class Encoder(tf.keras.layers.Layer):
         else:
             self.filters = filters
 
-        self.conv = Conv1D(filters=filters, kernel_size=5, strides=1, padding="same", activation='elu')
+        self.conv = Conv1D(filters=filters, kernel_size=Config.embedding_kernel_size, strides=1, padding="same", activation='elu')
 
         self.gru_layers = [
             GRU(units, return_sequences=True, return_state=True, dropout=rate)
@@ -87,7 +93,7 @@ class ConvGRU(tf.keras.Model):
             self.fc = Sequential([Dense(out_seq_len * out_dim), Reshape((out_seq_len, out_dim))])
         elif gen_mode == 'auto':
             self.fc = Dense(out_dim)
-        self.build(input_shape=(None, in_seq_len, in_dim))
+        # self.build(input_shape=(None, in_seq_len, in_dim))
 
     def call(self, input_seq, training):
         enc_seq, states = self.encoder(input_seq, training)
