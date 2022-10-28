@@ -35,8 +35,8 @@ addAverage = False  # True for one model:add cloud and average
 cloudLabel = "twoClass"
 norm_mode = 2
 time_granularity = 'H' # 'H', 'min', 'T'
-between8_17 = False
-test_between8_17 = True
+between8_17 = True
+test_between8_17 = False
 if between8_17 or test_between8_17:
     if time_granularity == 'H':
         start = '08:00:00'
@@ -70,12 +70,12 @@ is_using_image_data = False
 
 epochs = 300
 # epoch_list = [100, 200, 250, 300, 400, 500]     #if no early stop
-# epoch_list = [0]
+# epoch_list = [1]
 # epoch_list = [500]
 # epoch_list = [500, 500]
 # epoch_list = [500, 500, 500]
 epoch_list = [500, 500, 500, 500]
-batchsize = 30
+batchsize = 10
 
 earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=20, min_delta=0.0001, restore_best_weights=True)
 # earlystoper = []
@@ -90,7 +90,7 @@ earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=
 
 #             "data_cnnlstm", "data_cnn"]
 #model_list = ["Persistence", "MA", "data_cnnlstm", "simple_transformer"]
-# model_list = ["Persistence", "MA", "autoregressive_convGRU", "autoregressive_transformer"]
+# model_list = ["Persistence", "MA", "autoregressive_transformer"]
 model_list = ["Persistence", "MA", "convGRU", "autoregressive_convGRU", "simple_transformer", "autoregressive_transformer"]
 # model_list = ["Persistence", "MA", "simple_transformer"]
 # model_list = ["Persistence", "MA", "convGRU", "simple_transformer"]
