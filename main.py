@@ -12,7 +12,8 @@ from pyimagesearch import model_conv3D
 from pyimagesearch import model_cnnLSTM
 from pyimagesearch import model_multiCnnLSTM
 from pyimagesearch import model_3Dresnet
-from pyimagesearch import model_transformer, model_convGRU
+from pyimagesearch import model_transformer, model_convGRU, preprocess_utils
+from pyimagesearch.preprocess_utils import SplitInputByDay, MultipleDaysConvEmbed
 
 from pyimagesearch import my_metrics
 from pyimagesearch import Msglog
@@ -359,7 +360,6 @@ def run():
         # log.info(w1)	#2D
         # w1.checkWindow()
 
-
         w2 = WindowGenerator(input_width=input_width,
                              image_input_width=image_input_width,
                              label_width=label_width,
@@ -385,7 +385,7 @@ def run():
 
                              batch_size=parameter.batchsize,
                              label_columns="ShortWaveDown",
-                            samples_per_day=dataUtil.samples_per_day)
+                             samples_per_day=dataUtil.samples_per_day)
         # log.info(w2)  # 3D
         dataUtil = data_for_baseline
         w_for_persistance = WindowGenerator(input_width=label_width,
@@ -1168,11 +1168,24 @@ def run():
         best_model, best_model2 = None, None
         log.info("convGRU")
         for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
-            model = model_convGRU.ConvGRU(num_layers=1, in_seq_len=input_width, in_dim=len(parameter.features),
-                                          out_seq_len=label_width, out_dim=len(parameter.target), units=5,
-                                          filters=100,
+            model = model_convGRU.ConvGRU(num_layers=model_convGRU.Config.layers, in_seq_len=input_width,
+                                          in_dim=len(parameter.features),
+                                          out_seq_len=label_width, out_dim=len(parameter.target),
+                                          units=model_convGRU.Config.gru_units,
+                                          filters=model_convGRU.Config.embedding_filters,
                                           gen_mode='unistep',
-                                          is_seq_continuous=w.is_sampling_within_day or not parameter.between8_17, rate=0)
+                                          is_seq_continuous=w.is_sampling_within_day or not parameter.between8_17,
+                                          rate=model_convGRU.Config.dropout_rate)
+            if not w.is_sampling_within_day:
+                model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))),
+                                             SplitInputByDay(n_days=parameter.input_days, n_samples=w.samples_per_day),
+                                             MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
+                                                                   filter_size=preprocess_utils.Config.kernel_size,
+                                                                   n_days=parameter.input_days,
+                                                                   n_samples=w.samples_per_day),
+                                             model])
+            else:
+                model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))), model])
 
             datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
                                                                   generatorMode="data", testEpoch=testEpoch,
@@ -1204,11 +1217,39 @@ def run():
         log.info("training simple_transformer model...")
         for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
             is_using_pooling = False if parameter.input_days is None or parameter.output_days is None or parameter.time_granularity == 'H' else True
-            model = model_transformer.Transformer(num_layers=3, d_model=8, num_heads=4, dff=32, src_seq_len=input_width,
-                                                  tar_seq_len=label_width, src_dim=len(parameter.features),
-                                                  tar_dim=len(parameter.target), rate=0.1, gen_mode="unistep",
-                                                  is_seq_continuous=w.is_sampling_within_day or not parameter.between8_17,
-                                                  is_pooling=is_using_pooling)
+            if not w.is_sampling_within_day:
+                model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))),
+                                             SplitInputByDay(n_days=parameter.input_days, n_samples=w.samples_per_day),
+                                             MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
+                                                                   filter_size=preprocess_utils.Config.kernel_size,
+                                                                   n_days=parameter.input_days,
+                                                                   n_samples=w.samples_per_day),
+                                             model_transformer.Transformer(num_layers=model_transformer.Config.layers,
+                                                                           d_model=model_transformer.Config.d_model,
+                                                                           num_heads=model_transformer.Config.n_heads,
+                                                                           dff=model_transformer.Config.dff,
+                                                                           src_seq_len=w.samples_per_day,
+                                                                           tar_seq_len=label_width,
+                                                                           src_dim=preprocess_utils.Config.filters,
+                                                                           tar_dim=len(parameter.target),
+                                                                           rate=model_transformer.Config.dropout_rate,
+                                                                           gen_mode="unistep",
+                                                                           is_seq_continuous=w.is_sampling_within_day or not parameter.between8_17,
+                                                                           is_pooling=is_using_pooling)
+                                             ])
+            else:
+                model = model_transformer.Transformer(num_layers=model_transformer.Config.layers,
+                                                      d_model=model_transformer.Config.d_model,
+                                                      num_heads=model_transformer.Config.n_heads,
+                                                      dff=model_transformer.Config.dff,
+                                                      src_seq_len=input_width,
+                                                      tar_seq_len=label_width, src_dim=len(parameter.features),
+                                                      tar_dim=len(parameter.target),
+                                                      rate=model_transformer.Config.dropout_rate,
+                                                      gen_mode="unistep",
+                                                      is_seq_continuous=w.is_sampling_within_day or not parameter.between8_17,
+                                                      is_pooling=is_using_pooling)
+                model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))), model])
 
             datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
                                                                   generatorMode="data", testEpoch=testEpoch,
@@ -1238,12 +1279,24 @@ def run():
         best_model, best_model2 = None, None
         log.info("autoregressive_convGRU")
         for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
-            model = model_convGRU.ConvGRU(num_layers=1, in_seq_len=input_width, in_dim=len(parameter.features),
-                                          out_seq_len=label_width, out_dim=len(parameter.target), units=5,
-                                          filters=100,
+            model = model_convGRU.ConvGRU(num_layers=model_convGRU.Config.layers, in_seq_len=input_width,
+                                          in_dim=len(parameter.features),
+                                          out_seq_len=label_width, out_dim=len(parameter.target),
+                                          units=model_convGRU.Config.gru_units,
+                                          filters=model_convGRU.Config.embedding_filters,
                                           gen_mode='auto',
-                                          is_seq_continuous=w.is_sampling_within_day or not parameter.between8_17, rate=0)
-
+                                          is_seq_continuous=w.is_sampling_within_day or not parameter.between8_17,
+                                          rate=model_convGRU.Config.dropout_rate)
+            if not w.is_sampling_within_day:
+                model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))),
+                                             SplitInputByDay(n_days=parameter.input_days, n_samples=w.samples_per_day),
+                                             MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
+                                                                   filter_size=preprocess_utils.Config.kernel_size,
+                                                                   n_days=parameter.input_days,
+                                                                   n_samples=w.samples_per_day),
+                                             model])
+            else:
+                model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))), model])
             datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
                                                                   generatorMode="data", testEpoch=testEpoch,
                                                                   name="autoregressive_convGRU")
@@ -1274,11 +1327,43 @@ def run():
         log.info("autoregressive_transformer")
         for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
             is_using_pooling = False if parameter.input_days is None or parameter.output_days is None or parameter.time_granularity == 'H' else True
-            model = model_transformer.Transformer(num_layers=3, d_model=8, num_heads=4, dff=32, src_seq_len=input_width,
-                                                  tar_seq_len=label_width, src_dim=len(parameter.features),
-                                                  tar_dim=len(parameter.target), rate=0.1, gen_mode="auto",
-                                                  is_seq_continuous=w.is_sampling_within_day or not parameter.between8_17,
-                                                  is_pooling=is_using_pooling)
+            if not w.is_sampling_within_day:
+                model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))),
+                                             SplitInputByDay(n_days=parameter.input_days, n_samples=w.samples_per_day),
+                                             MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
+                                                                   filter_size=preprocess_utils.Config.kernel_size,
+                                                                   n_days=parameter.input_days,
+                                                                   n_samples=w.samples_per_day),
+                                             model_transformer.Transformer(num_layers=model_transformer.Config.layers,
+                                                                           d_model=model_transformer.Config.d_model,
+                                                                           num_heads=model_transformer.Config.n_heads,
+                                                                           dff=model_transformer.Config.dff,
+                                                                           src_seq_len=w.samples_per_day,
+                                                                           tar_seq_len=label_width,
+                                                                           src_dim=preprocess_utils.Config.filters,
+                                                                           tar_dim=len(parameter.target),
+                                                                           rate=model_transformer.Config.dropout_rate,
+                                                                           gen_mode="auto",
+                                                                           is_seq_continuous=w.is_sampling_within_day or not parameter.between8_17,
+                                                                           is_pooling=is_using_pooling)
+                                             ])
+            else:
+                model = model_transformer.Transformer(num_layers=model_transformer.Config.layers,
+                                                      d_model=model_transformer.Config.d_model,
+                                                      num_heads=model_transformer.Config.n_heads,
+                                                      dff=model_transformer.Config.dff,
+                                                      src_seq_len=input_width,
+                                                      tar_seq_len=label_width, src_dim=len(parameter.features),
+                                                      tar_dim=len(parameter.target),
+                                                      rate=model_transformer.Config.dropout_rate,
+                                                      gen_mode="auto",
+                                                      is_seq_continuous=w.is_sampling_within_day or not parameter.between8_17,
+                                                      is_pooling=is_using_pooling)
+                model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))), model])
+
+            datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
+                                                                  generatorMode="data", testEpoch=testEpoch,
+                                                                  name="simple_transformer")
 
             datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
                                                                   generatorMode="data", testEpoch=testEpoch,
@@ -1368,4 +1453,3 @@ if __name__ == '__main__':
 # python3 main.py -m 7 -n "8to15_hourly_day2day_renheo[2019]_david_suggested_weather_data_test_on_Jul"
 # python3 main.py -m 8 -n "8to15_hourly_day2day_renheo[2019]_david_suggested_weather_data_test_on_Aug"
 # ls
-
