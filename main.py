@@ -309,11 +309,13 @@ def run():
         if parameter.input_days is None or parameter.output_days is None:
             assert type(parameter.input_width) is int
             assert type(parameter.image_input_width3D) is int
+            assert type(parameter.shifted_width) is int
             assert type(parameter.label_width) is int
             assert dataUtil.samples_per_day >= (
                     max(parameter.image_input_width3D, parameter.input_width) + parameter.label_width)
             input_width = parameter.input_width
             image_input_width = parameter.image_input_width3D
+            shift = parameter.shifted_width
             label_width = parameter.label_width
             MA_width = parameter.input_width
             log.info("\n------In-day Prediction------")
@@ -322,9 +324,11 @@ def run():
         else:
             assert type(parameter.input_days) is int
             assert type(parameter.output_days) is int
+            assert type(parameter.shifted_days) is int
             image_input_width = 0
             input_width = int(dataUtil.samples_per_day * parameter.input_days)
             label_width = int(dataUtil.samples_per_day * parameter.output_days)
+            shift = int(dataUtil.samples_per_day * parameter.shifted_days)
             log.info("\n------Cross-day Prediction------")
             log.info("input days: {}".format(parameter.input_days))
             log.info("output days: {}".format(parameter.output_days))
@@ -363,7 +367,7 @@ def run():
         w2 = WindowGenerator(input_width=input_width,
                              image_input_width=image_input_width,
                              label_width=label_width,
-                             shift=dataUtil.samples_per_day,
+                             shift=shift,
 
                              trainImages=dataUtil.trainImages,
                              trainData=dataUtil.train_df[dataUtil.feature_col],
@@ -391,7 +395,7 @@ def run():
         w_for_persistance = WindowGenerator(input_width=label_width,
                                             image_input_width=image_input_width,
                                             label_width=label_width,
-                                            shift=dataUtil.samples_per_day,
+                                            shift=shift,
 
                                             trainImages=dataUtil.trainImages,
                                             trainData=dataUtil.train_df[dataUtil.feature_col],
@@ -417,7 +421,7 @@ def run():
         w_for_MA = WindowGenerator(input_width=MA_width,
                                    image_input_width=image_input_width,
                                    label_width=label_width,
-                                   shift=dataUtil.samples_per_day,
+                                   shift=shift,
 
                                    trainImages=dataUtil.trainImages,
                                    trainData=dataUtil.train_df[dataUtil.feature_col],
@@ -1444,12 +1448,16 @@ if __name__ == '__main__':
 # python3 main.py -m 8 -n "8to15_hourly_day2day_david_suggested_weather_data_test_on_Aug"
 # ls
 
-# python3 main.py -m 1 -n "8to15_hourly_day2day_renheo[2019]_david_suggested_weather_data_test_on_Jan"
-# python3 main.py -m 2 -n "8to15_hourly_day2day_renheo[2019]_david_suggested_weather_data_test_on_Feb"
-# python3 main.py -m 3 -n "8to15_hourly_day2day_renheo[2019]_david_suggested_weather_data_test_on_Mar"
-# python3 main.py -m 4 -n "8to15_hourly_day2day_renheo[2019]_david_suggested_weather_data_test_on_Apr"
-# python3 main.py -m 5 -n "8to15_hourly_day2day_renheo[2019]_david_suggested_weather_data_test_on_May"
-# python3 main.py -m 6 -n "8to15_hourly_day2day_renheo[2019]_david_suggested_weather_data_test_on_Jun"
-# python3 main.py -m 7 -n "8to15_hourly_day2day_renheo[2019]_david_suggested_weather_data_test_on_Jul"
-# python3 main.py -m 8 -n "8to15_hourly_day2day_renheo[2019]_david_suggested_weather_data_test_on_Aug"
+# python3 main.py -m 1 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_Jan"
+# python3 main.py -m 2 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_Feb"
+# python3 main.py -m 3 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_Mar"
+# python3 main.py -m 4 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_Apr"
+# python3 main.py -m 5 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_May"
+# python3 main.py -m 6 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_Jun"
+# python3 main.py -m 7 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_Jul"
+# python3 main.py -m 8 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_Aug"
+# python3 main.py -m 9 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_Sep"
+# python3 main.py -m 10 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_Oct"
+# python3 main.py -m 11 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_Nov"
+# python3 main.py -m 12 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_Dec"
 # ls

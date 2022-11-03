@@ -25,7 +25,7 @@ class WindowGenerator():
         self.label_width = label_width
         self.shift = shift
         self.batch_size = batch_size
-        self.total_window_size = self.input_width + self.label_width
+        self.total_window_size = self.input_width + self.label_width + self.shift
         self.samples_per_day = samples_per_day
         self.is_sampling_within_day = True if self.total_window_size <= self.samples_per_day else False
 
