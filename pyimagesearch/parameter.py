@@ -35,8 +35,8 @@ addAverage = False  # True for one model:add cloud and average
 cloudLabel = "twoClass"
 norm_mode = 2
 time_granularity = 'H' # 'H', 'min', 'T'
-between8_17 = True
-test_between8_17 = False
+between8_17 = False
+test_between8_17 = True
 if between8_17 or test_between8_17:
     if time_granularity == 'H':
         start = '08:00:00'
@@ -61,7 +61,7 @@ labelScaler = MinMaxScaler()
 # seq_monthSep_dynamic_0-9_14-18
 experient_label = "test"  # 5x48x64x3-and-5x1-and-5x2-conv3D_c_cnnlstm    #new_twomodel_image
 after_minutes = 1
-input_days = 10
+input_days = 5
 shifted_days = 0
 output_days = 1
 input_width = 5
@@ -74,10 +74,11 @@ epochs = 300
 # epoch_list = [100, 200, 250, 300, 400, 500]     #if no early stop
 # epoch_list = [1]
 # epoch_list = [0]
-epoch_list = [500]
+# epoch_list = [500]
 # epoch_list = [500, 500]
 # epoch_list = [500, 500, 500]
 # epoch_list = [500, 500, 500, 500]
+epoch_list = [500, 500, 500, 500, 500]
 batchsize = 32
 
 earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=20, min_delta=0.0001, restore_best_weights=True)
@@ -118,11 +119,11 @@ csvLogMetrics = ["MSE", "RMSE", "RMSPE", "MAE", "MAPE", "WMAPE", "VWMAPE", "corr
 model = "one"  # static use only
 class_type = "cloud"  # static use only    # "average","cloud"
 normalization = "MinMax"  # "MinMax","Mean","Standard","Max","No"
-split_mode = "month"  # "all_year","month"  # all_year就是整年按比例分割dataset  # month要去改test_month:if跑main.py則只做某個月，if跑month_sep.py則test_month自己從2-8更新病最後算平均
+split_mode = "all_year"  # "all_year","month"  # all_year就是整年按比例分割dataset  # month要去改test_month:if跑main.py則只做某個月，if跑month_sep.py則test_month自己從2-8更新病最後算平均
 test_month = 2
 tailMonth = 12  # 最後一個月(val抓上一個月會用到)
 squeeze = False  # windowgenerator裡面image要不要降成2維，用於某些model
-is_using_shuffle = False
+is_using_shuffle = True
 
 smoothing_mode = {"MA": {"num_of_entries": 10},
                   "EMA": {"span": 10}
