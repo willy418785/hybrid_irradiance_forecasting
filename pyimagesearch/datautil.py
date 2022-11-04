@@ -188,6 +188,7 @@ class DataUtil(object):
         # self.column_indices = {name: i for i, name in enumerate(self.train_df.columns)}
         self.normalise_data()
         self.samples_per_day = len(self.train_df.groupby(self.train_df.index.time))
+        self.drop_days_with_missing_samples()
         print("data Preprocess")
         print(self.train_df)
         print(self.val_df)
@@ -275,6 +276,15 @@ class DataUtil(object):
             if (self.test_df is not None):
                 self.test_df[feature_col_excluding_label] = self.scaler.transform(
                     self.test_df[feature_col_excluding_label])
+
+    def drop_days_with_missing_samples(self):
+        # Drop whole-day data if there's any missing observation
+        def is_subframe_complete(sub: pd.DataFrame):
+            # return True if a subframe(grouped by day) has no missing sample
+            return len(sub.index.time) == self.samples_per_day
+        self.train_df = self.train_df.groupby(self.train_df.index.date).filter(is_subframe_complete)
+        self.val_df = self.val_df.groupby(self.val_df.index.date).filter(is_subframe_complete)
+        self.test_df = self.test_df.groupby(self.test_df.index.date).filter(is_subframe_complete)
 
     def __repr__(self):
         return '\n'.join([
