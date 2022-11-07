@@ -61,8 +61,8 @@ labelScaler = MinMaxScaler()
 # seq_monthSep_dynamic_0-9_14-18
 experient_label = "test"  # 5x48x64x3-and-5x1-and-5x2-conv3D_c_cnnlstm    #new_twomodel_image
 after_minutes = 1
-input_days = 5
-shifted_days = 0
+input_days = 1
+shifted_days = 1
 output_days = 1
 input_width = 5
 shifted_width = 0
@@ -77,8 +77,8 @@ epochs = 300
 # epoch_list = [500]
 # epoch_list = [500, 500]
 # epoch_list = [500, 500, 500]
-# epoch_list = [500, 500, 500, 500]
-epoch_list = [500, 500, 500, 500, 500]
+epoch_list = [500, 500, 500, 500]
+# epoch_list = [500, 500, 500, 500, 500]
 batchsize = 32
 
 earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=20, min_delta=0.0001, restore_best_weights=True)
