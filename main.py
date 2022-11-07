@@ -320,6 +320,7 @@ def run():
             MA_width = parameter.input_width
             log.info("\n------In-day Prediction------")
             log.info("input width: {}".format(input_width))
+            log.info("shift width: {}".format(shift))
             log.info("label width: {}".format(label_width))
         else:
             assert type(parameter.input_days) is int
@@ -331,9 +332,11 @@ def run():
             shift = int(dataUtil.samples_per_day * parameter.shifted_days)
             log.info("\n------Cross-day Prediction------")
             log.info("input days: {}".format(parameter.input_days))
+            log.info("shift days: {}".format(parameter.shifted_days))
             log.info("output days: {}".format(parameter.output_days))
             log.info("samples per day: {}".format(dataUtil.samples_per_day))
             log.info("input width: {}".format(input_width))
+            log.info("shift width: {}".format(shift))
             log.info("label width: {}".format(label_width))
             MA_width = input_width
         # w1 = WindowGenerator(input_width=input_width,
