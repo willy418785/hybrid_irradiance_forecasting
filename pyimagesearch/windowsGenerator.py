@@ -873,8 +873,9 @@ class WindowGenerator():
 
         log = logging.getLogger(parameter.experient_label)
         metircs_dist = my_metrics.log_metrics(tdf, name)
-        sep_metircs_dist, sepAvg_metircs_dist = my_metrics.seperate_log_metrics(tdf, name, self.label_width)
-        all_dict = {**metircs_dist, **sepAvg_metircs_dist, **sep_metircs_dist}
+        sep_metircs_dist, _ = my_metrics.seperate_log_metrics(tdf, name, self.label_width)
+        metircs_dist_by_day = my_metrics.log_metrics_day_by_day(tdf, name, parameter.output_days)
+        all_dict = {**metircs_dist, **sep_metircs_dist, **metircs_dist_by_day}
 
         # cloud_label 標籤
         pattern = "[" + "|\'\"" + "]"
