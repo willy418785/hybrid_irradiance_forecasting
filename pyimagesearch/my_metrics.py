@@ -177,57 +177,6 @@ def seperate_log_metrics(df, name, minutes):
 
 
 def log_metrics_day_by_day(df, name, n_days):
-    n_days = 2
-    gt = df[0][parameter.target]
-    pd = df[1][parameter.target]
-    glist = []
-    plist = []
-    for nth_day in range(n_days):
-        nth_dates = np.unique(pd.index.date)[nth_day::n_days]
-        glist.append(gt[[True if date in nth_dates else False for date in gt.index.date]])
-        plist.append(pd[[True if date in nth_dates else False for date in pd.index.date]])
-
-    sep_metircs_dist = {}
-
-    sep_metircs_mse = np.zeros(n_days)
-    sep_metircs_rmse = np.zeros(n_days)
-    sep_metircs_rmspe = np.zeros(n_days)
-    sep_metircs_mae = np.zeros(n_days)
-    sep_metircs_mape = np.zeros(n_days)
-    sep_metircs_wmape = np.zeros(n_days)
-    sep_metircs_vwmape = np.zeros(n_days)
-    sep_metircs_corr = np.zeros(n_days)
-
-    for i in range(n_days):
-        sep_metircs_mse[i] = mean_squared_error(glist[i], plist[i])
-        sep_metircs_rmse[i] = mean_squared_error(glist[i], plist[i], squared=False)
-        sep_metircs_rmspe[i] = RMSPE(glist[i], plist[i])
-        sep_metircs_mae[i] = mean_absolute_error(glist[i], plist[i])
-        sep_metircs_mape[i] = mean_absolute_percentage_error(glist[i], plist[i])
-        sep_metircs_wmape[i] = weighted_mean_absolute_percentage_error(glist[i], plist[i])
-        gt = tf.convert_to_tensor(glist[i])
-        pred = tf.convert_to_tensor(plist[i])
-        sep_metircs_vwmape[i] = VWMAPE(gt, pred).numpy()
-        sep_metircs_corr[i] = corr(gt, pred).numpy()
-
-        log = logging.getLogger(parameter.experient_label)
-        log.info("{}th day MSE : {}, RMSE : {}, RMSPE : {}, MAE : {}, MAPE : {}, WMAPE : {}, VWMAPE : {}, corr : {}"
-                 .format(i + 1, sep_metircs_mse[i], sep_metircs_rmse[i], sep_metircs_rmspe[i], sep_metircs_mae[i],
-                         sep_metircs_mape[i], sep_metircs_wmape[i], sep_metircs_vwmape[i], sep_metircs_corr[i]))
-        sep_metircs_dist["MSE {}th day".format(i + 1)] = sep_metircs_mse[i]
-        sep_metircs_dist["RMSE {}th day".format(i + 1)] = sep_metircs_rmse[i]
-        sep_metircs_dist["RMSPE {}th day".format(i + 1)] = sep_metircs_rmspe[i]
-        sep_metircs_dist["MAE {}th day".format(i + 1)] = sep_metircs_mae[i]
-        sep_metircs_dist["MAPE {}th day".format(i + 1)] = sep_metircs_mape[i]
-        sep_metircs_dist["WMAPE {}th day".format(i + 1)] = sep_metircs_wmape[i]
-        sep_metircs_dist["VWMAPE {}th day".format(i + 1)] = sep_metircs_vwmape[i]
-        sep_metircs_dist["corr {}th day".format(i + 1)] = sep_metircs_corr[i]
-
-    return sep_metircs_dist
-
-
-def log_metrics_day_by_day(df, name, n_days):
-    n_days = 2
     gt = df[0][parameter.target]
     pd = df[1][parameter.target]
     glist = []
