@@ -63,7 +63,7 @@ experient_label = "test"  # 5x48x64x3-and-5x1-and-5x2-conv3D_c_cnnlstm    #new_t
 after_minutes = 1
 input_days = 1
 shifted_days = 0
-output_days = 1
+output_days = 5
 input_width = 5
 shifted_width = 0
 label_width = 10
@@ -77,8 +77,8 @@ epochs = 300
 # epoch_list = [500]
 # epoch_list = [500, 500]
 # epoch_list = [500, 500, 500]
-epoch_list = [500, 500, 500, 500]
-# epoch_list = [500, 500, 500, 500, 500]
+# epoch_list = [500, 500, 500, 500]
+epoch_list = [500, 500, 500, 500, 500]
 batchsize = 32
 
 earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=20, min_delta=0.0001, restore_best_weights=True)
@@ -95,8 +95,8 @@ earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=
 #             "data_cnnlstm", "data_cnn"]
 #model_list = ["Persistence", "MA", "data_cnnlstm", "simple_transformer"]
 # model_list = ["Persistence", "MA", "autoregressive_transformer"]
-# model_list = ["Persistence", "MA", "convGRU", "autoregressive_convGRU", "simple_transformer", "autoregressive_transformer"]
-model_list = ["Persistence", "MA", "simple_transformer"]
+model_list = ["Persistence", "MA", "convGRU", "autoregressive_convGRU", "simple_transformer", "autoregressive_transformer"]
+# model_list = ["Persistence", "MA", "simple_transformer"]
 # model_list = ["Persistence", "MA", "convGRU", "simple_transformer"]
 # model_list = ["Persistence","MA","conv3D_c_cnnlstm","Cnn3dLSTM_c_cnnlstm","data_cnnlstm"]
 # model_list = ["Persistence","conv3D_c_cnnlstm","Cnn3dLSTM_c_cnnlstm","resnet_c_cnnlstm","solarnet_c_cnnlstm","Cnn2dLSTM_c_cnnlstm","data_cnnlstm"]
