@@ -15,6 +15,7 @@ from pyimagesearch.windowsGenerator import WindowGenerator
 
 gen_modes = ['unistep', 'auto']
 
+
 class Config():
     layers = 3
     d_model = 32
@@ -22,6 +23,7 @@ class Config():
     dff = d_model * 4
     embedding_kernel_size = 3
     dropout_rate = 0.1
+
 
 def feed_forward(d_model, dff, dropout):
     return tf.keras.Sequential([
@@ -84,7 +86,8 @@ class Encoder(tf.keras.layers.Layer):
         self.seq_len = seq_len
         k_dim = int(d_model / num_heads)
         v_dim = k_dim
-        self.embedding = Conv1D(filters=d_model, kernel_size=Config.embedding_kernel_size, strides=1, padding="same", activation='elu')
+        self.embedding = Conv1D(filters=d_model, kernel_size=Config.embedding_kernel_size, strides=1, padding="same",
+                                activation='elu')
         self.pos_encoding = positional_encoding(seq_len, d_model)
         self.enc_layers = [
             EncoderLayer(d_model=d_model, num_heads=num_heads, key_dim=k_dim, value_dim=v_dim, dff=dff, rate=rate)
@@ -141,7 +144,8 @@ class Decoder(tf.keras.layers.Layer):
         self.seq_len = seq_len
         k_dim = int(d_model / num_heads)
         v_dim = k_dim
-        self.embedding = Conv1D(filters=d_model, kernel_size=Config.embedding_kernel_size, strides=1, padding="causal", activation='elu')
+        self.embedding = Conv1D(filters=d_model, kernel_size=Config.embedding_kernel_size, strides=1, padding="causal",
+                                activation='elu')
         self.pos_encoding = positional_encoding(seq_len, d_model)
 
         self.dec_layers = [
@@ -180,15 +184,9 @@ class Transformer(tf.keras.Model):
         self.encoder = Encoder(num_layers=num_layers, d_model=d_model,
                                num_heads=num_heads, dff=dff,
                                seq_len=src_seq_len, rate=rate)
-        if gen_mode == 'unistep':
-            self.decoder = Decoder(num_layers=num_layers, d_model=d_model,
-                                   num_heads=num_heads, dff=dff,
-                                   seq_len=src_seq_len + tar_seq_len, rate=rate)
-
-        elif gen_mode == 'auto':
-            self.decoder = Decoder(num_layers=num_layers, d_model=d_model,
-                                   num_heads=num_heads, dff=dff,
-                                   seq_len=tar_seq_len, rate=rate)
+        self.decoder = Decoder(num_layers=num_layers, d_model=d_model,
+                               num_heads=num_heads, dff=dff,
+                               seq_len=tar_seq_len, rate=rate)
         self.final_layer = Dense(tar_dim)
         # self.build(input_shape=(None, src_seq_len, src_dim))
 
@@ -197,10 +195,9 @@ class Transformer(tf.keras.Model):
         if self.gen_mode == 'unistep':
             tar = tf.stack([tf.shape(inputs)[0], self.tar_seq_len, self.src_dim])
             tar = tf.fill(tar, 0.0)
-            tar = tf.concat([inputs, tar], axis=1)
             dec_out = self.decoder(tar, enc_out, False, training)
             out = self.final_layer(dec_out)
-            out = out[:, self.src_seq_len:, :]
+            # out = out[:, self.src_seq_len:, :]
         elif self.gen_mode == 'auto':
             @tf.function(input_signature=[tf.TensorSpec(shape=(None, None, self.d_model), dtype=tf.float32)],
                          experimental_relax_shapes=True)
@@ -215,6 +212,7 @@ class Transformer(tf.keras.Model):
                     tar = tf.concat([tar, dec_out[:, -1:, :]], axis=1)
                 out = self.final_layer(tar[:, 1:, :])
                 return out
+
             if self.is_seq_continuous:
                 dec_input = enc_out[:, -1:, :]
             else:
@@ -262,8 +260,10 @@ if __name__ == '__main__':
 
                          batch_size=parameter.batchsize,
                          label_columns="ShortWaveDown")
-    model = Transformer(num_layers=3, d_model=8, num_heads=4, dff=32, src_seq_len=src_len, tar_seq_len=tar_len, src_dim=len(parameter.features),
-                        tar_dim=len(parameter.target), rate=0.1, gen_mode="unistep", is_seq_continuous=True, is_pooling=True)
+    model = Transformer(num_layers=3, d_model=8, num_heads=4, dff=32, src_seq_len=src_len, tar_seq_len=tar_len,
+                        src_dim=len(parameter.features),
+                        tar_dim=len(parameter.target), rate=0.1, gen_mode="unistep", is_seq_continuous=True,
+                        is_pooling=True)
     model.compile(loss=tf.losses.MeanSquaredError(), optimizer="Adam"
                   , metrics=[tf.metrics.MeanAbsoluteError()
             , tf.metrics.MeanAbsolutePercentageError()])
