@@ -10,11 +10,13 @@ static_suffle = False
 dynamic_suffle = False
 timeseries = True
 datasetPath = "../skyImage"
-csv_name = "dataset_renheo_[2019].csv"  # ["2020final.csv","2020new","2020shuffleDay", dataset_renheo_[2019].csv]
+csv_name = "ElectricityConsumption_2012-2014.csv"  # ["2020final.csv","2020new","2020shuffleDay", dataset_renheo_[2019].csv]
 # features = ['ShortWaveDown'] # target only
 # features = ['ShortWaveDown', 'CWB_Humidity', 'CWB_Temperature']  # david suggested
-features = ["DC-1|Pdc", "DC-2|Pdc", "Temperature", "RH"] # david suggested
-target = ["DC-1|Pdc","DC-2|Pdc"]   # "ShortWaveDown","difference5","difference10", ["DC-1|Pdc","DC-2|Pdc"]
+# features = ["DC-1|Pdc", "DC-2|Pdc", "Temperature", "RH"] # david suggested
+features = ["MT_001"]
+target = ["MT_001"]
+# target = ["DC-1|Pdc","DC-2|Pdc"]   # "ShortWaveDown","difference5","difference10", ["DC-1|Pdc","DC-2|Pdc"]
 # features = ['ShortWaveDown', 'CWB_Humidity', 'CWB_WindSpeed',
 #             'CWB_Temperature', 'EvapLevel', 'CWB_Rain05', 'CWB_Pressure', "CWB_WindDirection_Cosine",
 #             "CWB_WindDirection_Sine"]
@@ -63,7 +65,7 @@ experient_label = "test"  # 5x48x64x3-and-5x1-and-5x2-conv3D_c_cnnlstm    #new_t
 after_minutes = 1
 input_days = 1
 shifted_days = 0
-output_days = 5
+output_days = 1
 input_width = 5
 shifted_width = 0
 label_width = 10
@@ -95,7 +97,7 @@ earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=
 #             "data_cnnlstm", "data_cnn"]
 #model_list = ["Persistence", "MA", "data_cnnlstm", "simple_transformer"]
 # model_list = ["Persistence", "MA", "autoregressive_transformer"]
-model_list = ["Persistence", "MA", "convGRU", "autoregressive_convGRU", "simple_transformer", "autoregressive_transformer"]
+model_list = ["Persistence", "MA", "convGRU", "simple_transformer"]
 # model_list = ["Persistence", "MA", "simple_transformer"]
 # model_list = ["Persistence", "MA", "convGRU", "simple_transformer"]
 # model_list = ["Persistence","MA","conv3D_c_cnnlstm","Cnn3dLSTM_c_cnnlstm","data_cnnlstm"]
