@@ -78,7 +78,7 @@ class DataUtil(object):
         ######################資料集切分
         ## split 照比例分
         if (split_mode == "all_year"):
-            if parameter.input_days is None or parameter.output_days is None:
+            if parameter.input_days is None or parameter.output_days is None or not parameter.between8_17:
                 # only viable when sampling sequence within each day e.t. short term prediction
                 self.train_df, self.val_df = train_test_split(self.train_df, test_size=val_split + test_split,
                                                               shuffle=False)
