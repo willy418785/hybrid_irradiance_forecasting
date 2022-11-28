@@ -164,9 +164,9 @@ class WindowGenerator():
         ds_t, ds_u, ds_c, ds_v = None, None, None, None
         rows_counter = 0
         if ganIndex:
-            data = pd.DataFrame(data.index.values.astype(int), index=data.index, columns=['timestamp'])
+            data = pd.DataFrame(data.index.values.astype(np.int64), index=data.index, columns=['timestamp'])
             # data = data[['timestamp']]
-            label = pd.DataFrame(label.index.values.astype(int), index=label.index, columns=['timestamp'])
+            label = pd.DataFrame(label.index.values.astype(np.int64), index=label.index, columns=['timestamp'])
             # label = label[['timestamp']]
 
         for date in np.unique(data.index.date):
@@ -226,7 +226,9 @@ class WindowGenerator():
                 # which might happen when the data is not in continuous manner
                 break
             rows_counter += num_of_rows
-        if cloudData is None:
+        if ganIndex:
+            c = tf.data.Dataset.zip((ds_u, ds_v))
+        elif cloudData is None:
             if image is None:
                 c = tf.data.Dataset.zip((ds_u, ds_v))
             else:
