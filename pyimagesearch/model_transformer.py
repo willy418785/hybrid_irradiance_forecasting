@@ -13,7 +13,7 @@ from pyimagesearch import parameter
 from pyimagesearch.datautil import DataUtil
 from pyimagesearch.windowsGenerator import WindowGenerator
 
-gen_modes = ['unistep', 'auto']
+gen_modes = ['unistep', 'auto', "mlp"]
 
 
 class Config():
@@ -184,9 +184,12 @@ class Transformer(tf.keras.Model):
         self.encoder = Encoder(num_layers=num_layers, d_model=d_model,
                                num_heads=num_heads, dff=dff,
                                seq_len=src_seq_len, rate=rate)
-        self.decoder = Decoder(num_layers=num_layers, d_model=d_model,
-                               num_heads=num_heads, dff=dff,
-                               seq_len=tar_seq_len, rate=rate)
+        if self.gen_mode == 'unistep' or self.gen_mode == 'auto':
+            self.decoder = Decoder(num_layers=num_layers, d_model=d_model,
+                                   num_heads=num_heads, dff=dff,
+                                   seq_len=tar_seq_len, rate=rate)
+        elif self.gen_mode == 'mlp':
+            self.decoder = Sequential([Dense(tar_seq_len * tar_dim), Reshape((tar_seq_len, tar_dim))])
         self.final_layer = Dense(tar_dim)
         # self.build(input_shape=(None, src_seq_len, src_dim))
 
@@ -219,11 +222,16 @@ class Transformer(tf.keras.Model):
                 dec_input = tf.stack([tf.shape(inputs)[0], 1, self.d_model])
                 dec_input = tf.fill(dec_input, 0.0)
             out = autoregress(dec_input)
+        elif self.gen_mode == "mlp":
+            flattened = Flatten()(enc_out)
+            dec_out = self.decoder(flattened)
+            out = self.final_layer(dec_out)
+
         return out
 
 
 if __name__ == '__main__':
-    train_path_with_weather_info = os.path.sep.join(["../2020weatherInfoNormalized.csv"])
+    train_path_with_weather_info = os.path.sep.join(["../{}".format(parameter.csv_name)])
     data_with_weather_info = DataUtil(train_path=train_path_with_weather_info,
                                       val_path=None,
                                       test_path=None,
@@ -259,20 +267,21 @@ if __name__ == '__main__':
                          testY=dataUtil.test_df[dataUtil.label_col],
 
                          batch_size=parameter.batchsize,
-                         label_columns="ShortWaveDown")
+                         label_columns="ShortWaveDown",
+                         samples_per_day=dataUtil.samples_per_day)
     model = Transformer(num_layers=3, d_model=8, num_heads=4, dff=32, src_seq_len=src_len, tar_seq_len=tar_len,
                         src_dim=len(parameter.features),
-                        tar_dim=len(parameter.target), rate=0.1, gen_mode="unistep", is_seq_continuous=True,
+                        tar_dim=len(parameter.target), rate=0.1, gen_mode="mlp", is_seq_continuous=True,
                         is_pooling=True)
     model.compile(loss=tf.losses.MeanSquaredError(), optimizer="Adam"
                   , metrics=[tf.metrics.MeanAbsoluteError()
             , tf.metrics.MeanAbsolutePercentageError()])
 
-    model.summary()
+    # model.summary()
     # tf.keras.backend.clear_session()
-    # history = model.fit(w2.trainData(addcloud=parameter.addAverage),
-    #                     validation_data=w2.valData(addcloud=parameter.addAverage),
-    #                     epochs=100, batch_size=parameter.batchsize, callbacks=[parameter.earlystoper])
+    history = model.fit(w2.trainData(addcloud=parameter.addAverage),
+                        validation_data=w2.valData(addcloud=parameter.addAverage),
+                        epochs=100, batch_size=parameter.batchsize, callbacks=[parameter.earlystoper])
     for x, y in w2.trainData(addcloud=parameter.addAverage):
         c = model(x)
         pass
