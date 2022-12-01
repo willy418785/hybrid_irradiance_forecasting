@@ -38,7 +38,7 @@ cloudLabel = "twoClass"
 norm_mode = 2
 time_granularity = 'H' # 'H', 'min', 'T'
 between8_17 = False
-test_between8_17 = True
+test_between8_17 = False
 if between8_17 or test_between8_17:
     if time_granularity == 'H':
         start = '08:00:00'
@@ -97,7 +97,7 @@ earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=
 #             "data_cnnlstm", "data_cnn"]
 #model_list = ["Persistence", "MA", "data_cnnlstm", "simple_transformer"]
 # model_list = ["Persistence", "MA", "autoregressive_transformer"]
-model_list = ["Persistence", "MA", "convGRU", "simple_transformer"]
+model_list = ["Persistence", "MA", "convGRU", "transformer", 'convGRU_w_mlp_decoder', 'transformer_w_mlp_decoder']
 # model_list = ["Persistence", "MA", "simple_transformer"]
 # model_list = ["Persistence", "MA", "convGRU", "simple_transformer"]
 # model_list = ["Persistence","MA","conv3D_c_cnnlstm","Cnn3dLSTM_c_cnnlstm","data_cnnlstm"]
