@@ -1219,10 +1219,10 @@ def run():
             modelMetricsRecorder[logM]["convGRU"] = metricsDict[logM]
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
-    if "simple_transformer" in parameter.model_list:
+    if "transformer" in parameter.model_list:
         best_perform, best_perform2 = None, None
         best_model, best_model2 = None, None
-        log.info("training simple_transformer model...")
+        log.info("training transformer model...")
         for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
             is_input_continuous_with_output = (shift == 0) and (not parameter.between8_17)
             if not w.is_sampling_within_day and parameter.between8_17:
@@ -1261,7 +1261,7 @@ def run():
 
             datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
                                                                   generatorMode="data", testEpoch=testEpoch,
-                                                                  name="simple_transformer")
+                                                                  name="transformer")
             print(datamodel_CL_performance)
             if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
                 best_model = datamodel_CL
@@ -1269,17 +1269,129 @@ def run():
             print(best_perform)
             log.info("a model ok")
 
-        log.info("predicting SolarIrradiation by autoregressive_transformer...")
+        log.info("predicting SolarIrradiation by transformer...")
 
         metricsDict = w.allPlot(model=[best_model],
-                                name="simple_transformer",
+                                name="transformer",
                                 scaler=dataUtil.labelScaler,
                                 save_csv=True,
                                 datamode="data")
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
                 modelMetricsRecorder[logM] = {}
-            modelMetricsRecorder[logM]["simple_transformer"] = metricsDict[logM]
+            modelMetricsRecorder[logM]["transformer"] = metricsDict[logM]
+        pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
+
+    if "convGRU_w_mlp_decoder" in parameter.model_list:
+        best_perform, best_perform2 = None, None
+        best_model, best_model2 = None, None
+        log.info("convGRU_w_mlp_decoder")
+        for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
+            is_input_continuous_with_output = (shift == 0) and (not parameter.between8_17)
+            model = model_convGRU.ConvGRU(num_layers=model_convGRU.Config.layers, in_seq_len=input_width,
+                                          in_dim=len(parameter.features),
+                                          out_seq_len=label_width, out_dim=len(parameter.target),
+                                          units=model_convGRU.Config.gru_units,
+                                          filters=model_convGRU.Config.embedding_filters,
+                                          gen_mode='mlp',
+                                          is_seq_continuous=is_input_continuous_with_output,
+                                          rate=model_convGRU.Config.dropout_rate)
+            if not w.is_sampling_within_day and parameter.between8_17:
+                model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))),
+                                             SplitInputByDay(n_days=parameter.input_days, n_samples=w.samples_per_day),
+                                             MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
+                                                                   filter_size=preprocess_utils.Config.kernel_size,
+                                                                   n_days=parameter.input_days,
+                                                                   n_samples=w.samples_per_day),
+                                             model])
+            else:
+                model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))), model])
+
+            datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
+                                                                  generatorMode="data", testEpoch=testEpoch,
+                                                                  name="convGRU_w_mlp_decoder")
+            print(datamodel_CL_performance)
+            if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
+                best_model = datamodel_CL
+                best_perform = datamodel_CL_performance
+            print(best_perform)
+            log.info("a model ok")
+
+        log.info("predicting SolarIrradiation by convGRU_w_mlp_decoder...")
+
+        metricsDict = w.allPlot(model=[best_model],
+                                name="convGRU_w_mlp_decoder",
+                                scaler=dataUtil.labelScaler,
+                                save_csv=True,
+                                datamode="data")
+
+        for logM in metricsDict:
+            if modelMetricsRecorder.get(logM) is None:
+                modelMetricsRecorder[logM] = {}
+            modelMetricsRecorder[logM]["convGRU_w_mlp_decoder"] = metricsDict[logM]
+        pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
+
+    if "transformer_w_mlp_decoder" in parameter.model_list:
+        best_perform, best_perform2 = None, None
+        best_model, best_model2 = None, None
+        log.info("training transformer_w_mlp_decoder model...")
+        for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
+            is_input_continuous_with_output = (shift == 0) and (not parameter.between8_17)
+            if not w.is_sampling_within_day and parameter.between8_17:
+                model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))),
+                                             SplitInputByDay(n_days=parameter.input_days, n_samples=w.samples_per_day),
+                                             MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
+                                                                   filter_size=preprocess_utils.Config.kernel_size,
+                                                                   n_days=parameter.input_days,
+                                                                   n_samples=w.samples_per_day),
+                                             model_transformer.Transformer(num_layers=model_transformer.Config.layers,
+                                                                           d_model=model_transformer.Config.d_model,
+                                                                           num_heads=model_transformer.Config.n_heads,
+                                                                           dff=model_transformer.Config.dff,
+                                                                           src_seq_len=w.samples_per_day,
+                                                                           tar_seq_len=label_width,
+                                                                           src_dim=preprocess_utils.Config.filters,
+                                                                           tar_dim=len(parameter.target),
+                                                                           rate=model_transformer.Config.dropout_rate,
+                                                                           gen_mode="mlp",
+                                                                           is_seq_continuous=is_input_continuous_with_output,
+                                                                           is_pooling=False)
+                                             ])
+            else:
+                model = model_transformer.Transformer(num_layers=model_transformer.Config.layers,
+                                                      d_model=model_transformer.Config.d_model,
+                                                      num_heads=model_transformer.Config.n_heads,
+                                                      dff=model_transformer.Config.dff,
+                                                      src_seq_len=input_width,
+                                                      tar_seq_len=label_width, src_dim=len(parameter.features),
+                                                      tar_dim=len(parameter.target),
+                                                      rate=model_transformer.Config.dropout_rate,
+                                                      gen_mode="mlp",
+                                                      is_seq_continuous=is_input_continuous_with_output,
+                                                      is_pooling=False)
+                model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))), model])
+
+            datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
+                                                                  generatorMode="data", testEpoch=testEpoch,
+                                                                  name="transformer_w_mlp_decoder")
+            print(datamodel_CL_performance)
+            if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
+                best_model = datamodel_CL
+                best_perform = datamodel_CL_performance
+            print(best_perform)
+            log.info("a model ok")
+
+        log.info("predicting SolarIrradiation by transformer_w_mlp_decoder...")
+
+        metricsDict = w.allPlot(model=[best_model],
+                                name="transformer_w_mlp_decoder",
+                                scaler=dataUtil.labelScaler,
+                                save_csv=True,
+                                datamode="data")
+        for logM in metricsDict:
+            if modelMetricsRecorder.get(logM) is None:
+                modelMetricsRecorder[logM] = {}
+            modelMetricsRecorder[logM]["transformer_w_mlp_decoder"] = metricsDict[logM]
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
     if "autoregressive_convGRU" in parameter.model_list:
