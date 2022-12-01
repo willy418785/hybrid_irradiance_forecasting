@@ -12,8 +12,8 @@ from tensorflow.keras.models import Model
 from pyimagesearch import parameter
 from pyimagesearch.datautil import DataUtil
 from pyimagesearch.windowsGenerator import WindowGenerator
-
-gen_modes = ['unistep', 'auto']
+from pyimagesearch.model_transformer import positional_encoding
+gen_modes = ['unistep', 'auto', "mlp"]
 
 class Config():
     layers = 3
@@ -90,16 +90,22 @@ class ConvGRU(tf.keras.Model):
         self.encoder = Encoder(num_layers, units, filters, rate=rate)
         self.decoder = Decoder(num_layers, units, filters, rate=rate)
         if gen_mode == "unistep":
-            self.fc = Sequential([Dense(out_seq_len * out_dim), Reshape((out_seq_len, out_dim))])
+            self.fc = Dense(out_dim)
+            self.pos_vec = positional_encoding(out_seq_len, units)
         elif gen_mode == 'auto':
             self.fc = Dense(out_dim)
+        elif gen_mode == "mlp":
+            self.fc = Sequential([Dense(out_seq_len * out_dim), Reshape((out_seq_len, out_dim))])
         # self.build(input_shape=(None, in_seq_len, in_dim))
 
     def call(self, input_seq, training):
         enc_seq, states = self.encoder(input_seq, training)
         if self.gen_mode == "unistep":
-            states = Flatten()(states)
-            output = self.fc(states)
+            inputs = tf.stack([tf.shape(enc_seq)[0], self.out_seq_len, self.units])
+            inputs = tf.fill(inputs, 0.0)
+            inputs += self.pos_vec
+            dec_out, states = self.decoder(inputs, states, training)
+            output = self.fc(dec_out)
         elif self.gen_mode == 'auto':
             @tf.function(input_signature=[tf.TensorSpec(shape=(None, 1, self.units), dtype=tf.float32),
                                           tf.TensorSpec(shape=(None, self.units, self.num_layers), dtype=tf.float32)],
@@ -122,11 +128,14 @@ class ConvGRU(tf.keras.Model):
                 inputs = tf.stack([tf.shape(enc_seq)[0], 1, self.units])
                 inputs = tf.fill(inputs, 0.0)
             output = autoregress(inputs, states)
+        elif self.gen_mode == "mlp":
+            states = Flatten()(states)
+            output = self.fc(states)
         return output
 
 
 if __name__ == '__main__':
-    train_path_with_weather_info = os.path.sep.join(["../2020weatherInfoNormalized.csv"])
+    train_path_with_weather_info = os.path.sep.join(["../{}".format(parameter.csv_name)])
     data_with_weather_info = DataUtil(train_path=train_path_with_weather_info,
                                       val_path=None,
                                       test_path=None,
@@ -160,14 +169,15 @@ if __name__ == '__main__':
                          testY=dataUtil.test_df[dataUtil.label_col],
 
                          batch_size=1,
-                         label_columns="ShortWaveDown")
+                         label_columns="ShortWaveDown",
+                         samples_per_day=dataUtil.samples_per_day)
     model = ConvGRU(num_layers=1, in_seq_len=10, in_dim=len(parameter.features), out_seq_len=10, out_dim=len(parameter.target), units=5, filters=100,
-                    gen_mode='auto',
+                    gen_mode='unistep',
                     is_seq_continuous=True)
     model.compile(loss=tf.losses.MeanSquaredError(), optimizer="Adam"
                   , metrics=[tf.metrics.MeanAbsoluteError()
             , tf.metrics.MeanAbsolutePercentageError()])
-    model.summary()
+    # model.summary()
     tf.keras.backend.clear_session()
     # history = model.fit(w2.trainData(addcloud=parameter.addAverage),
     #                     validation_data=w2.valData(addcloud=parameter.addAverage),
