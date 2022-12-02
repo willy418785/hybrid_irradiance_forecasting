@@ -395,7 +395,7 @@ def run():
                              samples_per_day=dataUtil.samples_per_day)
         # log.info(w2)  # 3D
         dataUtil = data_for_baseline
-        w_for_persistance = WindowGenerator(input_width=label_width,
+        w_for_persistance = WindowGenerator(input_width=input_width,
                                             image_input_width=image_input_width,
                                             label_width=label_width,
                                             shift=shift,
@@ -479,10 +479,11 @@ def run():
         w = w2
 
         class Baseline(tf.keras.Model):
-            def __init__(self, is_within_day, label_index=None):
+            def __init__(self, is_within_day, samples_per_day, label_index=None):
                 super().__init__()
                 self.label_index = label_index
                 self.is_within_day = is_within_day
+                self.samples_per_day = samples_per_day
 
             def call(self, inputs):
                 # inputs =
@@ -491,11 +492,12 @@ def run():
                     result = inputs[:, -1:, :]
                     result = tf.repeat(result, label_width, axis=1)
                 else:
-                    result = inputs[:, label_width * -1:, :]
+                    result = inputs[:, self.samples_per_day * -1:, :]
+                    result = tf.tile(result, [1, int(label_width/self.samples_per_day), 1])
                 # print(result)
                 return result
 
-        baseline = Baseline(w_for_persistance.is_sampling_within_day, label_index=0)
+        baseline = Baseline(w_for_persistance.is_sampling_within_day, w_for_persistance.samples_per_day, label_index=0)
         baseline.compile(loss=tf.losses.MeanSquaredError(),
                          metrics=[tf.metrics.MeanAbsoluteError()
                              , tf.metrics.MeanAbsolutePercentageError()
