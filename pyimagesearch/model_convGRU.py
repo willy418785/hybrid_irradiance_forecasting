@@ -129,7 +129,7 @@ class ConvGRU(tf.keras.Model):
                 inputs = tf.fill(inputs, 0.0)
             output = autoregress(inputs, states)
         elif self.gen_mode == "mlp":
-            states = Flatten()(states)
+            states = Flatten()(states[:, :, -1])
             output = self.fc(states)
         return output
 
@@ -171,8 +171,8 @@ if __name__ == '__main__':
                          batch_size=1,
                          label_columns="ShortWaveDown",
                          samples_per_day=dataUtil.samples_per_day)
-    model = ConvGRU(num_layers=1, in_seq_len=10, in_dim=len(parameter.features), out_seq_len=10, out_dim=len(parameter.target), units=5, filters=100,
-                    gen_mode='unistep',
+    model = ConvGRU(num_layers=Config.layers, in_seq_len=10, in_dim=len(parameter.features), out_seq_len=10, out_dim=len(parameter.target), units=5, filters=100,
+                    gen_mode='mlp',
                     is_seq_continuous=True)
     model.compile(loss=tf.losses.MeanSquaredError(), optimizer="Adam"
                   , metrics=[tf.metrics.MeanAbsoluteError()
