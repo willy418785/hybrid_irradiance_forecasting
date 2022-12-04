@@ -497,25 +497,26 @@ def run():
                 # print(result)
                 return result
 
-        baseline = Baseline(w_for_persistance.is_sampling_within_day, w_for_persistance.samples_per_day, label_index=0)
-        baseline.compile(loss=tf.losses.MeanSquaredError(),
-                         metrics=[tf.metrics.MeanAbsoluteError()
-                             , tf.metrics.MeanAbsolutePercentageError()
-                             , my_metrics.VWMAPE
-                             , my_metrics.corr])
-        # performance = {}
-        modelList = {}
-        metricsDict = w_for_persistance.allPlot(model=[baseline],
-                                                name="Persistence",
-                                                scaler=dataUtil.labelScaler,
-                                                save_csv=True,
-                                                datamode="data")
-        for logM in metricsDict:
-            if modelMetricsRecorder.get(logM) is None:
-                modelMetricsRecorder[logM] = {}
-            modelMetricsRecorder[logM]["Persistence"] = metricsDict[logM]
-        metrics_path = "plot/{}/{}".format(parameter.experient_label, "all_metric")
-        pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
+        if "Persistence" in parameter.model_list:
+            baseline = Baseline(w_for_persistance.is_sampling_within_day, w_for_persistance.samples_per_day, label_index=0)
+            baseline.compile(loss=tf.losses.MeanSquaredError(),
+                             metrics=[tf.metrics.MeanAbsoluteError()
+                                 , tf.metrics.MeanAbsolutePercentageError()
+                                 , my_metrics.VWMAPE
+                                 , my_metrics.corr])
+            # performance = {}
+            modelList = {}
+            metricsDict = w_for_persistance.allPlot(model=[baseline],
+                                                    name="Persistence",
+                                                    scaler=dataUtil.labelScaler,
+                                                    save_csv=True,
+                                                    datamode="data")
+            for logM in metricsDict:
+                if modelMetricsRecorder.get(logM) is None:
+                    modelMetricsRecorder[logM] = {}
+                modelMetricsRecorder[logM]["Persistence"] = metricsDict[logM]
+            metrics_path = "plot/{}/{}".format(parameter.experient_label, "all_metric")
+            pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
         ##############################################################################################
         # moving average
@@ -529,24 +530,25 @@ def run():
                 result = tf.repeat(result, label_width, axis=1)
                 return result
 
-        movingAverage = MA(label_index=0)
-        movingAverage.compile(loss=tf.losses.MeanSquaredError(),
-                              metrics=[tf.metrics.MeanAbsoluteError()
-                                  , tf.metrics.MeanAbsolutePercentageError()
-                                  , my_metrics.VWMAPE
-                                  , my_metrics.corr])
-        metricsDict = w_for_MA.allPlot(model=[movingAverage],
-                                       name="MA",
-                                       scaler=dataUtil.labelScaler,
-                                       save_csv=True,
-                                       datamode="data")
+        if "MA" in parameter.model_list:
+            movingAverage = MA(label_index=0)
+            movingAverage.compile(loss=tf.losses.MeanSquaredError(),
+                                  metrics=[tf.metrics.MeanAbsoluteError()
+                                      , tf.metrics.MeanAbsolutePercentageError()
+                                      , my_metrics.VWMAPE
+                                      , my_metrics.corr])
+            metricsDict = w_for_MA.allPlot(model=[movingAverage],
+                                           name="MA",
+                                           scaler=dataUtil.labelScaler,
+                                           save_csv=True,
+                                           datamode="data")
 
-        for logM in metricsDict:
-            if modelMetricsRecorder.get(logM) is None:
-                modelMetricsRecorder[logM] = {}
-            modelMetricsRecorder[logM]["MA"] = metricsDict[logM]
-        metrics_path = "plot/{}/{}".format(parameter.experient_label, "all_metric")
-        pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
+            for logM in metricsDict:
+                if modelMetricsRecorder.get(logM) is None:
+                    modelMetricsRecorder[logM] = {}
+                modelMetricsRecorder[logM]["MA"] = metricsDict[logM]
+            metrics_path = "plot/{}/{}".format(parameter.experient_label, "all_metric")
+            pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
     #############################################################
     log = logging.getLogger(parameter.experient_label)
     # if parameter.dynamic_model == "two":
