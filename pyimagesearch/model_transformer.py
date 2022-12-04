@@ -170,7 +170,7 @@ class Decoder(tf.keras.layers.Layer):
 
 class Transformer(tf.keras.Model):
     def __init__(self, num_layers, d_model, num_heads, dff, src_seq_len, tar_seq_len, src_dim, tar_dim, rate=0.1,
-                 gen_mode="unistep", is_seq_continuous=False, is_pooling=False):
+                 gen_mode="unistep", is_seq_continuous=False, is_pooling=False, token_len = None):
         assert gen_mode in gen_modes
         super().__init__()
         self.d_model = d_model
@@ -184,7 +184,14 @@ class Transformer(tf.keras.Model):
         self.encoder = Encoder(num_layers=num_layers, d_model=d_model,
                                num_heads=num_heads, dff=dff,
                                seq_len=src_seq_len, rate=rate)
-        if self.gen_mode == 'unistep' or self.gen_mode == 'auto':
+        if self.gen_mode == 'unistep':
+            assert type(token_len) is int
+            assert src_seq_len >= token_len
+            self.token_len = token_len
+            self.decoder = Decoder(num_layers=num_layers, d_model=d_model,
+                                   num_heads=num_heads, dff=dff,
+                                   seq_len=token_len+tar_seq_len, rate=rate)
+        elif self.gen_mode == 'auto':
             self.decoder = Decoder(num_layers=num_layers, d_model=d_model,
                                    num_heads=num_heads, dff=dff,
                                    seq_len=tar_seq_len, rate=rate)
@@ -198,9 +205,11 @@ class Transformer(tf.keras.Model):
         if self.gen_mode == 'unistep':
             tar = tf.stack([tf.shape(inputs)[0], self.tar_seq_len, self.src_dim])
             tar = tf.fill(tar, 0.0)
+            if self.token_len > 0:
+                tar = tf.concat([inputs[:, -self.token_len:, :], tar], axis=1)
             dec_out = self.decoder(tar, enc_out, False, training)
             out = self.final_layer(dec_out)
-            # out = out[:, self.src_seq_len:, :]
+            out = out[:, -self.tar_seq_len:, :]
         elif self.gen_mode == 'auto':
             @tf.function(input_signature=[tf.TensorSpec(shape=(None, None, self.d_model), dtype=tf.float32)],
                          experimental_relax_shapes=True)
@@ -271,17 +280,17 @@ if __name__ == '__main__':
                          samples_per_day=dataUtil.samples_per_day)
     model = Transformer(num_layers=3, d_model=8, num_heads=4, dff=32, src_seq_len=src_len, tar_seq_len=tar_len,
                         src_dim=len(parameter.features),
-                        tar_dim=len(parameter.target), rate=0.1, gen_mode="mlp", is_seq_continuous=True,
-                        is_pooling=True)
+                        tar_dim=len(parameter.target), rate=0.1, gen_mode="unistep", is_seq_continuous=True,
+                        is_pooling=True, token_len=0)
     model.compile(loss=tf.losses.MeanSquaredError(), optimizer="Adam"
                   , metrics=[tf.metrics.MeanAbsoluteError()
             , tf.metrics.MeanAbsolutePercentageError()])
 
     # model.summary()
     # tf.keras.backend.clear_session()
-    history = model.fit(w2.trainData(addcloud=parameter.addAverage),
-                        validation_data=w2.valData(addcloud=parameter.addAverage),
-                        epochs=100, batch_size=parameter.batchsize, callbacks=[parameter.earlystoper])
+    # history = model.fit(w2.trainData(addcloud=parameter.addAverage),
+    #                     validation_data=w2.valData(addcloud=parameter.addAverage),
+    #                     epochs=100, batch_size=parameter.batchsize, callbacks=[parameter.earlystoper])
     for x, y in w2.trainData(addcloud=parameter.addAverage):
-        c = model(x)
+        c = model(x[0:1, :, :])
         pass
