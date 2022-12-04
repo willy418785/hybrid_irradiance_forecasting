@@ -1229,6 +1229,10 @@ def run():
         log.info("training transformer model...")
         for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
             is_input_continuous_with_output = (shift == 0) and (not parameter.between8_17)
+            if w.is_sampling_within_day:
+                token_len = input_width
+            else:
+                token_len = (min(input_width, label_width) // w.samples_per_day // 2 + 1) * w.samples_per_day
             if not w.is_sampling_within_day and parameter.between8_17:
                 model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))),
                                              SplitInputByDay(n_days=parameter.input_days, n_samples=w.samples_per_day),
@@ -1247,7 +1251,8 @@ def run():
                                                                            rate=model_transformer.Config.dropout_rate,
                                                                            gen_mode="unistep",
                                                                            is_seq_continuous=is_input_continuous_with_output,
-                                                                           is_pooling=False)
+                                                                           is_pooling=False,
+                                                                           token_len=0)
                                              ])
             else:
                 model = model_transformer.Transformer(num_layers=model_transformer.Config.layers,
@@ -1260,7 +1265,8 @@ def run():
                                                       rate=model_transformer.Config.dropout_rate,
                                                       gen_mode="unistep",
                                                       is_seq_continuous=is_input_continuous_with_output,
-                                                      is_pooling=False)
+                                                      is_pooling=False,
+                                                      token_len=token_len)
                 model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))), model])
 
             datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
