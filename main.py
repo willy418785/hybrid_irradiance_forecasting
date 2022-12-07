@@ -3,7 +3,7 @@
 import datetime
 
 import tensorflow as tf
-from pyimagesearch import datasets
+from pyimagesearch import datasets, model_AR
 from pyimagesearch import models
 from pyimagesearch import model_resnet
 from pyimagesearch import model_solarnet
@@ -493,12 +493,13 @@ def run():
                     result = tf.repeat(result, label_width, axis=1)
                 else:
                     result = inputs[:, self.samples_per_day * -1:, :]
-                    result = tf.tile(result, [1, int(label_width/self.samples_per_day), 1])
+                    result = tf.tile(result, [1, int(label_width / self.samples_per_day), 1])
                 # print(result)
                 return result
 
         if "Persistence" in parameter.model_list:
-            baseline = Baseline(w_for_persistance.is_sampling_within_day, w_for_persistance.samples_per_day, label_index=0)
+            baseline = Baseline(w_for_persistance.is_sampling_within_day, w_for_persistance.samples_per_day,
+                                label_index=0)
             baseline.compile(loss=tf.losses.MeanSquaredError(),
                              metrics=[tf.metrics.MeanAbsoluteError()
                                  , tf.metrics.MeanAbsolutePercentageError()
@@ -562,6 +563,7 @@ def run():
 
     dataUtil = data_with_weather_info
     metrics_path = "plot/{}/{}".format(parameter.experient_label, "all_metric")
+
     if "conv3D_c_cnnlstm" in parameter.model_list:
         parameter.squeeze = False
         best_perform, best_perform2 = None, None
@@ -662,7 +664,6 @@ def run():
             modelMetricsRecorder[logM]["conv3D_c_cnnlstm"] = metricsDict[logM]
         metrics_path = "plot/{}/{}".format(parameter.experient_label, "all_metric")
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
-
     #############################################################
     if "Cnn3dLSTM_c_cnnlstm" in parameter.model_list:
         parameter.squeeze = False
@@ -1174,6 +1175,104 @@ def run():
     #             modelMetricsRecorder[logM] = {}
     #         modelMetricsRecorder[logM]["simple_transformer"] = metricsDict[logM]
     #     pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
+    if 'AR' in parameter.model_list:
+        try:
+            assert len(parameter.features) == len(parameter.target)
+            best_perform, best_perform2 = None, None
+            best_model, best_model2 = None, None
+            log.info("training AR model...")
+            for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
+                if not w.is_sampling_within_day and parameter.between8_17:
+                    model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))),
+                                                 SplitInputByDay(n_days=parameter.input_days,
+                                                                 n_samples=w.samples_per_day),
+                                                 MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
+                                                                       filter_size=preprocess_utils.Config.kernel_size,
+                                                                       n_days=parameter.input_days,
+                                                                       n_samples=w.samples_per_day),
+                                                 model_AR.AR(model_AR.Config.order, label_width,
+                                                             len(parameter.features))
+                                                 ])
+                else:
+                    model = model_AR.AR(model_AR.Config.order, label_width,
+                                        len(parameter.features))
+                    model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))), model])
+
+                datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
+                                                                      generatorMode="data", testEpoch=testEpoch,
+                                                                      name="AR")
+                print(datamodel_CL_performance)
+                if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
+                    best_model = datamodel_CL
+                    best_perform = datamodel_CL_performance
+                print(best_perform)
+                log.info("a model ok")
+
+            log.info("predicting SolarIrradiation by AR...")
+
+            metricsDict = w.allPlot(model=[best_model],
+                                    name="AR",
+                                    scaler=dataUtil.labelScaler,
+                                    save_csv=True,
+                                    datamode="data")
+            for logM in metricsDict:
+                if modelMetricsRecorder.get(logM) is None:
+                    modelMetricsRecorder[logM] = {}
+                modelMetricsRecorder[logM]["AR"] = metricsDict[logM]
+            pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
+        except AssertionError:
+            log.info('# of input channels is not equal to # of output channels: got {} and {}'.format(
+                len(parameter.features, len(parameter.target))))
+
+    if 'channelwise_AR' in parameter.model_list:
+        try:
+            assert len(parameter.features) == len(parameter.target)
+            best_perform, best_perform2 = None, None
+            best_model, best_model2 = None, None
+            log.info("training channelwise_AR model...")
+            for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
+                if not w.is_sampling_within_day and parameter.between8_17:
+                    model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))),
+                                                 SplitInputByDay(n_days=parameter.input_days,
+                                                                 n_samples=w.samples_per_day),
+                                                 MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
+                                                                       filter_size=preprocess_utils.Config.kernel_size,
+                                                                       n_days=parameter.input_days,
+                                                                       n_samples=w.samples_per_day),
+                                                 model_AR.ChannelIndependentAR(model_AR.Config.order, label_width,
+                                                                               len(parameter.features))
+                                                 ])
+                else:
+                    model = model_AR.ChannelIndependentAR(model_AR.Config.order, label_width,
+                                                          len(parameter.features))
+                    model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))), model])
+
+                datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
+                                                                      generatorMode="data", testEpoch=testEpoch,
+                                                                      name="channelwise_AR")
+                print(datamodel_CL_performance)
+                if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
+                    best_model = datamodel_CL
+                    best_perform = datamodel_CL_performance
+                print(best_perform)
+                log.info("a model ok")
+
+            log.info("predicting SolarIrradiation by channelwise_AR...")
+
+            metricsDict = w.allPlot(model=[best_model],
+                                    name="channelwise_AR",
+                                    scaler=dataUtil.labelScaler,
+                                    save_csv=True,
+                                    datamode="data")
+            for logM in metricsDict:
+                if modelMetricsRecorder.get(logM) is None:
+                    modelMetricsRecorder[logM] = {}
+                modelMetricsRecorder[logM]["channelwise_AR"] = metricsDict[logM]
+            pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
+        except AssertionError:
+            log.info('# of input channels is not equal to # of output channels: got {} and {}'.format(
+                len(parameter.features, len(parameter.target))))
+
     if "convGRU" in parameter.model_list:
         best_perform, best_perform2 = None, None
         best_model, best_model2 = None, None
