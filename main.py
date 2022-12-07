@@ -561,7 +561,7 @@ def run():
     # log.info("Dataset shape: {}".format(sep_trainA))
 
     dataUtil = data_with_weather_info
-
+    metrics_path = "plot/{}/{}".format(parameter.experient_label, "all_metric")
     if "conv3D_c_cnnlstm" in parameter.model_list:
         parameter.squeeze = False
         best_perform, best_perform2 = None, None
