@@ -16,11 +16,7 @@ from pyimagesearch.model_transformer import positional_encoding
 gen_modes = ['unistep', 'auto', "mlp"]
 
 class Config():
-    layers = 3
-    embedding_filters = 32
-    gru_units = 32
-    embedding_kernel_size = 3
-    dropout_rate = 0.1
+    order = 24
 
 
 class AR(tf.keras.layers.Layer):
