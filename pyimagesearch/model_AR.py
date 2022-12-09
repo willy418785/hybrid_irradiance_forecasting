@@ -72,6 +72,21 @@ class ChannelIndependentAR(tf.keras.layers.Layer):
         output = tf.transpose(output, perm=[0, 2, 1])
         return output
 
+class TemporalChannelIndependentLR(tf.keras.layers.Layer):
+    def __init__(self, order, tar_seq_len, src_dims):
+        super().__init__()
+        self.order = order
+        self.tar_seq_len = tar_seq_len
+        self.src_dims = src_dims
+        self.linears = [Dense(self.tar_seq_len) for _ in range(src_dims)]
+
+    def call(self, inputs, training):
+        temporal_last = tf.transpose(inputs, perm=[0, 2, 1])
+        y = [self.linears[i](temporal_last[:, i, -self.order:]) for i in range(self.src_dims)]
+        output = tf.stack(y, axis=1)
+        output = tf.transpose(output, perm=[0, 2, 1])
+        return output
+
 if __name__ == '__main__':
     train_path_with_weather_info = os.path.sep.join(["../{}".format(parameter.csv_name)])
     data_with_weather_info = DataUtil(train_path=train_path_with_weather_info,
@@ -111,15 +126,15 @@ if __name__ == '__main__':
                          batch_size=1,
                          label_columns="ShortWaveDown",
                          samples_per_day=dataUtil.samples_per_day)
-    model = Sequential([Input(shape=(src_len, len(parameter.features))), ChannelIndependentAR(5, 10, len(parameter.features))])
+    model = Sequential([Input(shape=(src_len, len(parameter.features))), TemporalChannelIndependentLR(5, 10, len(parameter.features))])
     model.compile(loss=tf.losses.MeanSquaredError(), optimizer="Adam"
                   , metrics=[tf.metrics.MeanAbsoluteError()
             , tf.metrics.MeanAbsolutePercentageError()])
     model.summary()
     tf.keras.backend.clear_session()
-    history = model.fit(w2.trainData(addcloud=parameter.addAverage),
-                        validation_data=w2.valData(addcloud=parameter.addAverage),
-                        epochs=100, batch_size=5, callbacks=[parameter.earlystoper])
+    # history = model.fit(w2.trainData(addcloud=parameter.addAverage),
+    #                     validation_data=w2.valData(addcloud=parameter.addAverage),
+    #                     epochs=100, batch_size=5, callbacks=[parameter.earlystoper])
     for x, y in w2.trainData(addcloud=parameter.addAverage):
         c = model(x[:1, :, :])
     model.summary()
