@@ -28,20 +28,22 @@ if __name__ == '__main__':
     # labels = ['ma_smoothed_transformer_david_suggested_weather_data_only_540_to_540',
     #           'ma_smoothed_convGRU_david_suggested_weather_data_only_540_to_540']
     # labels = ["8to15_hourly_day2day_renheo[2019]_david_suggested_weather_data"]
-    labels = ["8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month"]
+    labels = ["hourly_10day5day_AR_EC"]
     # experiment_name = "david_suggested_weather_data_only_5_to_10"
     # experiment_name = "ma_smoothed_weather_data_only_540_to_540"
     # experiment_name = "ma_smoothed_david_suggested_weather_data_only_540_to_540"
     # experiment_name = "ma_smoothed_target_data_only_540_to_540"
-    experiment_name = "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month"
+    experiment_name = "hourly_10day5day_AR_EC_by_day"
     # experiment_name = '8to15_hourly_day2day_renheo[2019]_david_suggested_weather_data_hours_separated'
     # experiment_name = '8to15_hourly_day2day_david_suggested_weather_data_hours_separated'
     # model_names = ["Persistence", "MA", "datamodel_CL", "autoregressive_convGRU", "simple_transformer", "autoregressive_transformer"]
-    model_names = ["Persistence", "MA", "convGRU", "autoregressive_convGRU", "simple_transformer",
-                   "autoregressive_transformer"]
+    # model_names = ["Persistence", "MA", "convGRU", 'convGRU_w_mlp_decoder', "autoregressive_convGRU", "transformer",
+    #                'transformer_w_mlp_decoder',"autoregressive_transformer"]
+    model_names = ["Persistence", "MA", "AR", 'channelwise_AR']
     # model_names = ["Persistence", "MA", "datamodel_CL", "simple_transformer"]  # tested models
-    rex = '$'
+    # rex = '$'
     # rex = '{1}.+min$'
+    rex = '{1}.+th day$'
     try:
         os.mkdir(Path("fig"))
     except:
@@ -66,6 +68,10 @@ if __name__ == '__main__':
             for label in labels:
                 experiment_label = label + "_test_on_{}".format(month_abbr)
                 path = "plot/{}/{}".format(experiment_label, "all_metric.csv")
+                is_monthly_result_existing = os.path.exists(path)
+                if not is_monthly_result_existing:
+                    experiment_label = label
+                    path = "plot/{}/{}".format(experiment_label, "all_metric.csv")
                 try:
                     metrics = pd.read_csv(path, index_col=0)
                     metric = metrics.filter(regex='^' + name + rex, axis='columns').round(5)
@@ -79,25 +85,41 @@ if __name__ == '__main__':
                     break
             if len(all) == len(model_names):
                 all = all.reindex(model_names)
-                ax = plt.subplot(111)
-                all.plot.bar(title=title, ax=ax, legend=True, table=True, figsize=(10, 6), layout="constrained")
-                x_axis = ax.axes.get_xaxis()
-                x_axis.set_visible(False)
-                ax.legend(loc='lower right', fontsize=5)
-                plt.savefig(fig_path)
-                plt.clf()
-                all_months = pd.concat([all_months, all.rename(columns={name: month_name})], axis=1)
+                if is_monthly_result_existing:
+                    ax = plt.subplot(111)
+                    pos = ax.get_position()
+                    ax.set_position([pos.x0, pos.y0 + 0.2 * (pos.y1 - pos.y0), pos.x1 - pos.x0, 0.8 * (pos.y1 - pos.y0)])
+                    all.plot.bar(title=title, ax=ax, legend=True, table=True, figsize=(10, 6), layout="constrained")
+                    x_axis = ax.axes.get_xaxis()
+                    x_axis.set_visible(False)
+                    ax.legend(loc='lower right', fontsize=5)
+                    plt.savefig(fig_path)
+                    plt.clf()
+                all.columns = pd.MultiIndex.from_product([all.columns, [month_name]])
+                all_months = pd.concat([all_months, all], axis=1)
+                if not is_monthly_result_existing:
+                    break
                 pass
         assert len(all_months.columns) > 0
-        mean = pd.DataFrame(all_months.mean(axis=1).round(5), columns=[name])
-        std_err = pd.DataFrame(all_months.sem(axis=1).round(5), columns=["SE"])
+        mean = all_months.groupby(axis=1, level=0).mean().round(3)
+        # mean.columns = pd.MultiIndex.from_product([['mean'], mean.columns])
+        std_err = all_months.groupby(axis=1, level=0).sem().round(3)
+        # std_err.columns = pd.MultiIndex.from_product([['SE'], std_err.columns])
+        # mean = pd.DataFrame(all_months.mean(axis=1).round(5), columns=[name])
+        # std_err = pd.DataFrame(all_months.sem(axis=1).round(5), columns=["SE"])
         title = 'Mean with SE'
         fig_path = "fig/{}/{}/{}".format(experiment_name, name, title)
         ax = plt.subplot(111)
-        t = pd.concat([mean, std_err], axis=1).transpose()
-        mean.plot.bar(yerr=std_err['SE'], capsize=5, title=title, ax=ax, legend=True, table=t, figsize=(10, 6), layout="constrained")
+        pos = ax.get_position()
+        ax.set_position([pos.x0, pos.y0+0.2*(pos.y1-pos.y0), pos.x1-pos.x0, 0.8*(pos.y1-pos.y0)])
+        mean.plot.bar(yerr=std_err, capsize=3, title=title, ax=ax, figsize=(10, 6), legend=True, layout="constrained")
         x_axis = ax.axes.get_xaxis()
         x_axis.set_visible(False)
         ax.legend(loc='lower right', fontsize=5)
+        # ax = plt.subplot(212)
+        # ax.set_axis_off ()
+        t = (mean.astype(str) + '±' + std_err.astype(str)).transpose()
+        pd.plotting.table(ax, t, loc='bottom', rowLoc='right')
+        # plt.show()
         plt.savefig(fig_path)
         plt.clf()
