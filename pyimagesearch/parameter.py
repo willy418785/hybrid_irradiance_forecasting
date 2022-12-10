@@ -77,13 +77,13 @@ is_using_image_data = False
 epochs = 300
 # epoch_list = [100, 200, 250, 300, 400, 500]     #if no early stop
 # epoch_list = [1]
-epoch_list = [1000]
+epoch_list = [20000]
 # epoch_list = [500]
 # epoch_list = [500, 500]
 # epoch_list = [500, 500, 500]
 # epoch_list = [500, 500, 500, 500]
 # epoch_list = [500, 500, 500, 500, 500]
-batchsize = 128
+batchsize = 32
 
 earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=100, min_delta=0.0001,
                             restore_best_weights=True)
@@ -101,7 +101,7 @@ earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=
 # model_list = ["Persistence", "MA", "data_cnnlstm", "simple_transformer"]
 # model_list = ["Persistence", "MA", "autoregressive_transformer"]
 # model_list = ["Persistence", "MA", "convGRU", "transformer", 'convGRU_w_mlp_decoder', 'transformer_w_mlp_decoder', 'autoregressive_convGRU', 'autoregressive_transformer']
-model_list = ["Persistence", "MA", "convGRU", "transformer", "transformer_w_AR", 'convGRU_w_AR']
+model_list = ["Persistence", "MA", "convGRU", "transformer", "transformer_w_AR", 'convGRU_w_AR', "transformer_w_LR", 'convGRU_w_LR']
 # model_list = ["Persistence", "MA", 'AR', 'channelwise_AR']
 # model_list = ["Persistence", "MA", "convGRU", "transformer", 'convGRU_w_mlp_decoder', 'transformer_w_mlp_decoder']
 # model_list = ["Persistence", "MA", "simple_transformer"]
