@@ -317,7 +317,6 @@ def run():
             image_input_width = parameter.image_input_width3D
             shift = parameter.shifted_width
             label_width = parameter.label_width
-            MA_width = parameter.input_width
             log.info("\n------In-day Prediction------")
             log.info("input width: {}".format(input_width))
             log.info("shift width: {}".format(shift))
@@ -338,7 +337,6 @@ def run():
             log.info("input width: {}".format(input_width))
             log.info("shift width: {}".format(shift))
             log.info("label width: {}".format(label_width))
-            MA_width = input_width
         # w1 = WindowGenerator(input_width=input_width,
         # 						image_input_width=1,
         # 						label_width=label_width,
@@ -421,7 +419,7 @@ def run():
                                             batch_size=parameter.batchsize,
                                             label_columns="ShortWaveDown",
                                             samples_per_day=dataUtil.samples_per_day)
-        w_for_MA = WindowGenerator(input_width=MA_width,
+        w_for_MA = WindowGenerator(input_width=input_width,
                                    image_input_width=image_input_width,
                                    label_width=label_width,
                                    shift=shift,
@@ -522,17 +520,22 @@ def run():
         ##############################################################################################
         # moving average
         class MA(tf.keras.Model):
-            def __init__(self, label_index=None):
+            def __init__(self, window_len, label_index=None):
                 super().__init__()
                 self.label_index = label_index
+                self.window_len = window_len
 
             def call(self, inputs):
-                result = tf.reduce_mean(inputs, 1, keepdims=True)
+                result = tf.reduce_mean(inputs[:, -self.window_len:, :], axis=1, keepdims=True)
                 result = tf.repeat(result, label_width, axis=1)
                 return result
 
         if "MA" in parameter.model_list:
-            movingAverage = MA(label_index=0)
+            if w_for_MA.is_sampling_within_day:
+                MA_width = input_width
+            else:
+                MA_width = w_for_MA.samples_per_day
+            movingAverage = MA(MA_width, label_index=0)
             movingAverage.compile(loss=tf.losses.MeanSquaredError(),
                                   metrics=[tf.metrics.MeanAbsoluteError()
                                       , tf.metrics.MeanAbsolutePercentageError()
@@ -562,6 +565,7 @@ def run():
     # log.info("Dataset shape: {}".format(sep_trainA))
 
     dataUtil = data_with_weather_info
+    is_input_continuous_with_output = (shift == 0) and (not parameter.between8_17 or w.is_sampling_within_day)
     metrics_path = "plot/{}/{}".format(parameter.experient_label, "all_metric")
 
     if "conv3D_c_cnnlstm" in parameter.model_list:
@@ -1278,7 +1282,6 @@ def run():
         best_model, best_model2 = None, None
         log.info("convGRU")
         for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
-            is_input_continuous_with_output = (shift == 0) and (not parameter.between8_17)
             model = model_convGRU.ConvGRU(num_layers=model_convGRU.Config.layers, in_seq_len=input_width,
                                           in_dim=len(parameter.features),
                                           out_seq_len=label_width, out_dim=len(parameter.target),
@@ -1327,7 +1330,6 @@ def run():
         best_model, best_model2 = None, None
         log.info("training transformer model...")
         for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
-            is_input_continuous_with_output = (shift == 0) and (not parameter.between8_17)
             if w.is_sampling_within_day:
                 token_len = input_width
             else:
@@ -1396,7 +1398,6 @@ def run():
         best_model, best_model2 = None, None
         log.info("convGRU_w_AR")
         for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
-            is_input_continuous_with_output = (shift == 0) and (not parameter.between8_17)
             model = model_convGRU.ConvGRU(num_layers=model_convGRU.Config.layers, in_seq_len=input_width,
                                           in_dim=len(parameter.features),
                                           out_seq_len=label_width, out_dim=len(parameter.target),
@@ -1452,7 +1453,6 @@ def run():
         best_model, best_model2 = None, None
         log.info("training transformer_w_AR model...")
         for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
-            is_input_continuous_with_output = (shift == 0) and (not parameter.between8_17)
             if w.is_sampling_within_day:
                 token_len = input_width
             else:
@@ -1528,7 +1528,6 @@ def run():
         best_model, best_model2 = None, None
         log.info("convGRU_w_LR")
         for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
-            is_input_continuous_with_output = (shift == 0) and (not parameter.between8_17)
             model = model_convGRU.ConvGRU(num_layers=model_convGRU.Config.layers, in_seq_len=input_width,
                                           in_dim=len(parameter.features),
                                           out_seq_len=label_width, out_dim=len(parameter.target),
@@ -1584,7 +1583,6 @@ def run():
         best_model, best_model2 = None, None
         log.info("training transformer_w_LR model...")
         for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
-            is_input_continuous_with_output = (shift == 0) and (not parameter.between8_17)
             if w.is_sampling_within_day:
                 token_len = input_width
             else:
@@ -1660,7 +1658,6 @@ def run():
         best_model, best_model2 = None, None
         log.info("convGRU_w_mlp_decoder")
         for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
-            is_input_continuous_with_output = (shift == 0) and (not parameter.between8_17)
             model = model_convGRU.ConvGRU(num_layers=model_convGRU.Config.layers, in_seq_len=input_width,
                                           in_dim=len(parameter.features),
                                           out_seq_len=label_width, out_dim=len(parameter.target),
@@ -1709,7 +1706,6 @@ def run():
         best_model, best_model2 = None, None
         log.info("training transformer_w_mlp_decoder model...")
         for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
-            is_input_continuous_with_output = (shift == 0) and (not parameter.between8_17)
             if not w.is_sampling_within_day and parameter.between8_17:
                 model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))),
                                              SplitInputByDay(n_days=parameter.input_days, n_samples=w.samples_per_day),
@@ -1772,7 +1768,6 @@ def run():
         best_model, best_model2 = None, None
         log.info("autoregressive_convGRU")
         for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
-            is_input_continuous_with_output = (shift == 0) and (not parameter.between8_17)
             model = model_convGRU.ConvGRU(num_layers=model_convGRU.Config.layers, in_seq_len=input_width,
                                           in_dim=len(parameter.features),
                                           out_seq_len=label_width, out_dim=len(parameter.target),
@@ -1820,7 +1815,6 @@ def run():
         best_model, best_model2 = None, None
         log.info("autoregressive_transformer")
         for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
-            is_input_continuous_with_output = (shift == 0) and (not parameter.between8_17)
             if not w.is_sampling_within_day and parameter.between8_17:
                 model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))),
                                              SplitInputByDay(n_days=parameter.input_days, n_samples=w.samples_per_day),
