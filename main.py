@@ -1277,6 +1277,56 @@ def run():
             log.info('# of input channels is not equal to # of output channels: got {} and {}'.format(
                 len(parameter.features, len(parameter.target))))
 
+    if 'LR' in parameter.model_list:
+        try:
+            assert len(parameter.features) == len(parameter.target)
+            best_perform, best_perform2 = None, None
+            best_model, best_model2 = None, None
+            log.info("training LR model...")
+            for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
+                if not w.is_sampling_within_day and parameter.between8_17:
+                    model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))),
+                                                 SplitInputByDay(n_days=parameter.input_days,
+                                                                 n_samples=w.samples_per_day),
+                                                 MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
+                                                                       filter_size=preprocess_utils.Config.kernel_size,
+                                                                       n_days=parameter.input_days,
+                                                                       n_samples=w.samples_per_day),
+                                                 model_AR.TemporalChannelIndependentLR(model_AR.Config.order,
+                                                                                       label_width,
+                                                                                       len(parameter.features))
+                                                 ])
+                else:
+                    model = model_AR.TemporalChannelIndependentLR(model_AR.Config.order, label_width,
+                                                                  len(parameter.features))
+                    model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))), model])
+
+                datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
+                                                                      generatorMode="data", testEpoch=testEpoch,
+                                                                      name="LR")
+                print(datamodel_CL_performance)
+                if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
+                    best_model = datamodel_CL
+                    best_perform = datamodel_CL_performance
+                print(best_perform)
+                log.info("a model ok")
+
+            log.info("predicting SolarIrradiation by LR...")
+
+            metricsDict = w.allPlot(model=[best_model],
+                                    name="LR",
+                                    scaler=dataUtil.labelScaler,
+                                    save_csv=True,
+                                    datamode="data")
+            for logM in metricsDict:
+                if modelMetricsRecorder.get(logM) is None:
+                    modelMetricsRecorder[logM] = {}
+                modelMetricsRecorder[logM]["LR"] = metricsDict[logM]
+            pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
+        except AssertionError:
+            log.info('# of input channels is not equal to # of output channels: got {} and {}'.format(
+                len(parameter.features, len(parameter.target))))
+
     if "convGRU" in parameter.model_list:
         best_perform, best_perform2 = None, None
         best_model, best_model2 = None, None
@@ -1408,7 +1458,8 @@ def run():
                                           rate=model_convGRU.Config.dropout_rate)
             if not w.is_sampling_within_day and parameter.between8_17:
                 inputs = tf.keras.Input(shape=(input_width, len(parameter.features)))
-                linear = model_AR.ChannelIndependentAR(model_AR.Config.order, label_width, len(parameter.features))(inputs)
+                linear = model_AR.ChannelIndependentAR(model_AR.Config.order, label_width, len(parameter.features))(
+                    inputs)
                 embedding = SplitInputByDay(n_days=parameter.input_days, n_samples=w.samples_per_day)(inputs)
                 embedding = MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
                                                   filter_size=preprocess_utils.Config.kernel_size,
@@ -1467,18 +1518,18 @@ def run():
                                                   n_days=parameter.input_days,
                                                   n_samples=w.samples_per_day)(embedding)
                 nonlinear = model_transformer.Transformer(num_layers=model_transformer.Config.layers,
-                                                                           d_model=model_transformer.Config.d_model,
-                                                                           num_heads=model_transformer.Config.n_heads,
-                                                                           dff=model_transformer.Config.dff,
-                                                                           src_seq_len=w.samples_per_day,
-                                                                           tar_seq_len=label_width,
-                                                                           src_dim=preprocess_utils.Config.filters,
-                                                                           tar_dim=len(parameter.target),
-                                                                           rate=model_transformer.Config.dropout_rate,
-                                                                           gen_mode="unistep",
-                                                                           is_seq_continuous=is_input_continuous_with_output,
-                                                                           is_pooling=False,
-                                                                           token_len=0)(embedding)
+                                                          d_model=model_transformer.Config.d_model,
+                                                          num_heads=model_transformer.Config.n_heads,
+                                                          dff=model_transformer.Config.dff,
+                                                          src_seq_len=w.samples_per_day,
+                                                          tar_seq_len=label_width,
+                                                          src_dim=preprocess_utils.Config.filters,
+                                                          tar_dim=len(parameter.target),
+                                                          rate=model_transformer.Config.dropout_rate,
+                                                          gen_mode="unistep",
+                                                          is_seq_continuous=is_input_continuous_with_output,
+                                                          is_pooling=False,
+                                                          token_len=0)(embedding)
                 outputs = tf.keras.layers.Add()([linear, nonlinear])
                 model = tf.keras.Model(inputs=inputs, outputs=outputs, name="transformer_w_AR")
             else:
@@ -1486,17 +1537,17 @@ def run():
                 linear = model_AR.ChannelIndependentAR(model_AR.Config.order, label_width, len(parameter.features))(
                     inputs)
                 nonlinear = model_transformer.Transformer(num_layers=model_transformer.Config.layers,
-                                                      d_model=model_transformer.Config.d_model,
-                                                      num_heads=model_transformer.Config.n_heads,
-                                                      dff=model_transformer.Config.dff,
-                                                      src_seq_len=input_width,
-                                                      tar_seq_len=label_width, src_dim=len(parameter.features),
-                                                      tar_dim=len(parameter.target),
-                                                      rate=model_transformer.Config.dropout_rate,
-                                                      gen_mode="unistep",
-                                                      is_seq_continuous=is_input_continuous_with_output,
-                                                      is_pooling=False,
-                                                      token_len=token_len)(inputs)
+                                                          d_model=model_transformer.Config.d_model,
+                                                          num_heads=model_transformer.Config.n_heads,
+                                                          dff=model_transformer.Config.dff,
+                                                          src_seq_len=input_width,
+                                                          tar_seq_len=label_width, src_dim=len(parameter.features),
+                                                          tar_dim=len(parameter.target),
+                                                          rate=model_transformer.Config.dropout_rate,
+                                                          gen_mode="unistep",
+                                                          is_seq_continuous=is_input_continuous_with_output,
+                                                          is_pooling=False,
+                                                          token_len=token_len)(inputs)
                 outputs = tf.keras.layers.Add()([linear, nonlinear])
                 model = tf.keras.Model(inputs=inputs, outputs=outputs, name="transformer_w_AR")
 
@@ -1538,7 +1589,8 @@ def run():
                                           rate=model_convGRU.Config.dropout_rate)
             if not w.is_sampling_within_day and parameter.between8_17:
                 inputs = tf.keras.Input(shape=(input_width, len(parameter.features)))
-                linear = model_AR.TemporalChannelIndependentLR(model_AR.Config.order, label_width, len(parameter.features))(inputs)
+                linear = model_AR.TemporalChannelIndependentLR(model_AR.Config.order, label_width,
+                                                               len(parameter.features))(inputs)
                 embedding = SplitInputByDay(n_days=parameter.input_days, n_samples=w.samples_per_day)(inputs)
                 embedding = MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
                                                   filter_size=preprocess_utils.Config.kernel_size,
@@ -1549,7 +1601,8 @@ def run():
                 model = tf.keras.Model(inputs=inputs, outputs=outputs, name="convGRU_w_LR")
             else:
                 inputs = tf.keras.Input(shape=(input_width, len(parameter.features)))
-                linear = model_AR.TemporalChannelIndependentLR(model_AR.Config.order, label_width, len(parameter.features))(
+                linear = model_AR.TemporalChannelIndependentLR(model_AR.Config.order, label_width,
+                                                               len(parameter.features))(
                     inputs)
                 nonlinear = model(inputs)
                 outputs = tf.keras.layers.Add()([linear, nonlinear])
@@ -1589,7 +1642,8 @@ def run():
                 token_len = (min(input_width, label_width) // w.samples_per_day // 2 + 1) * w.samples_per_day
             if not w.is_sampling_within_day and parameter.between8_17:
                 inputs = tf.keras.Input(shape=(input_width, len(parameter.features)))
-                linear = model_AR.TemporalChannelIndependentLR(model_AR.Config.order, label_width, len(parameter.features))(
+                linear = model_AR.TemporalChannelIndependentLR(model_AR.Config.order, label_width,
+                                                               len(parameter.features))(
                     inputs)
                 embedding = SplitInputByDay(n_days=parameter.input_days, n_samples=w.samples_per_day)(inputs)
                 embedding = MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
@@ -1597,36 +1651,37 @@ def run():
                                                   n_days=parameter.input_days,
                                                   n_samples=w.samples_per_day)(embedding)
                 nonlinear = model_transformer.Transformer(num_layers=model_transformer.Config.layers,
-                                                                           d_model=model_transformer.Config.d_model,
-                                                                           num_heads=model_transformer.Config.n_heads,
-                                                                           dff=model_transformer.Config.dff,
-                                                                           src_seq_len=w.samples_per_day,
-                                                                           tar_seq_len=label_width,
-                                                                           src_dim=preprocess_utils.Config.filters,
-                                                                           tar_dim=len(parameter.target),
-                                                                           rate=model_transformer.Config.dropout_rate,
-                                                                           gen_mode="unistep",
-                                                                           is_seq_continuous=is_input_continuous_with_output,
-                                                                           is_pooling=False,
-                                                                           token_len=0)(embedding)
+                                                          d_model=model_transformer.Config.d_model,
+                                                          num_heads=model_transformer.Config.n_heads,
+                                                          dff=model_transformer.Config.dff,
+                                                          src_seq_len=w.samples_per_day,
+                                                          tar_seq_len=label_width,
+                                                          src_dim=preprocess_utils.Config.filters,
+                                                          tar_dim=len(parameter.target),
+                                                          rate=model_transformer.Config.dropout_rate,
+                                                          gen_mode="unistep",
+                                                          is_seq_continuous=is_input_continuous_with_output,
+                                                          is_pooling=False,
+                                                          token_len=0)(embedding)
                 outputs = tf.keras.layers.Add()([linear, nonlinear])
                 model = tf.keras.Model(inputs=inputs, outputs=outputs, name="transformer_w_LR")
             else:
                 inputs = tf.keras.Input(shape=(input_width, len(parameter.features)))
-                linear = model_AR.TemporalChannelIndependentLR(model_AR.Config.order, label_width, len(parameter.features))(
+                linear = model_AR.TemporalChannelIndependentLR(model_AR.Config.order, label_width,
+                                                               len(parameter.features))(
                     inputs)
                 nonlinear = model_transformer.Transformer(num_layers=model_transformer.Config.layers,
-                                                      d_model=model_transformer.Config.d_model,
-                                                      num_heads=model_transformer.Config.n_heads,
-                                                      dff=model_transformer.Config.dff,
-                                                      src_seq_len=input_width,
-                                                      tar_seq_len=label_width, src_dim=len(parameter.features),
-                                                      tar_dim=len(parameter.target),
-                                                      rate=model_transformer.Config.dropout_rate,
-                                                      gen_mode="unistep",
-                                                      is_seq_continuous=is_input_continuous_with_output,
-                                                      is_pooling=False,
-                                                      token_len=token_len)(inputs)
+                                                          d_model=model_transformer.Config.d_model,
+                                                          num_heads=model_transformer.Config.n_heads,
+                                                          dff=model_transformer.Config.dff,
+                                                          src_seq_len=input_width,
+                                                          tar_seq_len=label_width, src_dim=len(parameter.features),
+                                                          tar_dim=len(parameter.target),
+                                                          rate=model_transformer.Config.dropout_rate,
+                                                          gen_mode="unistep",
+                                                          is_seq_continuous=is_input_continuous_with_output,
+                                                          is_pooling=False,
+                                                          token_len=token_len)(inputs)
                 outputs = tf.keras.layers.Add()([linear, nonlinear])
                 model = tf.keras.Model(inputs=inputs, outputs=outputs, name="transformer_w_LR")
 
