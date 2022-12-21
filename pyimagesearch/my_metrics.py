@@ -177,6 +177,8 @@ def seperate_log_metrics(df, name, minutes):
 
 
 def log_metrics_day_by_day(df, name, n_days):
+    if n_days is None:
+        return {}
     gt = df[0][parameter.target]
     pd = df[1][parameter.target]
     glist = []
