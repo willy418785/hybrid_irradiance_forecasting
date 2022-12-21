@@ -311,8 +311,6 @@ def run():
             assert type(parameter.image_input_width3D) is int
             assert type(parameter.shifted_width) is int
             assert type(parameter.label_width) is int
-            assert dataUtil.samples_per_day >= (
-                    max(parameter.image_input_width3D, parameter.input_width) + parameter.label_width)
             input_width = parameter.input_width
             image_input_width = parameter.image_input_width3D
             shift = parameter.shifted_width
@@ -496,7 +494,8 @@ def run():
                 return result
 
         if "Persistence" in parameter.model_list:
-            baseline = Baseline(w_for_persistance.is_sampling_within_day, w_for_persistance.samples_per_day,
+            baseline = Baseline(w_for_persistance.is_sampling_within_day or (parameter.input_days is None),
+                                w_for_persistance.samples_per_day,
                                 label_index=0)
             baseline.compile(loss=tf.losses.MeanSquaredError(),
                              metrics=[tf.metrics.MeanAbsoluteError()
