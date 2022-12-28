@@ -17,7 +17,8 @@ class WindowGenerator():
                  trainImages, trainData, trainCloud, trainAverage, trainY,
                  valImage, valData, valCloud, valAverage, valY,
                  testImage, testData, testCloud, testAverage, testY,
-                 batch_size=32, label_columns=None, samples_per_day=None):
+                 batch_size=32, label_columns=None, samples_per_day=None,
+                 using_timestamp_data=parameter.is_timestamp_as_data, using_shuffle=parameter.is_using_shuffle):
 
         # Work out the window parameters.
         self.input_width = input_width
@@ -25,6 +26,8 @@ class WindowGenerator():
         self.label_width = label_width
         self.shift = shift
         self.batch_size = batch_size
+        self.using_timestamp_data = using_timestamp_data
+        self.using_shuffle = using_shuffle
         self.total_window_size = self.input_width + self.label_width + self.shift
         self.samples_per_day = samples_per_day
         self.is_sampling_within_day = True if self.total_window_size <= self.samples_per_day else False
@@ -159,9 +162,10 @@ class WindowGenerator():
         #     labels = labels[:, -1, :]
         return labels
 
-    def input_dataset(self, data, label, cloudData=None, image=None, ganIndex=False,
+    def input_dataset(self, data, label, cloudData=None, image=None,
+                      is_timestamp_as_data=False, ganIndex=False,
                       sequence_stride=parameter.label_width, use_shuffle=False):
-        ds_t, ds_u, ds_c, ds_v = None, None, None, None
+        ds_t, ds_u, ds_c, ds_v, ds_d = None, None, None, None, None
         rows_counter = 0
         if ganIndex:
             data = pd.DataFrame(data.index.values.astype(np.int64), index=data.index, columns=['timestamp'])
@@ -181,12 +185,14 @@ class WindowGenerator():
                 sequence_length=self.total_window_size,
                 sequence_stride=sequence_stride,
                 shuffle=parameter.dynamic_suffle).map(self.data_split_window).unbatch()
+            ds_u = data_dataset if ds_u is None else ds_u.concatenate(data_dataset)
             label_dataset = tf.keras.preprocessing.timeseries_dataset_from_array(
                 data=label_on_date,
                 targets=None,
                 sequence_length=self.total_window_size,
                 sequence_stride=sequence_stride,
                 shuffle=parameter.dynamic_suffle).map(self.label_split_window).unbatch()
+            ds_v = label_dataset if ds_v is None else ds_v.concatenate(label_dataset)
             if cloudData is not None:
                 cloudData_on_date = cloudData[
                     cloudData.index.date == date] if parameter.between8_17 and self.is_sampling_within_day else cloudData
@@ -196,10 +202,7 @@ class WindowGenerator():
                     sequence_length=self.total_window_size,
                     sequence_stride=sequence_stride,
                     shuffle=parameter.dynamic_suffle).map(self.data_split_window).unbatch()
-                if ds_c == None:
-                    ds_c = cloud_dataset
-                else:
-                    ds_c = ds_c.concatenate(cloud_dataset)
+                ds_c = cloud_dataset if ds_c is None else ds_c.concatenate(cloud_dataset)
             if image is not None:
                 images_on_date = image[
                                  rows_counter:rows_counter + num_of_rows] if parameter.between8_17 and self.is_sampling_within_day else image
@@ -209,38 +212,33 @@ class WindowGenerator():
                     sequence_length=self.total_window_size,
                     sequence_stride=sequence_stride,
                     shuffle=parameter.dynamic_suffle).map(self.image_split_window).unbatch()
-                if ds_t == None:
-                    ds_t = images_dataset
-                else:
-                    ds_t = ds_t.concatenate(images_dataset)
-            if ds_u == None:
-                ds_u = data_dataset
-            else:
-                ds_u = ds_u.concatenate(data_dataset)
-            if ds_v == None:
-                ds_v = label_dataset
-            else:
-                ds_v = ds_v.concatenate(label_dataset)
+                ds_t = images_dataset if ds_t is None else ds_t.concatenate(images_dataset)
+            if is_timestamp_as_data:
+                timestamps = pd.DataFrame(data_on_date.index.values, index=data_on_date.index, columns=['timestamp']) \
+                    if parameter.between8_17 and self.is_sampling_within_day else pd.DataFrame(data.index.values,
+                                                                                               index=data.index,
+                                                                                               columns=['timestamp'])
+                timestamps['month'] = timestamps['timestamp'].apply(lambda x: x.month - 1)
+                timestamps['day'] = timestamps['timestamp'].apply(lambda x: x.day - 1)
+                timestamps['hour'] = timestamps['timestamp'].apply(lambda x: x.hour)
+                timestamps['minute'] = timestamps['timestamp'].apply(lambda x: x.minute)
+                timestamps = timestamps.drop(['timestamp'], axis=1)
+                datetime_dataset = tf.keras.preprocessing.timeseries_dataset_from_array(
+                    data=timestamps,
+                    targets=None,
+                    sequence_length=self.total_window_size,
+                    sequence_stride=sequence_stride,
+                    shuffle=parameter.dynamic_suffle).unbatch()
+                ds_d = datetime_dataset if ds_d is None else ds_d.concatenate(datetime_dataset)
             if not self.is_sampling_within_day or not parameter.between8_17:
                 # this means there is no need to fix the discontinuous sequence problem
                 # which might happen when the data is not in continuous manner
                 break
             rows_counter += num_of_rows
+        c = tf.data.Dataset.zip(tuple([ele for ele in [ds_t, ds_u, ds_c, ds_d] if ele is not None]))
         if ganIndex:
-            c = tf.data.Dataset.zip((ds_u, ds_v))
-        elif cloudData is None:
-            if image is None:
-                c = tf.data.Dataset.zip((ds_u, ds_v))
-            else:
-                c = tf.data.Dataset.zip((ds_t, ds_u))
-                c = tf.data.Dataset.zip((c, ds_v))
-        else:
-            if image is None:
-                c = tf.data.Dataset.zip((ds_u, ds_c))
-                c = tf.data.Dataset.zip((c, ds_v))
-            else:
-                c = tf.data.Dataset.zip((ds_t, ds_u, ds_c))
-                c = tf.data.Dataset.zip((c, ds_v))
+            c = ds_u
+        c = tf.data.Dataset.zip((c, ds_v))
         if use_shuffle:
             c = c.shuffle(self.batch_size)
         c = c.batch(self.batch_size)
@@ -456,70 +454,83 @@ class WindowGenerator():
         if self.is_sampling_within_day or parameter.input_days is None:
             if addcloud:
                 return self.input_dataset(self.trainDataX, self.trainY_nor, cloudData=self.trainCloudX,
-                                          sequence_stride=1, use_shuffle=parameter.is_using_shuffle)
+                                          is_timestamp_as_data=self.using_timestamp_data,
+                                          sequence_stride=1, use_shuffle=self.using_shuffle)
             else:
                 return self.input_dataset(self.trainDataX, self.trainY_nor,
-                                          sequence_stride=1, use_shuffle=parameter.is_using_shuffle)
+                                          is_timestamp_as_data=self.using_timestamp_data,
+                                          sequence_stride=1, use_shuffle=self.using_shuffle)
         else:
             if addcloud:
                 return self.input_dataset(self.trainDataX, self.trainY_nor, cloudData=self.trainCloudX,
-                                          sequence_stride=self.samples_per_day, use_shuffle=parameter.is_using_shuffle)
+                                          is_timestamp_as_data=self.using_timestamp_data,
+                                          sequence_stride=self.samples_per_day, use_shuffle=self.using_shuffle)
             else:
                 return self.input_dataset(self.trainDataX, self.trainY_nor,
-                                          sequence_stride=self.samples_per_day, use_shuffle=parameter.is_using_shuffle)
+                                          is_timestamp_as_data=self.using_timestamp_data,
+                                          sequence_stride=self.samples_per_day, use_shuffle=self.using_shuffle)
 
     def valData(self, sepMode: str = "all", addcloud=False):
         # return self.input_dataset_2(self.valDataX, self.valCloudX, self.valY_nor, addcloud=addcloud, sequence_stride=1)
         if self.is_sampling_within_day or parameter.input_days is None:
             if addcloud:
                 return self.input_dataset(self.valDataX, self.valY_nor, cloudData=self.valCloudX,
+                                          is_timestamp_as_data=self.using_timestamp_data,
                                           sequence_stride=1)
             else:
-                return self.input_dataset(self.valDataX, self.valY_nor,
+                return self.input_dataset(self.valDataX, self.valY_nor, is_timestamp_as_data=self.using_timestamp_data,
                                           sequence_stride=1)
         else:
             if addcloud:
                 return self.input_dataset(self.valDataX, self.valY_nor, cloudData=self.valCloudX,
+                                          is_timestamp_as_data=self.using_timestamp_data,
                                           sequence_stride=self.samples_per_day)
             else:
-                return self.input_dataset(self.valDataX, self.valY_nor,
+                return self.input_dataset(self.valDataX, self.valY_nor, is_timestamp_as_data=self.using_timestamp_data,
                                           sequence_stride=self.samples_per_day)
 
     def testData(self, sepMode: str = "all", ganIndex=False, addcloud=False):
         # return self.input_dataset_2(self.testDataX, self.testCloudX, self.testY, ganIndex=ganIndex, addcloud=addcloud,
         #                             sequence_stride=parameter.label_width)
         if addcloud:
-            return self.input_dataset(self.testDataX, self.testY, cloudData=self.testCloudX, ganIndex=ganIndex,
+            return self.input_dataset(self.testDataX, self.testY, cloudData=self.testCloudX,
+                                      is_timestamp_as_data=self.using_timestamp_data, ganIndex=ganIndex,
                                       sequence_stride=self.label_width)
         else:
-            return self.input_dataset(self.testDataX, self.testY, ganIndex=ganIndex,
+            return self.input_dataset(self.testDataX, self.testY, is_timestamp_as_data=self.using_timestamp_data,
+                                      ganIndex=ganIndex,
                                       sequence_stride=self.label_width)
         ############################################################################################################################################
 
     def train(self, sepMode: str = "all", addcloud=False):
         if addcloud:
             return self.input_dataset(self.trainDataX, self.trainY_nor, cloudData=self.trainCloudX,
-                                      image=self.trainImagesX,
-                                      sequence_stride=1, use_shuffle=parameter.is_using_shuffle)
+                                      image=self.trainImagesX, is_timestamp_as_data=self.using_timestamp_data,
+                                      sequence_stride=1, use_shuffle=self.using_shuffle)
         else:
             return self.input_dataset(self.trainDataX, self.trainY_nor, image=self.trainImagesX,
-                                      sequence_stride=1, use_shuffle=parameter.is_using_shuffle)
+                                      is_timestamp_as_data=self.using_timestamp_data,
+                                      sequence_stride=1, use_shuffle=self.using_shuffle)
 
     def val(self, sepMode: str = "all", addcloud=False):
         if addcloud:
             return self.input_dataset(self.valDataX, self.valY_nor, cloudData=self.valCloudX, image=self.valImageX,
-                                      sequence_stride=1, use_shuffle=False)
+                                      is_timestamp_as_data=self.using_timestamp_data,
+                                      sequence_stride=1)
         else:
             return self.input_dataset(self.valDataX, self.valY_nor, image=self.valImageX,
-                                      sequence_stride=1, use_shuffle=False)
+                                      is_timestamp_as_data=self.using_timestamp_data,
+                                      sequence_stride=1)
 
     def test(self, sepMode: str = "all", ganIndex=False, addcloud=False):
         if addcloud:
             return self.input_dataset(self.testDataX, self.testY, cloudData=self.testCloudX, image=self.testImagesX,
+                                      is_timestamp_as_data=self.using_timestamp_data,
                                       ganIndex=ganIndex,
                                       sequence_stride=parameter.label_width, use_shuffle=False)
         else:
             return self.input_dataset(self.testDataX, self.testY, image=self.testImagesX,
+                                      is_timestamp_as_data=self.using_timestamp_data,
                                       ganIndex=ganIndex,
                                       sequence_stride=parameter.label_width, use_shuffle=False)
 
