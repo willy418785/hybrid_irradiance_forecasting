@@ -1,29 +1,28 @@
 import os
 
 import tensorflow as tf
-import numpy as np
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import BatchNormalization, Conv2D, MaxPooling2D, Concatenate, Dropout, Dense, Flatten, \
-    Input, Add
-from tensorflow.keras.layers import Conv1D, MaxPooling1D, GRU, LayerNormalization, Reshape, ZeroPadding2D, \
-    MultiHeadAttention
-from tensorflow.keras.models import Model
 
-from pyimagesearch import parameter
+from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.layers import Dense, Flatten, Input, Conv1D, GRU, Reshape
+
+from pyimagesearch import parameter, time_embedding
 from pyimagesearch.datautil import DataUtil
 from pyimagesearch.windowsGenerator import WindowGenerator
 from pyimagesearch.model_transformer import positional_encoding
+
 gen_modes = ['unistep', 'auto', "mlp"]
+
 
 class Config():
     layers = 3
     embedding_filters = 32
-    gru_units = 32
+    gru_units = 16
     embedding_kernel_size = 3
     dropout_rate = 0.1
 
+
 class Encoder(tf.keras.layers.Layer):
-    def __init__(self, layers, units, filters=None, rate=0.1):
+    def __init__(self, layers, units, seq_len=None, filters=None, rate=0.1):
         super().__init__()
         self.layers = layers
         self.units = units
@@ -31,15 +30,20 @@ class Encoder(tf.keras.layers.Layer):
             self.filters = units
         else:
             self.filters = filters
-
-        self.conv = Conv1D(filters=filters, kernel_size=Config.embedding_kernel_size, strides=1, padding="same", activation='elu')
+        self.pos_vec = positional_encoding(seq_len, self.filters) if seq_len is not None else None
+        self.conv = Conv1D(filters=self.filters, kernel_size=Config.embedding_kernel_size, strides=1, padding="same",
+                           activation='elu')
 
         self.gru_layers = [
             GRU(units, return_sequences=True, return_state=True, dropout=rate)
             for _ in range(layers)]
 
-    def call(self, input_seq, training):
+    def call(self, input_seq, training, timestamp_embedding=None):
         x = self.conv(input_seq)
+        if timestamp_embedding is not None:
+            x += timestamp_embedding
+        if self.pos_vec is not None:
+            x += self.pos_vec
         states = []
         for i in range(self.layers):
             x, state = self.gru_layers[i](x, training=training)
@@ -49,7 +53,7 @@ class Encoder(tf.keras.layers.Layer):
 
 
 class Decoder(tf.keras.layers.Layer):
-    def __init__(self, layers, units, filters=None, rate=0.1):
+    def __init__(self, layers, units, seq_len=None, filters=None, rate=0.1):
         super().__init__()
         self.layers = layers
         self.units = units
@@ -57,13 +61,21 @@ class Decoder(tf.keras.layers.Layer):
             self.filters = units
         else:
             self.filters = filters
+        self.pos_vec = positional_encoding(seq_len, self.filters) if seq_len is not None else None
+
+        self.conv = Conv1D(filters=self.filters, kernel_size=Config.embedding_kernel_size, strides=1, padding="causal",
+                           activation='elu')
         self.gru_layers = [
             GRU(units, return_sequences=True, return_state=True, dropout=rate)
             for _ in range(layers)]
 
-    def call(self, input_seq, initial_states, training):
-        x = input_seq
+    def call(self, input_seq, initial_states, training, timestamp_embedding=None, iter_step=None):
+        x = self.conv(input_seq)
         states = []
+        if timestamp_embedding is not None:
+            x += timestamp_embedding if iter_step is None else timestamp_embedding[:, iter_step:iter_step + 1, :]
+        if self.pos_vec is not None:
+            x += self.pos_vec if iter_step is None else self.pos_vec[:, iter_step:iter_step + 1, :]
         for i in range(self.layers):
             x, state = self.gru_layers[i](x, training=training, initial_state=initial_states[:, :, i])
             states.append(state)
@@ -87,24 +99,24 @@ class ConvGRU(tf.keras.Model):
         else:
             self.filters = filters
 
-        self.encoder = Encoder(num_layers, units, filters, rate=rate)
-        self.decoder = Decoder(num_layers, units, filters, rate=rate)
+        self.encoder = Encoder(num_layers, units, seq_len=in_seq_len, filters=filters, rate=rate)
+        self.decoder = Decoder(num_layers, units, seq_len=out_seq_len, filters=filters, rate=rate)
         if gen_mode == "unistep":
             self.fc = Dense(out_dim)
-            self.pos_vec = positional_encoding(out_seq_len, units)
         elif gen_mode == 'auto':
             self.fc = Dense(out_dim)
         elif gen_mode == "mlp":
             self.fc = Sequential([Dense(out_seq_len * out_dim), Reshape((out_seq_len, out_dim))])
         # self.build(input_shape=(None, in_seq_len, in_dim))
 
-    def call(self, input_seq, training):
-        enc_seq, states = self.encoder(input_seq, training)
+    def call(self, input_seq, training, time_embedding_tuple=None):
+        src_timestamps, shift_timestamps, tar_timestamps = time_embedding_tuple if time_embedding_tuple is not None else (
+            None, None, None)
+        enc_seq, states = self.encoder(input_seq, training=training, timestamp_embedding=src_timestamps)
         if self.gen_mode == "unistep":
-            inputs = tf.stack([tf.shape(enc_seq)[0], self.out_seq_len, self.units])
+            inputs = tf.stack([tf.shape(enc_seq)[0], self.out_seq_len, self.filters])
             inputs = tf.fill(inputs, 0.0)
-            inputs += self.pos_vec
-            dec_out, states = self.decoder(inputs, states, training)
+            dec_out, states = self.decoder(inputs, states, training=training, timestamp_embedding=tar_timestamps)
             output = self.fc(dec_out)
         elif self.gen_mode == 'auto':
             @tf.function(input_signature=[tf.TensorSpec(shape=(None, 1, self.units), dtype=tf.float32),
@@ -116,8 +128,11 @@ class ConvGRU(tf.keras.Model):
                 out = tf.fill(out, 0.0)
                 for i in tf.range(self.out_seq_len):
                     tf.autograph.experimental.set_loop_options(
-                        shape_invariants=[(out, tf.TensorShape([None, None, self.out_dim]))])
-                    inputs, states = self.decoder(inputs, states, training)
+                        shape_invariants=[(out, tf.TensorShape([None, None, self.out_dim]))
+                            , (inputs, tf.TensorShape([None, None, self.units]))])
+
+                    inputs, states = self.decoder(inputs, states, training=training, timestamp_embedding=tar_timestamps,
+                                                  iter_step=i)
                     tmp = self.fc(inputs)
                     out = tf.concat([out, tmp[:, -1:, :]], axis=1)
                 return out
@@ -145,10 +160,13 @@ if __name__ == '__main__':
                                       split_mode=parameter.split_mode,
                                       month_sep=parameter.test_month)
     dataUtil = data_with_weather_info
-    w2 = WindowGenerator(input_width=10,
+    src_len = 15
+    shift = 5
+    tar_len = 10
+    w2 = WindowGenerator(input_width=src_len,
                          image_input_width=0,
-                         label_width=10,
-                         shift=parameter.after_minutes,
+                         label_width=tar_len,
+                         shift=shift,
 
                          trainImages=dataUtil.trainImages,
                          trainData=dataUtil.train_df[dataUtil.feature_col],
@@ -168,21 +186,28 @@ if __name__ == '__main__':
                          testAverage=dataUtil.test_df_average,  ######
                          testY=dataUtil.test_df[dataUtil.label_col],
 
-                         batch_size=1,
+                         batch_size=32,
                          label_columns="ShortWaveDown",
-                         samples_per_day=dataUtil.samples_per_day)
-    model = ConvGRU(num_layers=Config.layers, in_seq_len=10, in_dim=len(parameter.features), out_seq_len=10, out_dim=len(parameter.target), units=5, filters=100,
-                    gen_mode='mlp',
-                    is_seq_continuous=True)
+                         samples_per_day=dataUtil.samples_per_day,
+                         using_timestamp_data=True)
+    input_scalar = Input(shape=(src_len, len(parameter.features)))
+    input_time = Input(shape=(src_len + shift + tar_len, len(time_embedding.vocab_size)))
+    embedding = time_embedding.TimeEmbedding(output_dims=Config.embedding_filters, input_len=src_len, shift_len=shift,
+                                             label_len=tar_len)(input_time)
+    LR = ConvGRU(num_layers=Config.layers, in_seq_len=src_len, in_dim=len(parameter.features), out_seq_len=tar_len,
+                 out_dim=len(parameter.target), units=Config.gru_units, filters=Config.embedding_filters,
+                 gen_mode='unistep',
+                 is_seq_continuous=True)(input_scalar, time_embedding_tuple=embedding)
+    model = Model(inputs=[input_scalar, input_time], outputs=LR)
     model.compile(loss=tf.losses.MeanSquaredError(), optimizer="Adam"
                   , metrics=[tf.metrics.MeanAbsoluteError()
             , tf.metrics.MeanAbsolutePercentageError()])
-    # model.summary()
+    model.summary()
     tf.keras.backend.clear_session()
-    # history = model.fit(w2.trainData(addcloud=parameter.addAverage),
-    #                     validation_data=w2.valData(addcloud=parameter.addAverage),
-    #                     epochs=100, batch_size=5, callbacks=[parameter.earlystoper])
+    history = model.fit(w2.trainData(addcloud=parameter.addAverage),
+                        validation_data=w2.valData(addcloud=parameter.addAverage),
+                        epochs=100, batch_size=5, callbacks=[parameter.earlystoper])
     for x, y in w2.trainData(addcloud=parameter.addAverage):
-        c = model(x[:1, :, :])
+        c = model(x)
     model.summary()
     pass
