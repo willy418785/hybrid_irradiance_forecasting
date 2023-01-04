@@ -18,7 +18,7 @@ class WindowGenerator():
                  valImage, valData, valCloud, valAverage, valY,
                  testImage, testData, testCloud, testAverage, testY,
                  batch_size=32, label_columns=None, samples_per_day=None,
-                 using_timestamp_data=parameter.is_timestamp_as_data, using_shuffle=parameter.is_using_shuffle):
+                 using_timestamp_data=False, using_shuffle=parameter.is_using_shuffle):
 
         # Work out the window parameters.
         self.input_width = input_width
