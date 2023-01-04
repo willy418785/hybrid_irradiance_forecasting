@@ -18,7 +18,7 @@ csv_name = "ElectricityConsumption_2012-2014.csv"  # ["2020final.csv","2020new",
 # features = ["MT_001"]
 features = ["MT_00{}".format(str(i)) for i in range(1, 6)]
 target = ["MT_00{}".format(str(i)) for i in range(1, 6)]
-is_timestamp_as_data = False
+
 # target = ["MT_001"]
 # target = ["DC-1|Pdc","DC-2|Pdc"]   # "ShortWaveDown","difference5","difference10", ["DC-1|Pdc","DC-2|Pdc"]
 # features = ['ShortWaveDown', 'CWB_Humidity', 'CWB_WindSpeed',
@@ -74,6 +74,7 @@ input_width = 168
 shifted_width = 24
 label_width = 1
 image_input_width3D = 10
+is_using_image_data = False
 
 epochs = 300
 # epoch_list = [100, 200, 250, 300, 400, 500]     #if no early stop
