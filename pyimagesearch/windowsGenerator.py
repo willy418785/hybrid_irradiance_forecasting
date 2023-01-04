@@ -235,7 +235,9 @@ class WindowGenerator():
                 # which might happen when the data is not in continuous manner
                 break
             rows_counter += num_of_rows
-        c = tf.data.Dataset.zip(tuple([ele for ele in [ds_t, ds_u, ds_c, ds_d] if ele is not None]))
+        data_tuple = tuple([ele for ele in [ds_t, ds_u, ds_c, ds_d] if ele is not None])
+        data_tuple = data_tuple if len(data_tuple) > 1 else data_tuple[0]
+        c = tf.data.Dataset.zip(data_tuple)
         if ganIndex:
             c = ds_u
         c = tf.data.Dataset.zip((c, ds_v))
