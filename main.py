@@ -13,6 +13,8 @@ from pyimagesearch import model_cnnLSTM
 from pyimagesearch import model_multiCnnLSTM
 from pyimagesearch import model_3Dresnet
 from pyimagesearch import model_transformer, model_convGRU, preprocess_utils
+from pyimagesearch.lstnet_model import LSTNetModel
+from pyimagesearch.lstnet_util import GetArguments, LSTNetInit, GetArgumentsDict
 from pyimagesearch.preprocess_utils import SplitInputByDay, MultipleDaysConvEmbed
 
 from pyimagesearch import my_metrics
@@ -388,7 +390,8 @@ def run():
 
                              batch_size=parameter.batchsize,
                              label_columns="ShortWaveDown",
-                             samples_per_day=dataUtil.samples_per_day)
+                             samples_per_day=dataUtil.samples_per_day,
+                             using_timestamp_data=False)
         w_with_timestamp_data = WindowGenerator(input_width=input_width,
                                                 image_input_width=image_input_width,
                                                 label_width=label_width,
@@ -1953,6 +1956,41 @@ def run():
             if modelMetricsRecorder.get(logM) is None:
                 modelMetricsRecorder[logM] = {}
             modelMetricsRecorder[logM]["autoregressive_transformer"] = metricsDict[logM]
+        pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
+
+    if "LSTNet" in parameter.model_list:
+        assert label_width == 1
+        best_perform, best_perform2 = None, None
+        best_model, best_model2 = None, None
+        log.info("LSTNet")
+        for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
+            args_dict = GetArgumentsDict()
+            init = LSTNetInit(args_dict, True)
+            init.window = input_width
+            init.skip = w.samples_per_day if w.samples_per_day < input_width else input_width
+            init.highway = w.samples_per_day if w.samples_per_day < input_width else input_width
+            model = LSTNetModel(init, (None, input_width, len(parameter.features)))
+            datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
+                                                                  generatorMode="data", testEpoch=testEpoch,
+                                                                  name="LSTNet")
+            print(datamodel_CL_performance)
+            if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
+                best_model = datamodel_CL
+                best_perform = datamodel_CL_performance
+            print(best_perform)
+            log.info("a model ok")
+
+        log.info("predicting SolarIrradiation by LSTNet...")
+
+        metricsDict = w.allPlot(model=[best_model],
+                                name="LSTNet",
+                                scaler=dataUtil.labelScaler,
+                                save_csv=True,
+                                datamode="data")
+        for logM in metricsDict:
+            if modelMetricsRecorder.get(logM) is None:
+                modelMetricsRecorder[logM] = {}
+            modelMetricsRecorder[logM]["LSTNet"] = metricsDict[logM]
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
     # intergrated with timestamp data
