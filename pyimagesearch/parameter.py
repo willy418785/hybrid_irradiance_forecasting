@@ -18,6 +18,7 @@ csv_name = "ElectricityConsumption_2012-2014.csv"  # ["2020final.csv","2020new",
 # features = ["MT_001"]
 features = ["MT_00{}".format(str(i)) for i in range(1, 6)]
 target = ["MT_00{}".format(str(i)) for i in range(1, 6)]
+is_timestamp_as_data = False
 # target = ["MT_001"]
 # target = ["DC-1|Pdc","DC-2|Pdc"]   # "ShortWaveDown","difference5","difference10", ["DC-1|Pdc","DC-2|Pdc"]
 # features = ['ShortWaveDown', 'CWB_Humidity', 'CWB_WindSpeed',
@@ -69,11 +70,10 @@ after_minutes = 1
 input_days = None
 shifted_days = None
 output_days = None
-input_width = 120
-shifted_width = 0
+input_width = 168
+shifted_width = 24
 label_width = 1
 image_input_width3D = 10
-is_using_image_data = False
 
 epochs = 300
 # epoch_list = [100, 200, 250, 300, 400, 500]     #if no early stop
@@ -84,7 +84,7 @@ epoch_list = [20000]
 # epoch_list = [500, 500, 500]
 # epoch_list = [500, 500, 500, 500]
 # epoch_list = [500, 500, 500, 500, 500]
-batchsize = 32
+batchsize = 16
 
 earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=100, min_delta=0.0001,
                             restore_best_weights=True)
@@ -102,7 +102,7 @@ earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=
 # model_list = ["Persistence", "MA", "data_cnnlstm", "simple_transformer"]
 # model_list = ["Persistence", "MA", "autoregressive_transformer"]
 # model_list = ["Persistence", "MA", "convGRU", "transformer", 'convGRU_w_mlp_decoder', 'transformer_w_mlp_decoder', 'autoregressive_convGRU', 'autoregressive_transformer']
-model_list = ["Persistence", 'MA', 'LR', "transformer_w_LR", 'convGRU_w_LR', "convGRU", "transformer"]
+model_list = ["Persistence", 'MA', "transformer_w_LR", 'convGRU_w_LR', 'LSTNet', "transformer_w_timestamps", "convGRU_w_timestamps"]
 # model_list = ["Persistence", "MA", 'AR', 'channelwise_AR']
 # model_list = ["Persistence", "MA", "convGRU", "transformer", 'convGRU_w_mlp_decoder', 'transformer_w_mlp_decoder']
 # model_list = ["Persistence", "MA", "simple_transformer"]
