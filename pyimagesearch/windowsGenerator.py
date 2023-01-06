@@ -87,40 +87,43 @@ class WindowGenerator():
             # inputs, targets = batch
             # print(inputs)
             # print("$targets.shape$", targets.shape)
-            if datamode == "data":
-                if parameter.addAverage:
-                    data, average = inputs
-                    print("$combined  data prediction inputs shape", data.shape)
-                    print("$combined average prediction inputs shape", average.shape)
-                else:
-                    data = inputs
-                    print("$combined  data prediction inputs shape", data.shape)
-            elif datamode == "combined":
-                if parameter.addAverage:
-                    image, data, average = inputs
-                    print("$combined image prediction inputs shape", image.shape)
-                    print("$combined  data prediction inputs shape", data.shape)
-                    print("$combined average prediction inputs shape", average.shape)
-                else:
-                    image, data = inputs
-                    print("$combined image prediction inputs shape", image.shape)
-                    print("$combined  data prediction inputs shape", data.shape)
-            if data.shape[0] != 0:
-                targets = targets.reshape((-1, targets.shape[-1]))
-                print("$targets.shape$", targets.shape)
-                if all_y is None:
-                    all_y = targets
-                else:
-                    all_y = np.vstack((all_y, targets))
-                # print(all_y.shape) 
-
-                pred = model.predict(inputs)
-                pred = pred.reshape((-1, pred.shape[-1]))
-                print("#pred.shape#", pred.shape)
-                if all_pred is None:
-                    all_pred = pred
-                else:
-                    all_pred = np.vstack((all_pred, pred))
+            # if isinstance(inputs, tuple):
+            #     for data in inputs:
+            #         print
+            # else:
+            #     pass
+            # if datamode == "data":
+            #     if parameter.addAverage:
+            #         data, average = inputs
+            #         print("$combined  data prediction inputs shape", data.shape)
+            #         print("$combined average prediction inputs shape", average.shape)
+            #     else:
+            #         data = inputs
+            #         print("$combined  data prediction inputs shape", data.shape)
+            # elif datamode == "combined":
+            #     if parameter.addAverage:
+            #         image, data, average = inputs
+            #         print("$combined image prediction inputs shape", image.shape)
+            #         print("$combined  data prediction inputs shape", data.shape)
+            #         print("$combined average prediction inputs shape", average.shape)
+            #     else:
+            #         image, data = inputs
+            #         print("$combined image prediction inputs shape", image.shape)
+            #         print("$combined  data prediction inputs shape", data.shape)
+            targets = targets.reshape((-1, targets.shape[-1]))
+            # print("$targets.shape$", targets.shape)
+            if all_y is None:
+                all_y = targets
+            else:
+                all_y = np.vstack((all_y, targets))
+            # print(all_y.shape)
+            pred = model.predict(inputs)
+            pred = pred.reshape((-1, pred.shape[-1]))
+            # print("#pred.shape#", pred.shape)
+            if all_pred is None:
+                all_pred = pred
+            else:
+                all_pred = np.vstack((all_pred, pred))
             # all_pred = model.predict(all_input)
         # print(">>>>>>>>",all_y.shape)
         # print("!!!!!!!!",all_pred.shape)
