@@ -20,7 +20,7 @@ features = ["DC-1|Pdc", "DC-2|Pdc"]
 # target = ["MT_00{}".format(str(i)) for i in range(1, 6)]
 
 # target = ["MT_001"]
-# target = ["DC-1|Pdc","DC-2|Pdc"]   # "ShortWaveDown","difference5","difference10", ["DC-1|Pdc","DC-2|Pdc"]
+target = ["DC-1|Pdc","DC-2|Pdc"]   # "ShortWaveDown","difference5","difference10", ["DC-1|Pdc","DC-2|Pdc"]
 # features = ['ShortWaveDown', 'CWB_Humidity', 'CWB_WindSpeed',
 #             'CWB_Temperature', 'EvapLevel', 'CWB_Rain05', 'CWB_Pressure', "CWB_WindDirection_Cosine",
 #             "CWB_WindDirection_Sine"]
@@ -80,6 +80,7 @@ epochs = 300
 # epoch_list = [100, 200, 250, 300, 400, 500]     #if no early stop
 # epoch_list = [1]
 epoch_list = [20000]
+# epoch_list = [0]
 # epoch_list = [500]
 # epoch_list = [500, 500]
 # epoch_list = [500, 500, 500]
