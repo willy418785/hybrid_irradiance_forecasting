@@ -537,7 +537,6 @@ def run():
             metricsDict = w_for_persistance.allPlot(model=[baseline],
                                                     name="Persistence",
                                                     scaler=dataUtil.labelScaler,
-                                                    save_csv=True,
                                                     datamode="data")
             for logM in metricsDict:
                 if modelMetricsRecorder.get(logM) is None:
@@ -573,7 +572,6 @@ def run():
             metricsDict = w_for_MA.allPlot(model=[movingAverage],
                                            name="MA",
                                            scaler=dataUtil.labelScaler,
-                                           save_csv=True,
                                            datamode="data")
 
             for logM in metricsDict:
@@ -683,13 +681,11 @@ def run():
             metricsDict = w.allPlot(model=[best_model, best_model2],
                                     name="conv3D_c_cnnlstm",
                                     scaler=dataUtil.labelScaler,
-                                    save_csv=True,
                                     datamode="combined")
         elif parameter.dynamic_model == "one":
             metricsDict = w.allPlot(model=[best_model],
                                     name="conv3D_c_cnnlstm",
                                     scaler=dataUtil.labelScaler,
-                                    save_csv=True,
                                     datamode="combined")
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
@@ -771,13 +767,11 @@ def run():
             metricsDict = w.allPlot(model=[best_model, best_model2],
                                     name="Cnn3dLSTM_c_cnnlstm",
                                     scaler=dataUtil.labelScaler,
-                                    save_csv=True,
                                     datamode="combined")
         if parameter.dynamic_model == "one":
             metricsDict = w.allPlot(model=[best_model],
                                     name="Cnn3dLSTM_c_cnnlstm",
                                     scaler=dataUtil.labelScaler,
-                                    save_csv=True,
                                     datamode="combined")
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
@@ -907,13 +901,11 @@ def run():
             metricsDict = w.allPlot(model=[best_model, best_model2],
                                     name="Resnet50_c_cnnlstm",
                                     scaler=dataUtil.labelScaler,
-                                    save_csv=True,
                                     datamode="combined")
         if parameter.dynamic_model == "one":
             metricsDict = w.allPlot(model=[best_model],
                                     name="Resnet50_c_cnnlstm",
                                     scaler=dataUtil.labelScaler,
-                                    save_csv=True,
                                     datamode="combined")
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
@@ -1038,13 +1030,11 @@ def run():
             metricsDict = w.allPlot(model=[best_model, best_model2],
                                     name="Efficient_c_cnnlstm",
                                     scaler=dataUtil.labelScaler,
-                                    save_csv=True,
                                     datamode="combined")
         if parameter.dynamic_model == "one":
             metricsDict = w.allPlot(model=[best_model],
                                     name="Efficient_c_cnnlstm",
                                     scaler=dataUtil.labelScaler,
-                                    save_csv=True,
                                     datamode="combined")
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
@@ -1120,13 +1110,13 @@ def run():
     #         metricsDict = w.allPlot(model=[best_model, best_model2],
     #                                 name="datamodel_CL",
     #                                 scaler=dataUtil.labelScaler,
-    #                                 save_csv=True,
+    #
     #                                 datamode="data")
     #     elif parameter.dynamic_model == "one":
     #         metricsDict = w.allPlot(model=[best_model],
     #                                 name="datamodel_CL",
     #                                 scaler=dataUtil.labelScaler,
-    #                                 save_csv=True,
+    #
     #                                 datamode="data")
     #     for logM in metricsDict:
     #         if modelMetricsRecorder.get(logM) is None:
@@ -1190,13 +1180,13 @@ def run():
     #         metricsDict = w.allPlot(model=[best_model, best_model2],
     #                                 name="simple_transformer",
     #                                 scaler=dataUtil.labelScaler,
-    #                                 save_csv=True,
+    #
     #                                 datamode="data")
     #     elif parameter.dynamic_model == "one":
     #         metricsDict = w.allPlot(model=[best_model],
     #                                 name="simple_transformer",
     #                                 scaler=dataUtil.labelScaler,
-    #                                 save_csv=True,
+    #
     #                                 datamode="data")
     #         try:
     #             os.mkdir(Path("model/{}".format(parameter.experient_label)))
@@ -1246,7 +1236,6 @@ def run():
             metricsDict = w.allPlot(model=[best_model],
                                     name="AR",
                                     scaler=dataUtil.labelScaler,
-                                    save_csv=True,
                                     datamode="data")
             for logM in metricsDict:
                 if modelMetricsRecorder.get(logM) is None:
@@ -1295,7 +1284,6 @@ def run():
             metricsDict = w.allPlot(model=[best_model],
                                     name="channelwise_AR",
                                     scaler=dataUtil.labelScaler,
-                                    save_csv=True,
                                     datamode="data")
             for logM in metricsDict:
                 if modelMetricsRecorder.get(logM) is None:
@@ -1345,7 +1333,6 @@ def run():
             metricsDict = w.allPlot(model=[best_model],
                                     name="LR",
                                     scaler=dataUtil.labelScaler,
-                                    save_csv=True,
                                     datamode="data")
             for logM in metricsDict:
                 if modelMetricsRecorder.get(logM) is None:
@@ -1395,7 +1382,6 @@ def run():
         metricsDict = w.allPlot(model=[best_model],
                                 name="convGRU",
                                 scaler=dataUtil.labelScaler,
-                                save_csv=True,
                                 datamode="data")
 
         for logM in metricsDict:
@@ -1464,7 +1450,6 @@ def run():
         metricsDict = w.allPlot(model=[best_model],
                                 name="transformer",
                                 scaler=dataUtil.labelScaler,
-                                save_csv=True,
                                 datamode="data")
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
@@ -1519,7 +1504,6 @@ def run():
         metricsDict = w.allPlot(model=[best_model],
                                 name="convGRU_w_AR",
                                 scaler=dataUtil.labelScaler,
-                                save_csv=True,
                                 datamode="data")
 
         for logM in metricsDict:
@@ -1595,7 +1579,6 @@ def run():
         metricsDict = w.allPlot(model=[best_model],
                                 name="transformer_w_AR",
                                 scaler=dataUtil.labelScaler,
-                                save_csv=True,
                                 datamode="data")
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
@@ -1651,7 +1634,6 @@ def run():
         metricsDict = w.allPlot(model=[best_model],
                                 name="convGRU_w_LR",
                                 scaler=dataUtil.labelScaler,
-                                save_csv=True,
                                 datamode="data")
 
         for logM in metricsDict:
@@ -1729,7 +1711,6 @@ def run():
         metricsDict = w.allPlot(model=[best_model],
                                 name="transformer_w_LR",
                                 scaler=dataUtil.labelScaler,
-                                save_csv=True,
                                 datamode="data")
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
@@ -1776,7 +1757,6 @@ def run():
         metricsDict = w.allPlot(model=[best_model],
                                 name="convGRU_w_mlp_decoder",
                                 scaler=dataUtil.labelScaler,
-                                save_csv=True,
                                 datamode="data")
 
         for logM in metricsDict:
@@ -1839,7 +1819,6 @@ def run():
         metricsDict = w.allPlot(model=[best_model],
                                 name="transformer_w_mlp_decoder",
                                 scaler=dataUtil.labelScaler,
-                                save_csv=True,
                                 datamode="data")
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
@@ -1885,7 +1864,6 @@ def run():
         metricsDict = w.allPlot(model=[best_model],
                                 name="autoregressive_convGRU",
                                 scaler=dataUtil.labelScaler,
-                                save_csv=True,
                                 datamode="data")
 
         for logM in metricsDict:
@@ -1949,7 +1927,6 @@ def run():
         metricsDict = w.allPlot(model=[best_model],
                                 name="autoregressive_transformer",
                                 scaler=dataUtil.labelScaler,
-                                save_csv=True,
                                 datamode="data")
 
         for logM in metricsDict:
@@ -1985,7 +1962,6 @@ def run():
         metricsDict = w.allPlot(model=[best_model],
                                 name="LSTNet",
                                 scaler=dataUtil.labelScaler,
-                                save_csv=True,
                                 datamode="data")
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
@@ -2055,7 +2031,6 @@ def run():
         metricsDict = w.allPlot(model=[best_model],
                                 name="convGRU_w_timestamps",
                                 scaler=dataUtil.labelScaler,
-                                save_csv=True,
                                 datamode="data")
 
         for logM in metricsDict:
@@ -2135,7 +2110,6 @@ def run():
         metricsDict = w.allPlot(model=[best_model],
                                 name="transformer_w_timestamps",
                                 scaler=dataUtil.labelScaler,
-                                save_csv=True,
                                 datamode="data")
 
         for logM in metricsDict:
@@ -2207,7 +2181,6 @@ def run():
         metricsDict = w.allPlot(model=[best_model],
                                 name="convGRU_w_LR_timestamps",
                                 scaler=dataUtil.labelScaler,
-                                save_csv=True,
                                 datamode="data")
 
         for logM in metricsDict:
@@ -2290,7 +2263,6 @@ def run():
         metricsDict = w.allPlot(model=[best_model],
                                 name="transformer_w_LR_timestamps",
                                 scaler=dataUtil.labelScaler,
-                                save_csv=True,
                                 datamode="data")
 
         for logM in metricsDict:
