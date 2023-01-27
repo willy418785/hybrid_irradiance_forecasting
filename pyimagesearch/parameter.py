@@ -10,17 +10,17 @@ static_suffle = False
 dynamic_suffle = False
 timeseries = True
 datasetPath = "../skyImage"
-csv_name = 'dataset_renheo_[2019].csv'  # ["2020final.csv","2020new","2020shuffleDay", 'dataset_renheo_[2019].csv', 'ElectricityConsumption_2012-2014.csv']
+csv_name = 'ElectricityConsumption_2012-2014.csv'  # ["2020final.csv","2020new","2020shuffleDay", 'dataset_renheo_[2019].csv', 'ElectricityConsumption_2012-2014.csv']
 # features = ['ShortWaveDown'] # target only
 # features = ['ShortWaveDown', 'CWB_Humidity', 'CWB_Temperature']  # david suggested
 # features = ["DC-1|Pdc", "DC-2|Pdc", "Temperature", "RH"] # david suggested
-features = ["DC-1|Pdc", "DC-2|Pdc"]
+# features = None
 # features = ["MT_001"]
-# features = ["MT_00{}".format(str(i)) for i in range(1, 6)]
-# target = ["MT_00{}".format(str(i)) for i in range(1, 6)]
+features = ["MT_{}".format(str(i).zfill(3)) for i in range(1, 371)]
+target = ["MT_{}".format(str(i).zfill(3)) for i in range(1, 371)]
 
 # target = ["MT_001"]
-target = ["DC-1|Pdc","DC-2|Pdc"]   # "ShortWaveDown","difference5","difference10", ["DC-1|Pdc","DC-2|Pdc"]
+# target = None   # "ShortWaveDown","difference5","difference10", ["DC-1|Pdc","DC-2|Pdc"]
 # features = ['ShortWaveDown', 'CWB_Humidity', 'CWB_WindSpeed',
 #             'CWB_Temperature', 'EvapLevel', 'CWB_Rain05', 'CWB_Pressure', "CWB_WindDirection_Cosine",
 #             "CWB_WindDirection_Sine"]
@@ -86,7 +86,7 @@ epoch_list = [20000]
 # epoch_list = [500, 500, 500]
 # epoch_list = [500, 500, 500, 500]
 # epoch_list = [500, 500, 500, 500, 500]
-batchsize = 16
+batchsize = 128
 
 earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=100, min_delta=0.0001,
                             restore_best_weights=True)
@@ -104,9 +104,10 @@ earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=
 # model_list = ["Persistence", "MA", "data_cnnlstm", "simple_transformer"]
 # model_list = ["Persistence", "MA", "autoregressive_transformer"]
 # model_list = ["Persistence", "MA", "convGRU", "transformer", 'convGRU_w_mlp_decoder', 'transformer_w_mlp_decoder', 'autoregressive_convGRU', 'autoregressive_transformer']
-model_list = ["Persistence", 'MA', "transformer_w_LR", 'convGRU_w_LR', 'LSTNet', "transformer_w_timestamps",
-              "convGRU_w_timestamps", "convGRU", "transformer", "convGRU_w_LR_timestamps",
-              "transformer_w_LR_timestamps"]
+# model_list = ["Persistence", 'MA', "transformer_w_LR", 'convGRU_w_LR', 'LSTNet', "transformer_w_timestamps",
+#               "convGRU_w_timestamps", "convGRU", "transformer", "convGRU_w_LR_timestamps",
+#               "transformer_w_LR_timestamps"]
+model_list = ["Persistence", 'MA', 'LSTNet']
 # model_list = ["convGRU", "transformer", "convGRU_w_LR_timestamps", "transformer_w_LR_timestamps"]
 # model_list = ["Persistence", "MA", 'AR', 'channelwise_AR']
 # model_list = ["Persistence", "MA", "convGRU", "transformer", 'convGRU_w_mlp_decoder', 'transformer_w_mlp_decoder']
