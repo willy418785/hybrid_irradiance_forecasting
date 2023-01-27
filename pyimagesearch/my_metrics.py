@@ -33,6 +33,11 @@ def weighted_mean_absolute_percentage_error(y_true, y_pred):  # senpai version e
     #    y_true, y_pred = _check_1d_array(y_true, y_pred)
     return np.sum(np.abs(y_true - y_pred)) / np.sum(y_true)
 
+def root_relative_squared_error(y_true, y_pred):
+    num = tf.keras.backend.sqrt(tf.keras.backend.mean(tf.keras.backend.square(y_true - y_pred), axis=None))
+    den = tf.keras.backend.std(y_true, axis=None)
+
+    return num / den
 
 def mean_absolute_percentage_error(y_true, y_pred):
     y_true = check_array(y_true, ensure_2d=False)
@@ -76,6 +81,7 @@ def log_metrics(df, name):
     metircs_dist["WMAPE"] = weighted_mean_absolute_percentage_error(df[0], df[1])
     gt = tf.convert_to_tensor(df[0])
     pred = tf.convert_to_tensor(df[1])
+    metircs_dist["RSE"] = root_relative_squared_error(gt, pred).numpy()
     metircs_dist["VWMAPE"] = VWMAPE(gt, pred).numpy()
     metircs_dist["corr"] = corr(gt, pred).numpy()
     log = logging.getLogger(parameter.experient_label)
@@ -86,6 +92,7 @@ def log_metrics(df, name):
     log.info("MAE : {}".format(metircs_dist["MAE"]))
     log.info("MAPE : {}".format(metircs_dist["MAPE"]))
     log.info("WMAPE : {}".format(metircs_dist["WMAPE"]))
+    log.info("RSE : {}".format(metircs_dist["RSE"]))
     log.info("VWMAPE : {}".format(metircs_dist["VWMAPE"]))
     log.info("corr : {}".format(metircs_dist["corr"]))
     return metircs_dist
@@ -121,6 +128,7 @@ def seperate_log_metrics(df, name, minutes):
     sep_metircs_mae = np.zeros(minutes)
     sep_metircs_mape = np.zeros(minutes)
     sep_metircs_wmape = np.zeros(minutes)
+    sep_metircs_rse = np.zeros(minutes)
     sep_metircs_vwmape = np.zeros(minutes)
     sep_metircs_corr = np.zeros(minutes)
 
@@ -133,6 +141,7 @@ def seperate_log_metrics(df, name, minutes):
         sep_metircs_wmape[i] = weighted_mean_absolute_percentage_error(glist[i], plist[i])
         gt = tf.convert_to_tensor(glist[i])
         pred = tf.convert_to_tensor(plist[i])
+        sep_metircs_rse[i] = root_relative_squared_error(gt, pred).numpy()
         sep_metircs_vwmape[i] = VWMAPE(gt, pred).numpy()
         sep_metircs_corr[i] = corr(gt, pred).numpy()
 
@@ -152,6 +161,7 @@ def seperate_log_metrics(df, name, minutes):
         sep_metircs_dist["MAE {}min".format(i + 1)] = sep_metircs_mae[i]
         sep_metircs_dist["MAPE {}min".format(i + 1)] = sep_metircs_mape[i]
         sep_metircs_dist["WMAPE {}min".format(i + 1)] = sep_metircs_wmape[i]
+        sep_metircs_dist["RSE {}min".format(i + 1)] = sep_metircs_rse[i]
         sep_metircs_dist["VWMAPE {}min".format(i + 1)] = sep_metircs_vwmape[i]
         sep_metircs_dist["corr {}min".format(i + 1)] = sep_metircs_corr[i]
 
@@ -161,6 +171,7 @@ def seperate_log_metrics(df, name, minutes):
     sepAvg_metircs_dist["MAE avg"] = sep_metircs_mae.mean()
     sepAvg_metircs_dist["MAPE avg"] = sep_metircs_mape.mean()
     sepAvg_metircs_dist["WMAPE avg"] = sep_metircs_wmape.mean()
+    sepAvg_metircs_dist["RSE avg"] = sep_metircs_rse.mean()
     sepAvg_metircs_dist["VWMAPE avg"] = sep_metircs_vwmape.mean()
     sepAvg_metircs_dist["corr avg"] = sep_metircs_corr.mean()
 
@@ -196,6 +207,7 @@ def log_metrics_day_by_day(df, name, n_days):
     sep_metircs_mae = np.zeros(n_days)
     sep_metircs_mape = np.zeros(n_days)
     sep_metircs_wmape = np.zeros(n_days)
+    sep_metircs_rse = np.zeros(n_days)
     sep_metircs_vwmape = np.zeros(n_days)
     sep_metircs_corr = np.zeros(n_days)
 
@@ -208,6 +220,7 @@ def log_metrics_day_by_day(df, name, n_days):
         sep_metircs_wmape[i] = weighted_mean_absolute_percentage_error(glist[i], plist[i])
         gt = tf.convert_to_tensor(glist[i])
         pred = tf.convert_to_tensor(plist[i])
+        sep_metircs_rse[i] = root_relative_squared_error(gt, pred).numpy()
         sep_metircs_vwmape[i] = VWMAPE(gt, pred).numpy()
         sep_metircs_corr[i] = corr(gt, pred).numpy()
 
@@ -221,6 +234,7 @@ def log_metrics_day_by_day(df, name, n_days):
         sep_metircs_dist["MAE {}th day".format(i + 1)] = sep_metircs_mae[i]
         sep_metircs_dist["MAPE {}th day".format(i + 1)] = sep_metircs_mape[i]
         sep_metircs_dist["WMAPE {}th day".format(i + 1)] = sep_metircs_wmape[i]
+        sep_metircs_dist["RSE {}th day".format(i + 1)] = sep_metircs_rse[i]
         sep_metircs_dist["VWMAPE {}th day".format(i + 1)] = sep_metircs_vwmape[i]
         sep_metircs_dist["corr {}th day".format(i + 1)] = sep_metircs_corr[i]
 
