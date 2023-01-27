@@ -154,3 +154,6 @@ if is_using_cloud_location:
     image_depth += 1
 
 timezone = 'Asia/Taipei'
+
+save_plot=False
+save_csv=True
