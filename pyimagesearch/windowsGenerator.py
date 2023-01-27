@@ -755,7 +755,8 @@ class WindowGenerator():
         all_y_index = all_y_index.flatten().astype("datetime64[ns]")
         return all_x_index, all_y_index
 
-    def allPlot(self, model=None, plot_col_index=0, name="Example", scaler=None, save_csv=False,
+    def allPlot(self, model=None, plot_col_index=0, name="Example", scaler=None,
+                save_csv=parameter.save_csv, save_plot=parameter.save_plot,
                 rainSepMode=False, datamode="data"):
         pattern = "[" + "|\'\"" + "]"
         output_filelabel = "plot/{}/{}".format(parameter.experient_label, name)
@@ -896,64 +897,64 @@ class WindowGenerator():
         all_dict = {**metircs_dist, **sep_metircs_dist, **metircs_dist_by_day}
 
         # cloud_label 標籤
-        pattern = "[" + "|\'\"" + "]"
-        df_pred['cloud_label'] = 0
-        df_gt['cloud_label'] = 0
+        try:
+            os.mkdir(Path("plot/{}".format(parameter.experient_label)))
+        except:
+            print("plotDir exist")
         if cloudA_label_index is not None:
+            df_pred['cloud_label'] = 0
+            df_gt['cloud_label'] = 0
             df_pred.loc[cloudA_label_index, 'cloud_label'] = 1
             df_gt.loc[cloudA_label_index, 'cloud_label'] = 1
         ####plot all column
-        for col_name in df_pred.columns[:-1]:
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(
-                x=df_pred.index,
-                y=df_pred[col_name],
-                mode='lines+markers',
-                marker_color='rgba(240, 14, 14, 1)',  # red
-                name='Predict'  # Style name/legend entry with html tags
-            ))
+        if save_plot:
+            pattern = "[" + "|\'\"" + "]"
+            for col_name in df_pred.columns[:-1]:
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(
+                    x=df_pred.index,
+                    y=df_pred[col_name],
+                    mode='lines+markers',
+                    marker_color='rgba(240, 14, 14, 1)',  # red
+                    name='Predict'  # Style name/legend entry with html tags
+                ))
 
-            fig.add_trace(go.Scatter(
-                x=df_pred.index,
-                y=df_gt[col_name],
-                mode='lines+markers',
-                marker_color='rgba(44, 240, 14, 1)',  # green
-                name='GroundTruth'  # Style name/legend entry with html tags
-            ))
-            # 額外plot雨天預測 在同一張圖上
-            if cloudC_label_index is not None:
-                # plot all , and then override color
-                temp_df = df_pred.copy()
-                temp_df.loc[temp_df.cloud_label == 1] = None
-                fig.add_scattergl(
-                    x=temp_df.index,
-                    y=temp_df[col_name],
+                fig.add_trace(go.Scatter(
+                    x=df_pred.index,
+                    y=df_gt[col_name],
                     mode='lines+markers',
-                    marker_color='rgba(245, 158, 66, 1)',  # red
-                    name='cloudA'  # Style name/legend entry with html tags
-                )
-                temp_df = df_pred.copy()
-                temp_df.loc[temp_df.cloud_label == 0] = None
-                fig.add_scattergl(
-                    x=temp_df.index,
-                    y=temp_df[col_name],
-                    mode='lines+markers',
-                    marker_color='rgba(66, 197, 245, 1)',  # green
-                    name='cloudC'  # Style name/legend entry with html tags
-                )
-            # fig.update_layout(uniformtext_minsize=30, uniformtext_mode='hide')
-            fig.update_traces(textfont_size=30)
-            # df = df_gt.merge(df_pred)
-            ###
-            try:
-                os.mkdir(Path("plot/{}".format(parameter.experient_label)))
-            except:
-                print("plotDir exist")
-            if (save_csv):
-                # df.to_csv(Path(output_filelabel + ".csv"))
-                df_pred.to_csv(Path(output_filelabel + "_Pred.csv"))
-                df_gt.to_csv(Path(output_filelabel + "_GT.csv"))
-            plot_path = re.sub(pattern, "", output_filelabel + "_" + col_name + ".html")
-            fig.write_html(str(Path(plot_path)))
-            ###
+                    marker_color='rgba(44, 240, 14, 1)',  # green
+                    name='GroundTruth'  # Style name/legend entry with html tags
+                ))
+                # 額外plot雨天預測 在同一張圖上
+                if cloudC_label_index is not None:
+                    # plot all , and then override color
+                    temp_df = df_pred.copy()
+                    temp_df.loc[temp_df.cloud_label == 1] = None
+                    fig.add_scattergl(
+                        x=temp_df.index,
+                        y=temp_df[col_name],
+                        mode='lines+markers',
+                        marker_color='rgba(245, 158, 66, 1)',  # red
+                        name='cloudA'  # Style name/legend entry with html tags
+                    )
+                    temp_df = df_pred.copy()
+                    temp_df.loc[temp_df.cloud_label == 0] = None
+                    fig.add_scattergl(
+                        x=temp_df.index,
+                        y=temp_df[col_name],
+                        mode='lines+markers',
+                        marker_color='rgba(66, 197, 245, 1)',  # green
+                        name='cloudC'  # Style name/legend entry with html tags
+                    )
+                # fig.update_layout(uniformtext_minsize=30, uniformtext_mode='hide')
+                fig.update_traces(textfont_size=30)
+                # df = df_gt.merge(df_pred)
+                ###
+                plot_path = re.sub(pattern, "", output_filelabel + "_" + col_name + ".html")
+                fig.write_html(str(Path(plot_path)))
+        if (save_csv):
+            # df.to_csv(Path(output_filelabel + ".csv"))
+            df_pred.to_csv(Path(output_filelabel + "_Pred.csv"))
+            df_gt.to_csv(Path(output_filelabel + "_GT.csv"))
         return all_dict
