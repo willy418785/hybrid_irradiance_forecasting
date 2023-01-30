@@ -107,7 +107,7 @@ earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=
 # model_list = ["Persistence", 'MA', "transformer_w_LR", 'convGRU_w_LR', 'LSTNet', "transformer_w_timestamps",
 #               "convGRU_w_timestamps", "convGRU", "transformer", "convGRU_w_LR_timestamps",
 #               "transformer_w_LR_timestamps"]
-model_list = ["Persistence", 'MA', 'LSTNet']
+model_list = ["Persistence", 'MA', 'LSTNet', "convGRU_w_LR_timestamps", "transformer_w_LR_timestamps"]
 # model_list = ["convGRU", "transformer", "convGRU_w_LR_timestamps", "transformer_w_LR_timestamps"]
 # model_list = ["Persistence", "MA", 'AR', 'channelwise_AR']
 # model_list = ["Persistence", "MA", "convGRU", "transformer", 'convGRU_w_mlp_decoder', 'transformer_w_mlp_decoder']
@@ -138,7 +138,7 @@ split_mode = "all_year"  # "all_year","month"  # all_year就是整年按比例�
 test_month = 2
 tailMonth = 12  # 最後一個月(val抓上一個月會用到)
 squeeze = False  # windowgenerator裡面image要不要降成2維，用於某些model
-is_using_shuffle = True
+is_using_shuffle = False
 
 smoothing_mode = {"MA": {"num_of_entries": 10},
                   "EMA": {"span": 10}
