@@ -19,7 +19,8 @@ def corr(y_true, y_pred):
     num2 = y_pred - tf.keras.backend.mean(y_pred, axis=0)
     num = tf.keras.backend.mean(num1 * num2, axis=0)
     den = tf.keras.backend.std(y_true, axis=0) * tf.keras.backend.std(y_pred, axis=0)
-    return tf.keras.backend.mean(num / den)
+    i = (den!=0)
+    return tf.keras.backend.mean(num[i]/ den[i])
 
 
 def weighted_mean_absolute_percentage_error(y_true, y_pred):  # senpai version error method
