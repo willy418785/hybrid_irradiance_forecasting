@@ -65,6 +65,7 @@ def ModelTrainer(dataGnerator: WindowGenerator,
                   , metrics=[tf.metrics.MeanAbsoluteError()
             , tf.metrics.MeanAbsolutePercentageError()
             , my_metrics.VWMAPE
+            , my_metrics.root_relative_squared_error
             , my_metrics.corr])
     model.summary()
     tf.keras.backend.clear_session()
