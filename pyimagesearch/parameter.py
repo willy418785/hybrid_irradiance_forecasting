@@ -71,7 +71,7 @@ input_days = None
 shifted_days = None
 output_days = None
 input_width = 168
-shifted_width = 24
+shifted_width = 23
 label_width = 1
 image_input_width3D = 10
 is_using_image_data = False
@@ -86,7 +86,7 @@ epoch_list = [20000]
 # epoch_list = [500, 500, 500]
 # epoch_list = [500, 500, 500, 500]
 # epoch_list = [500, 500, 500, 500, 500]
-batchsize = 128
+batchsize = 16
 
 earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=100, min_delta=0.0001,
                             restore_best_weights=True)
