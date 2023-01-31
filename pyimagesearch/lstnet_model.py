@@ -337,7 +337,7 @@ def LSTNetModel(init, input_shape):
 
 	# Generate output as the summation of the Dense layer output and the AR one
         Y = Add()([Y,Z])
-    
+    Y = tf.expand_dims(Y, axis=1)
     # Generate Model
     model = Model(inputs = X, outputs = Y)
     
