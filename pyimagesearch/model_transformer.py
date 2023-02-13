@@ -11,6 +11,7 @@ from tensorflow.keras.models import Model
 
 from pyimagesearch import parameter, time_embedding
 from pyimagesearch.datautil import DataUtil
+from pyimagesearch.series_decomposition import SeriesDecompose
 from pyimagesearch.windowsGenerator import WindowGenerator
 
 gen_modes = ['unistep', 'auto', "mlp"]
@@ -84,13 +85,14 @@ class Encoder(tf.keras.layers.Layer):
         self.d_model = d_model
         self.num_layers = num_layers
         self.seq_len = seq_len
-        k_dim = int(d_model / num_heads)
-        v_dim = k_dim
+        self.k_dim = int(d_model / num_heads)
+        self.v_dim = self.k_dim
         self.embedding = Conv1D(filters=d_model, kernel_size=Config.embedding_kernel_size, strides=1, padding="same",
                                 activation='elu')
         self.pos_encoding = positional_encoding(seq_len, d_model)
         self.enc_layers = [
-            EncoderLayer(d_model=d_model, num_heads=num_heads, key_dim=k_dim, value_dim=v_dim, dff=dff, rate=rate)
+            EncoderLayer(d_model=d_model, num_heads=num_heads, key_dim=self.k_dim, value_dim=self.v_dim, dff=dff,
+                         rate=rate)
             for _ in range(num_layers)]
 
         self.dropout = tf.keras.layers.Dropout(rate)
@@ -143,14 +145,15 @@ class Decoder(tf.keras.layers.Layer):
         self.d_model = d_model
         self.num_layers = num_layers
         self.seq_len = seq_len
-        k_dim = int(d_model / num_heads)
-        v_dim = k_dim
+        self.k_dim = int(d_model / num_heads)
+        self.v_dim = self.k_dim
         self.embedding = Conv1D(filters=d_model, kernel_size=Config.embedding_kernel_size, strides=1, padding="causal",
                                 activation='elu')
         self.pos_encoding = positional_encoding(seq_len, d_model)
 
         self.dec_layers = [
-            DecoderLayer(d_model=d_model, num_heads=num_heads, key_dim=k_dim, value_dim=v_dim, dff=dff, rate=rate)
+            DecoderLayer(d_model=d_model, num_heads=num_heads, key_dim=self.k_dim, value_dim=self.v_dim, dff=dff,
+                         rate=rate)
             for _ in range(num_layers)]
         self.dropout = Dropout(rate)
 
@@ -250,6 +253,70 @@ class Transformer(tf.keras.Model):
         return out
 
 
+class StationaryEncoderLayer(EncoderLayer):
+    def __init__(self, d_model, num_heads, key_dim, value_dim, dff, rate=0.1, avg_window=9):
+        super().__init__(d_model, num_heads, key_dim, value_dim, dff, rate=rate)
+        self.decompose = SeriesDecompose(avg_window)
+
+    def call(self, x, is_pooling, training, mask):
+        attn_output = self.mha(x, x, x, mask, training=training)  # (batch_size, input_seq_len, d_model)
+        out1 = self.ln1(x + attn_output)  # (batch_size, input_seq_len, d_model)
+        season1, _ = self.decompose(out1)
+        ff_output = self.ff(season1)  # (batch_size, input_seq_len, d_model)
+        out2 = self.ln2(season1 + ff_output)  # (batch_size, input_seq_len, d_model)
+        season2, _ = self.decompose(out2)
+        if is_pooling:
+            season2 = self.pooling(season2)
+        return season2
+
+
+class StationaryDecoderLayer(DecoderLayer):
+    def __init__(self, d_model, num_heads, key_dim, value_dim, dff, rate=0.1, avg_window=9):
+        super().__init__(d_model, num_heads, key_dim, value_dim, dff, rate=rate)
+        self.decompose = SeriesDecompose(avg_window)
+
+    def call(self, x, enc_output, is_pooling, training):
+        look_ahead_mask = attention_masking(tf.shape(x)[1])
+        attn1 = self.mha1(x, x, x, look_ahead_mask, training=training)  # (batch_size, target_seq_len, d_model)
+        out1 = self.ln1(attn1 + x)
+        season1, _ = self.decompose(out1)
+        if is_pooling:
+            season1 = self.pooling(season1)
+
+        attn2 = self.mha2(season1, enc_output, training=training)  # (batch_size, target_seq_len, d_model)
+        out2 = self.ln2(attn2 + season1)  # (batch_size, target_seq_len, d_model)
+        season2, _ = self.decompose(out2)
+
+        ff_output = self.ff(season2)  # (batch_size, target_seq_len, d_model)
+        out3 = self.ln3(ff_output + season2)  # (batch_size, target_seq_len, d_model)
+        season3, _ = self.decompose(out3)
+        return season3
+
+
+class StationaryTransformer(Transformer):
+    def __init__(self, num_layers, d_model, num_heads, dff, src_seq_len, tar_seq_len, src_dim, tar_dim, rate=0.1,
+                 gen_mode="unistep", is_seq_continuous=False, is_pooling=False, token_len=None, avg_window=9):
+        assert gen_mode in gen_modes
+        super().__init__(num_layers, d_model, num_heads, dff, src_seq_len, tar_seq_len, src_dim, tar_dim, rate=rate,
+                         gen_mode=gen_mode, is_seq_continuous=is_seq_continuous, is_pooling=is_pooling,
+                         token_len=token_len)
+        self.decompose = SeriesDecompose(avg_window)
+        self.encoder.enc_layers = [
+            StationaryEncoderLayer(d_model=d_model, num_heads=num_heads, key_dim=self.encoder.k_dim,
+                                   value_dim=self.encoder.v_dim,
+                                   dff=dff, rate=rate, avg_window=avg_window) for _ in range(num_layers)]
+        if self.gen_mode == 'unistep' or self.gen_mode == 'auto':
+            self.decoder.dec_layers = [
+                StationaryDecoderLayer(d_model=d_model, num_heads=num_heads, key_dim=self.decoder.k_dim,
+                                       value_dim=self.decoder.v_dim,
+                                       dff=dff, rate=rate, avg_window=avg_window) for _ in range(num_layers)]
+
+    def call(self, inputs, training, time_embedding_tuple=None):
+        seasonality, _ = self.decompose(inputs)
+        out = super().call(seasonality, training, time_embedding_tuple=time_embedding_tuple)
+        return out
+
+
 if __name__ == '__main__':
     train_path_with_weather_info = os.path.sep.join(["../{}".format(parameter.csv_name)])
     data_with_weather_info = DataUtil(train_path=train_path_with_weather_info,
@@ -295,11 +362,12 @@ if __name__ == '__main__':
     input_time = Input(shape=(src_len + shift + tar_len, len(time_embedding.vocab_size)))
     embedding = time_embedding.TimeEmbedding(output_dims=Config.d_model, input_len=src_len, shift_len=shift,
                                              label_len=tar_len)(input_time)
-    LR = Transformer(num_layers=Config.layers, d_model=Config.d_model, num_heads=Config.n_heads, dff=Config.dff,
-                     src_seq_len=src_len, tar_seq_len=tar_len,
-                     src_dim=len(parameter.features),
-                     tar_dim=len(parameter.target), rate=0.1, gen_mode="unistep", is_seq_continuous=True,
-                     is_pooling=True, token_len=5)(input_scalar, time_embedding_tuple=embedding)
+    LR = StationaryTransformer(num_layers=Config.layers, d_model=Config.d_model, num_heads=Config.n_heads,
+                               dff=Config.dff,
+                               src_seq_len=src_len, tar_seq_len=tar_len,
+                               src_dim=len(parameter.features),
+                               tar_dim=len(parameter.target), rate=0.1, gen_mode="unistep", is_seq_continuous=True,
+                               is_pooling=True, token_len=5)(input_scalar, time_embedding_tuple=embedding)
 
     model = Model(inputs=[input_scalar, input_time], outputs=LR)
     model.compile(loss=tf.losses.MeanSquaredError(), optimizer="Adam"
