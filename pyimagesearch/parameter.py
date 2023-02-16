@@ -107,7 +107,7 @@ earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=
 # model_list = ["Persistence", 'MA', "transformer_w_LR", 'convGRU_w_LR', 'LSTNet', "transformer_w_timestamps",
 #               "convGRU_w_timestamps", "convGRU", "transformer", "convGRU_w_LR_timestamps",
 #               "transformer_w_LR_timestamps"]
-model_list = ["Persistence", 'MA', "convGRU_w_LR_timestamps", "transformer_w_LR_timestamps", "stationary_transformer_w_LR_timestamps"]
+model_list = ["stationary_convGRU_w_LR_timestamps"]
 # model_list = ["convGRU", "transformer", "convGRU_w_LR_timestamps", "transformer_w_LR_timestamps"]
 # model_list = ["Persistence", "MA", 'AR', 'channelwise_AR']
 # model_list = ["Persistence", "MA", "convGRU", "transformer", 'convGRU_w_mlp_decoder', 'transformer_w_mlp_decoder']
