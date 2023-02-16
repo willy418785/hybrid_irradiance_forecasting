@@ -7,6 +7,7 @@ from tensorflow.keras.layers import Dense, Flatten, Input, Conv1D, GRU, Reshape
 
 from pyimagesearch import parameter, time_embedding
 from pyimagesearch.datautil import DataUtil
+from pyimagesearch.series_decomposition import SeriesDecompose
 from pyimagesearch.windowsGenerator import WindowGenerator
 from pyimagesearch.model_transformer import positional_encoding
 
@@ -149,6 +150,62 @@ class ConvGRU(tf.keras.Model):
         return output
 
 
+class StationaryEncoder(Encoder):
+    def __init__(self, layers, units, avg_window, seq_len=None, filters=None, rate=0.1):
+        super().__init__(layers, units, seq_len=seq_len, filters=filters, rate=rate)
+        self.decompose = SeriesDecompose(avg_window)
+
+    def call(self, input_seq, training, timestamp_embedding=None):
+        x = self.conv(input_seq)
+        if timestamp_embedding is not None:
+            x += timestamp_embedding
+        if self.pos_vec is not None:
+            x += self.pos_vec
+        states = []
+        for i in range(self.layers):
+            x, state = self.gru_layers[i](x, training=training)
+            x, _ = self.decompose(x)
+            states.append(state)
+        states = tf.stack(states, axis=-1)
+        return x, states
+
+
+class StationaryDecoder(Decoder):
+    def __init__(self, layers, units, avg_window, seq_len=None, filters=None, rate=0.1):
+        super().__init__(layers, units, seq_len=seq_len, filters=filters, rate=rate)
+        self.decompose = SeriesDecompose(avg_window)
+
+    def call(self, input_seq, initial_states, training, timestamp_embedding=None, iter_step=None):
+        x = self.conv(input_seq)
+        states = []
+        if timestamp_embedding is not None:
+            x += timestamp_embedding if iter_step is None else timestamp_embedding[:, iter_step:iter_step + 1, :]
+        if self.pos_vec is not None:
+            x += self.pos_vec if iter_step is None else self.pos_vec[:, iter_step:iter_step + 1, :]
+        for i in range(self.layers):
+            x, state = self.gru_layers[i](x, training=training, initial_state=initial_states[:, :, i])
+            x, _ = self.decompose(x)
+            states.append(state)
+        states = tf.stack(states, axis=-1)
+        return x, states
+
+
+class StationaryConvGRU(ConvGRU):
+    def __init__(self, num_layers, in_seq_len, in_dim, out_seq_len, out_dim, units, filters=None, gen_mode='unistep',
+                 is_seq_continuous=False, rate=0.1, avg_window=9):
+        super().__init__(num_layers, in_seq_len, in_dim, out_seq_len, out_dim, units, filters=filters,
+                         gen_mode=gen_mode,
+                         is_seq_continuous=is_seq_continuous, rate=rate)
+        self.decompose = SeriesDecompose(avg_window)
+        self.encoder = StationaryEncoder(num_layers, units, avg_window, seq_len=in_seq_len, filters=filters, rate=rate)
+        self.decoder = StationaryDecoder(num_layers, units, avg_window, seq_len=out_seq_len, filters=filters, rate=rate)
+
+    def call(self, input_seq, training, time_embedding_tuple=None):
+        seasonality, _ = self.decompose(input_seq)
+        out = super().call(seasonality, training, time_embedding_tuple=time_embedding_tuple)
+        return out
+
+
 if __name__ == '__main__':
     train_path_with_weather_info = os.path.sep.join(["../{}".format(parameter.csv_name)])
     data_with_weather_info = DataUtil(train_path=train_path_with_weather_info,
@@ -194,10 +251,11 @@ if __name__ == '__main__':
     input_time = Input(shape=(src_len + shift + tar_len, len(time_embedding.vocab_size)))
     embedding = time_embedding.TimeEmbedding(output_dims=Config.embedding_filters, input_len=src_len, shift_len=shift,
                                              label_len=tar_len)(input_time)
-    LR = ConvGRU(num_layers=Config.layers, in_seq_len=src_len, in_dim=len(parameter.features), out_seq_len=tar_len,
-                 out_dim=len(parameter.target), units=Config.gru_units, filters=Config.embedding_filters,
-                 gen_mode='unistep',
-                 is_seq_continuous=True)(input_scalar, time_embedding_tuple=embedding)
+    LR = StationaryConvGRU(num_layers=Config.layers, in_seq_len=src_len, in_dim=len(parameter.features),
+                           out_seq_len=tar_len,
+                           out_dim=len(parameter.target), units=Config.gru_units, filters=Config.embedding_filters,
+                           gen_mode='unistep',
+                           is_seq_continuous=True)(input_scalar, time_embedding_tuple=embedding)
     model = Model(inputs=[input_scalar, input_time], outputs=LR)
     model.compile(loss=tf.losses.MeanSquaredError(), optimizer="Adam"
                   , metrics=[tf.metrics.MeanAbsoluteError()
