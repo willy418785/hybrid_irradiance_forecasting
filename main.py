@@ -2191,6 +2191,82 @@ def run():
             modelMetricsRecorder[logM]["convGRU_w_LR_timestamps"] = metricsDict[logM]
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
+    if "stationary_convGRU_w_LR_timestamps" in parameter.model_list:
+        best_perform, best_perform2 = None, None
+        best_model, best_model2 = None, None
+        log.info("stationary_convGRU_w_LR_timestamps")
+        for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
+            input_scalar = Input(shape=(input_width, len(parameter.features)))
+            linear = model_AR.TemporalChannelIndependentLR(model_AR.Config.order, label_width,
+                                                           len(parameter.features))(input_scalar)
+            input_time = Input(shape=(input_width + shift + label_width, len(time_embedding.vocab_size)))
+            embedding = time_embedding.TimeEmbedding(output_dims=model_convGRU.Config.embedding_filters,
+                                                     input_len=input_width,
+                                                     shift_len=shift,
+                                                     label_len=label_width)(input_time)
+            if not w.is_sampling_within_day and parameter.between8_17:
+                n_days = input_width // w.samples_per_day
+                scalar_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
+                    input_scalar)
+                scalar_embedded = MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
+                                                        filter_size=preprocess_utils.Config.kernel_size,
+                                                        n_days=n_days,
+                                                        n_samples=w.samples_per_day)(scalar_embedded)
+                input_time_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
+                    embedding[0])
+                input_time_embedded = MultipleDaysConvEmbed(filters=model_convGRU.Config.embedding_filters,
+                                                            filter_size=preprocess_utils.Config.kernel_size,
+                                                            n_days=n_days,
+                                                            n_samples=w.samples_per_day)(input_time_embedded)
+                model = model_convGRU.StationaryConvGRU(num_layers=model_convGRU.Config.layers,
+                                                        in_seq_len=w.samples_per_day,
+                                                        in_dim=len(parameter.features),
+                                                        out_seq_len=label_width, out_dim=len(parameter.target),
+                                                        units=model_convGRU.Config.gru_units,
+                                                        filters=model_convGRU.Config.embedding_filters,
+                                                        gen_mode='unistep',
+                                                        is_seq_continuous=is_input_continuous_with_output,
+                                                        rate=model_convGRU.Config.dropout_rate,
+                                                        avg_window=series_decomposition.Config.window_size)
+                nonlinear = model(scalar_embedded,
+                                  time_embedding_tuple=(input_time_embedded, embedding[1], embedding[2]))
+            else:
+                model = model_convGRU.StationaryConvGRU(num_layers=model_convGRU.Config.layers,
+                                                        in_seq_len=input_width,
+                                                        in_dim=len(parameter.features),
+                                                        out_seq_len=label_width, out_dim=len(parameter.target),
+                                                        units=model_convGRU.Config.gru_units,
+                                                        filters=model_convGRU.Config.embedding_filters,
+                                                        gen_mode='unistep',
+                                                        is_seq_continuous=is_input_continuous_with_output,
+                                                        rate=model_convGRU.Config.dropout_rate,
+                                                        avg_window=series_decomposition.Config.window_size)
+                nonlinear = model(input_scalar, time_embedding_tuple=embedding)
+            outputs = tf.keras.layers.Add()([linear, nonlinear])
+            model = Model(inputs=[input_scalar, input_time], outputs=outputs)
+            datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
+                                                                  generatorMode="data", testEpoch=testEpoch,
+                                                                  name="stationary_convGRU_w_LR_timestamps")
+            print(datamodel_CL_performance)
+            if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
+                best_model = datamodel_CL
+                best_perform = datamodel_CL_performance
+            print(best_perform)
+            log.info("a model ok")
+
+        log.info("predicting SolarIrradiation by stationary_convGRU_w_LR_timestamps...")
+
+        metricsDict = w.allPlot(model=[best_model],
+                                name="stationary_convGRU_w_LR_timestamps",
+                                scaler=dataUtil.labelScaler,
+                                datamode="data")
+
+        for logM in metricsDict:
+            if modelMetricsRecorder.get(logM) is None:
+                modelMetricsRecorder[logM] = {}
+            modelMetricsRecorder[logM]["stationary_convGRU_w_LR_timestamps"] = metricsDict[logM]
+        pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
+
     if "transformer_w_LR_timestamps" in parameter.model_list:
         best_perform, best_perform2 = None, None
         best_model, best_model2 = None, None
@@ -2370,62 +2446,3 @@ if __name__ == '__main__':
     # tf.config.experimental_run_functions_eagerly(run_eagerly=True)
     # tf.data.experimental.enable_debug_mode()
     result = run()
-# python3 main.py -m 1 -n "ma_smoothed_8_4_3_transformer_numerical_weather_data_only_540_to_540_train_on_all_months_test_on_Jan"
-# python3 main.py -m 2 -n "ma_smoothed_8_4_3_transformer_numerical_weather_data_only_540_to_540_train_on_all_months_test_on_Feb"
-# ls
-# python3 main.py -m 1 -n "ma_smoothed_convGRU_numerical_weather_data_only_540_to_540_train_on_all_months_test_on_Jan"
-# python3 main.py -m 2 -n "ma_smoothed_convGRU_numerical_weather_data_only_540_to_540_train_on_all_months_test_on_Feb"
-# ls
-# python3 main.py -m 1 -n "ma_smoothed_auto_convGRU_target_data_only_540_to_540_test_on_Jan"
-# python3 main.py -m 2 -n "ma_smoothed_auto_convGRU_target_data_only_540_to_540_test_on_Feb"
-# python3 main.py -m 3 -n "ma_smoothed_auto_convGRU_target_data_only_540_to_540_test_on_Mar"
-# python3 main.py -m 4 -n "ma_smoothed_auto_convGRU_target_data_only_540_to_540_test_on_Apr"
-# python3 main.py -m 5 -n "ma_smoothed_auto_convGRU_target_data_only_540_to_540_test_on_May"
-# python3 main.py -m 6 -n "ma_smoothed_auto_convGRU_target_data_only_540_to_540_test_on_Jun"
-# python3 main.py -m 7 -n "ma_smoothed_auto_convGRU_target_data_only_540_to_540_test_on_Jul"
-# python3 main.py -m 8 -n "ma_smoothed_auto_convGRU_target_data_only_540_to_540_test_on_Aug"
-# ls
-
-# python3 main.py -m 1 -n "ma_smoothed_transformer_david_suggested_weather_data_only_540_to_540_test_on_Jan"
-# python3 main.py -m 2 -n "ma_smoothed_transformer_david_suggested_weather_data_only_540_to_540_test_on_Feb"
-# python3 main.py -m 3 -n "ma_smoothed_transformer_david_suggested_weather_data_only_540_to_540_test_on_Mar"
-# python3 main.py -m 4 -n "ma_smoothed_transformer_david_suggested_weather_data_only_540_to_540_test_on_Apr"
-# python3 main.py -m 5 -n "ma_smoothed_transformer_david_suggested_weather_data_only_540_to_540_test_on_May"
-# python3 main.py -m 6 -n "ma_smoothed_transformer_david_suggested_weather_data_only_540_to_540_test_on_Jun"
-# python3 main.py -m 7 -n "ma_smoothed_transformer_david_suggested_weather_data_only_540_to_540_test_on_Jul"
-# python3 main.py -m 8 -n "ma_smoothed_transformer_david_suggested_weather_data_only_540_to_540_test_on_Aug"
-# ls
-
-# python3 main.py -m 1 -n "ma_smoothed_unistep_convGRU_target_data_only_540_to_540_test_on_Jan"
-# python3 main.py -m 2 -n "ma_smoothed_unistep_convGRU_target_data_only_540_to_540_test_on_Feb"
-# python3 main.py -m 3 -n "ma_smoothed_unistep_convGRU_target_data_only_540_to_540_test_on_Mar"
-# python3 main.py -m 4 -n "ma_smoothed_unistep_convGRU_target_data_only_540_to_540_test_on_Apr"
-# python3 main.py -m 5 -n "ma_smoothed_unistep_convGRU_target_data_only_540_to_540_test_on_May"
-# python3 main.py -m 6 -n "ma_smoothed_unistep_convGRU_target_data_only_540_to_540_test_on_Jun"
-# python3 main.py -m 7 -n "ma_smoothed_unistep_convGRU_target_data_only_540_to_540_test_on_Jul"
-# python3 main.py -m 8 -n "ma_smoothed_unistep_convGRU_target_data_only_540_to_540_test_on_Aug"
-# ls
-
-# python3 main.py -m 1 -n "8to15_hourly_day2day_david_suggested_weather_data_test_on_Jan"
-# python3 main.py -m 2 -n "8to15_hourly_day2day_david_suggested_weather_data_test_on_Feb"
-# python3 main.py -m 3 -n "8to15_hourly_day2day_david_suggested_weather_data_test_on_Mar"
-# python3 main.py -m 4 -n "8to15_hourly_day2day_david_suggested_weather_data_test_on_Apr"
-# python3 main.py -m 5 -n "8to15_hourly_day2day_david_suggested_weather_data_test_on_May"
-# python3 main.py -m 6 -n "8to15_hourly_day2day_david_suggested_weather_data_test_on_Jun"
-# python3 main.py -m 7 -n "8to15_hourly_day2day_david_suggested_weather_data_test_on_Jul"
-# python3 main.py -m 8 -n "8to15_hourly_day2day_david_suggested_weather_data_test_on_Aug"
-# ls
-
-# python3 main.py -m 1 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_Jan"
-# python3 main.py -m 2 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_Feb"
-# python3 main.py -m 3 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_Mar"
-# python3 main.py -m 4 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_Apr"
-# python3 main.py -m 5 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_May"
-# python3 main.py -m 6 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_Jun"
-# python3 main.py -m 7 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_Jul"
-# python3 main.py -m 8 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_Aug"
-# python3 main.py -m 9 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_Sep"
-# python3 main.py -m 10 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_Oct"
-# python3 main.py -m 11 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_Nov"
-# python3 main.py -m 12 -n "8to15_hourly_10day1day_renheo[2019]_w_RH_T_train_on_last_month_test_on_Dec"
-# ls
