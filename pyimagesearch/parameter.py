@@ -67,9 +67,9 @@ labelScaler = MinMaxScaler()
 # seq_monthSep_dynamic_0-9_14-18
 experient_label = "test"  # 5x48x64x3-and-5x1-and-5x2-conv3D_c_cnnlstm    #new_twomodel_image
 after_minutes = 1
-input_days = None
-shifted_days = None
-output_days = None
+input_days = 7
+shifted_days = 0
+output_days = 1
 input_width = 168
 shifted_width = 0
 label_width = 24
@@ -107,7 +107,7 @@ earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=
 # model_list = ["Persistence", 'MA', "transformer_w_LR", 'convGRU_w_LR', 'LSTNet', "transformer_w_timestamps",
 #               "convGRU_w_timestamps", "convGRU", "transformer", "convGRU_w_LR_timestamps",
 #               "transformer_w_LR_timestamps"]
-model_list = ["stationary_convGRU_w_LR_timestamps"]
+model_list = ["Persistence", 'MA', "convGRU_w_LR_timestamps", "stationary_convGRU_w_LR_timestamps", 'transformer_w_LR_timestamps', 'stationary_transformer_w_LR_timestamps']
 # model_list = ["convGRU", "transformer", "convGRU_w_LR_timestamps", "transformer_w_LR_timestamps"]
 # model_list = ["Persistence", "MA", 'AR', 'channelwise_AR']
 # model_list = ["Persistence", "MA", "convGRU", "transformer", 'convGRU_w_mlp_decoder', 'transformer_w_mlp_decoder']
