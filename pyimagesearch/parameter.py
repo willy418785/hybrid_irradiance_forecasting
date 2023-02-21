@@ -88,7 +88,7 @@ epoch_list = [20000]
 # epoch_list = [500, 500, 500, 500, 500]
 batchsize = 16
 
-earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=100, min_delta=0.0001,
+earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=10, min_delta=0.0001,
                             restore_best_weights=True)
 # earlystoper = []
 
