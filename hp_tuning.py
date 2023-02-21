@@ -306,10 +306,10 @@ if __name__ == '__main__':
                         help='lag between input and output sequence')
     parser.add_argument('-o', '--output', type=int, default=parameter.label_width, help='length of output sequence')
     parser.add_argument('-t', '--trials', type=int, default=3, help='max trials when perform hp searching')
-    parser.add_argument('-ft', '--finetune', type=bool, default=False, action=argparse.BooleanOptionalAction, help='fine-tuning or not')
-    parser.add_argument('-at', '--arch', type=bool, default=False, action=argparse.BooleanOptionalAction, help='tuning network architecture or not')
-    parser.add_argument('-tt', '--training', type=bool, default=False, action=argparse.BooleanOptionalAction, help='tuning training parameters or not')
-    parser.add_argument('--overwrite', type=bool, default=False, action=argparse.BooleanOptionalAction, help='overwrite tuning history or not')
+    parser.add_argument('-ft', '--finetune', default=False, action='store_true', help='fine-tuning or not')
+    parser.add_argument('-at', '--arch', default=False, action='store_true', help='tuning network architecture or not')
+    parser.add_argument('-tt', '--training', default=False, action='store_true', help='tuning training parameters or not')
+    parser.add_argument('--overwrite', default=False, action='store_true', help='overwrite tuning history or not')
     args = parser.parse_args()
 
     shift = args.shift
