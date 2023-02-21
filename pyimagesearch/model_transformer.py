@@ -80,14 +80,14 @@ class EncoderLayer(tf.keras.layers.Layer):
 
 
 class Encoder(tf.keras.layers.Layer):
-    def __init__(self, num_layers, d_model, num_heads, dff, seq_len, rate=0.1):
+    def __init__(self, num_layers, d_model, num_heads, dff, seq_len, kernel_size=3, rate=0.1):
         super().__init__()
         self.d_model = d_model
         self.num_layers = num_layers
         self.seq_len = seq_len
         self.k_dim = int(d_model / num_heads)
         self.v_dim = self.k_dim
-        self.embedding = Conv1D(filters=d_model, kernel_size=Config.embedding_kernel_size, strides=1, padding="same",
+        self.embedding = Conv1D(filters=d_model, kernel_size=kernel_size, strides=1, padding="same",
                                 activation='elu')
         self.pos_encoding = positional_encoding(seq_len, d_model)
         self.enc_layers = [
@@ -140,14 +140,14 @@ class DecoderLayer(tf.keras.layers.Layer):
 
 
 class Decoder(tf.keras.layers.Layer):
-    def __init__(self, num_layers, d_model, num_heads, dff, seq_len, rate=0.1):
+    def __init__(self, num_layers, d_model, num_heads, dff, seq_len, kernel_size=3, rate=0.1):
         super().__init__()
         self.d_model = d_model
         self.num_layers = num_layers
         self.seq_len = seq_len
         self.k_dim = int(d_model / num_heads)
         self.v_dim = self.k_dim
-        self.embedding = Conv1D(filters=d_model, kernel_size=Config.embedding_kernel_size, strides=1, padding="causal",
+        self.embedding = Conv1D(filters=d_model, kernel_size=kernel_size, strides=1, padding="causal",
                                 activation='elu')
         self.pos_encoding = positional_encoding(seq_len, d_model)
 
@@ -174,7 +174,8 @@ class Decoder(tf.keras.layers.Layer):
 
 
 class Transformer(tf.keras.Model):
-    def __init__(self, num_layers, d_model, num_heads, dff, src_seq_len, tar_seq_len, src_dim, tar_dim, rate=0.1,
+    def __init__(self, num_layers, d_model, num_heads, dff, src_seq_len, tar_seq_len, src_dim, tar_dim, kernel_size=3,
+                 rate=0.1,
                  gen_mode="unistep", is_seq_continuous=False, is_pooling=False, token_len=None):
         assert gen_mode in gen_modes
         super().__init__()
@@ -186,9 +187,11 @@ class Transformer(tf.keras.Model):
         self.tar_dim = tar_dim
         self.is_seq_continuous = is_seq_continuous
         self.is_pooling = is_pooling
+        self.kernel_size = kernel_size
+        self.rate = rate
         self.encoder = Encoder(num_layers=num_layers, d_model=d_model,
                                num_heads=num_heads, dff=dff,
-                               seq_len=src_seq_len, rate=rate)
+                               seq_len=src_seq_len, kernel_size=kernel_size, rate=rate)
         if self.gen_mode == 'unistep':
             if token_len is not None and is_seq_continuous:
                 assert type(token_len) is int
@@ -198,11 +201,11 @@ class Transformer(tf.keras.Model):
                 self.token_len = 0
             self.decoder = Decoder(num_layers=num_layers, d_model=d_model,
                                    num_heads=num_heads, dff=dff,
-                                   seq_len=token_len + tar_seq_len, rate=rate)
+                                   seq_len=token_len + tar_seq_len, kernel_size=kernel_size, rate=rate)
         elif self.gen_mode == 'auto':
             self.decoder = Decoder(num_layers=num_layers, d_model=d_model,
                                    num_heads=num_heads, dff=dff,
-                                   seq_len=tar_seq_len, rate=rate)
+                                   seq_len=tar_seq_len, kernel_size=kernel_size, rate=rate)
         elif self.gen_mode == 'mlp':
             self.decoder = Sequential([Dense(tar_seq_len * tar_dim), Reshape((tar_seq_len, tar_dim))])
         self.final_layer = Dense(tar_dim)
@@ -294,12 +297,15 @@ class StationaryDecoderLayer(DecoderLayer):
 
 
 class StationaryTransformer(Transformer):
-    def __init__(self, num_layers, d_model, num_heads, dff, src_seq_len, tar_seq_len, src_dim, tar_dim, rate=0.1,
+    def __init__(self, num_layers, d_model, num_heads, dff, src_seq_len, tar_seq_len, src_dim, tar_dim, kernel_size=3,
+                 rate=0.1,
                  gen_mode="unistep", is_seq_continuous=False, is_pooling=False, token_len=None, avg_window=9):
         assert gen_mode in gen_modes
-        super().__init__(num_layers, d_model, num_heads, dff, src_seq_len, tar_seq_len, src_dim, tar_dim, rate=rate,
+        super().__init__(num_layers, d_model, num_heads, dff, src_seq_len, tar_seq_len, src_dim, tar_dim,
+                         kernel_size=kernel_size, rate=rate,
                          gen_mode=gen_mode, is_seq_continuous=is_seq_continuous, is_pooling=is_pooling,
                          token_len=token_len)
+        self.avg_window = avg_window
         self.decompose = SeriesDecompose(avg_window)
         self.encoder.enc_layers = [
             StationaryEncoderLayer(d_model=d_model, num_heads=num_heads, key_dim=self.encoder.k_dim,

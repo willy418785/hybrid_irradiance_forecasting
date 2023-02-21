@@ -23,7 +23,7 @@ class Config():
 
 
 class Encoder(tf.keras.layers.Layer):
-    def __init__(self, layers, units, seq_len=None, filters=None, rate=0.1):
+    def __init__(self, layers, units, seq_len=None, filters=None, kernel_size=3, rate=0.1):
         super().__init__()
         self.layers = layers
         self.units = units
@@ -31,8 +31,9 @@ class Encoder(tf.keras.layers.Layer):
             self.filters = units
         else:
             self.filters = filters
+        self.kernel_size = kernel_size
         self.pos_vec = positional_encoding(seq_len, self.filters) if seq_len is not None else None
-        self.conv = Conv1D(filters=self.filters, kernel_size=Config.embedding_kernel_size, strides=1, padding="same",
+        self.conv = Conv1D(filters=self.filters, kernel_size=self.kernel_size, strides=1, padding="same",
                            activation='elu')
 
         self.gru_layers = [
@@ -54,7 +55,7 @@ class Encoder(tf.keras.layers.Layer):
 
 
 class Decoder(tf.keras.layers.Layer):
-    def __init__(self, layers, units, seq_len=None, filters=None, rate=0.1):
+    def __init__(self, layers, units, seq_len=None, filters=None, kernel_size=3, rate=0.1):
         super().__init__()
         self.layers = layers
         self.units = units
@@ -62,9 +63,10 @@ class Decoder(tf.keras.layers.Layer):
             self.filters = units
         else:
             self.filters = filters
+        self.kernel_size = kernel_size
         self.pos_vec = positional_encoding(seq_len, self.filters) if seq_len is not None else None
 
-        self.conv = Conv1D(filters=self.filters, kernel_size=Config.embedding_kernel_size, strides=1, padding="causal",
+        self.conv = Conv1D(filters=self.filters, kernel_size=kernel_size, strides=1, padding="causal",
                            activation='elu')
         self.gru_layers = [
             GRU(units, return_sequences=True, return_state=True, dropout=rate)
@@ -85,7 +87,8 @@ class Decoder(tf.keras.layers.Layer):
 
 
 class ConvGRU(tf.keras.Model):
-    def __init__(self, num_layers, in_seq_len, in_dim, out_seq_len, out_dim, units, filters=None, gen_mode='unistep',
+    def __init__(self, num_layers, in_seq_len, in_dim, out_seq_len, out_dim, units, filters=None, kernel_size=3,
+                 gen_mode='unistep',
                  is_seq_continuous=False, rate=0.1):
         super().__init__()
         assert gen_mode in gen_modes
@@ -100,8 +103,10 @@ class ConvGRU(tf.keras.Model):
         else:
             self.filters = filters
 
-        self.encoder = Encoder(num_layers, units, seq_len=in_seq_len, filters=filters, rate=rate)
-        self.decoder = Decoder(num_layers, units, seq_len=out_seq_len, filters=filters, rate=rate)
+        self.encoder = Encoder(num_layers, units, seq_len=in_seq_len, filters=filters, kernel_size=kernel_size,
+                               rate=rate)
+        self.decoder = Decoder(num_layers, units, seq_len=out_seq_len, filters=filters, kernel_size=kernel_size,
+                               rate=rate)
         if gen_mode == "unistep":
             self.fc = Dense(out_dim)
         elif gen_mode == 'auto':
@@ -151,8 +156,8 @@ class ConvGRU(tf.keras.Model):
 
 
 class StationaryEncoder(Encoder):
-    def __init__(self, layers, units, avg_window, seq_len=None, filters=None, rate=0.1):
-        super().__init__(layers, units, seq_len=seq_len, filters=filters, rate=rate)
+    def __init__(self, layers, units, avg_window, seq_len=None, filters=None, kernel_size=3, rate=0.1):
+        super().__init__(layers, units, seq_len=seq_len, filters=filters, kernel_size=kernel_size, rate=rate)
         self.decompose = SeriesDecompose(avg_window)
 
     def call(self, input_seq, training, timestamp_embedding=None):
@@ -171,8 +176,8 @@ class StationaryEncoder(Encoder):
 
 
 class StationaryDecoder(Decoder):
-    def __init__(self, layers, units, avg_window, seq_len=None, filters=None, rate=0.1):
-        super().__init__(layers, units, seq_len=seq_len, filters=filters, rate=rate)
+    def __init__(self, layers, units, avg_window, seq_len=None, filters=None, kernel_size=3, rate=0.1):
+        super().__init__(layers, units, seq_len=seq_len, filters=filters, kernel_size=kernel_size, rate=rate)
         self.decompose = SeriesDecompose(avg_window)
 
     def call(self, input_seq, initial_states, training, timestamp_embedding=None, iter_step=None):
@@ -191,14 +196,18 @@ class StationaryDecoder(Decoder):
 
 
 class StationaryConvGRU(ConvGRU):
-    def __init__(self, num_layers, in_seq_len, in_dim, out_seq_len, out_dim, units, filters=None, gen_mode='unistep',
+    def __init__(self, num_layers, in_seq_len, in_dim, out_seq_len, out_dim, units, filters=None, kernel_size=3,
+                 gen_mode='unistep',
                  is_seq_continuous=False, rate=0.1, avg_window=9):
         super().__init__(num_layers, in_seq_len, in_dim, out_seq_len, out_dim, units, filters=filters,
+                         kernel_size=kernel_size,
                          gen_mode=gen_mode,
                          is_seq_continuous=is_seq_continuous, rate=rate)
         self.decompose = SeriesDecompose(avg_window)
-        self.encoder = StationaryEncoder(num_layers, units, avg_window, seq_len=in_seq_len, filters=filters, rate=rate)
-        self.decoder = StationaryDecoder(num_layers, units, avg_window, seq_len=out_seq_len, filters=filters, rate=rate)
+        self.encoder = StationaryEncoder(num_layers, units, avg_window, seq_len=in_seq_len, filters=filters,
+                                         kernel_size=kernel_size, rate=rate)
+        self.decoder = StationaryDecoder(num_layers, units, avg_window, seq_len=out_seq_len, filters=filters,
+                                         kernel_size=kernel_size, rate=rate)
 
     def call(self, input_seq, training, time_embedding_tuple=None):
         seasonality, _ = self.decompose(input_seq)
