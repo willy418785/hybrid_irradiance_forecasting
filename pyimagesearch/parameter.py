@@ -70,9 +70,13 @@ after_minutes = 1
 input_days = 7
 shifted_days = 0
 output_days = 1
+MA_days = 8
+
 input_width = 168
 shifted_width = 0
 label_width = 24
+MA_width = 192
+
 image_input_width3D = 10
 is_using_image_data = False
 

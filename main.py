@@ -311,22 +311,39 @@ def run():
         # testY = np.expand_dims(testY, axis=-1)
         if parameter.input_days is None or parameter.output_days is None:
             assert type(parameter.input_width) is int
-            assert type(parameter.image_input_width3D) is int
             assert type(parameter.shifted_width) is int
             assert type(parameter.label_width) is int
+            if parameter.is_using_image_data:
+                assert type(parameter.image_input_width3D) is int
+                image_input_width = parameter.image_input_width3D
+            else:
+                image_input_width = 0
+            if "MA" in parameter.model_list:
+                assert type(parameter.MA_width) is int
+                MA_width = parameter.MA_width
             input_width = parameter.input_width
-            image_input_width = parameter.image_input_width3D
             shift = parameter.shifted_width
             label_width = parameter.label_width
             log.info("\n------In-day Prediction------")
             log.info("input width: {}".format(input_width))
             log.info("shift width: {}".format(shift))
             log.info("label width: {}".format(label_width))
+            if parameter.is_using_image_data:
+                log.info("images width: {}".format(image_input_width))
+            if "MA" in parameter.model_list:
+                log.info("MA width: {}".format(MA_width))
         else:
             assert type(parameter.input_days) is int
             assert type(parameter.output_days) is int
             assert type(parameter.shifted_days) is int
-            image_input_width = 0
+            if parameter.is_using_image_data:
+                assert type(parameter.image_input_width3D) is int
+                image_input_width = parameter.image_input_width3D
+            else:
+                image_input_width = 0
+            if "MA" in parameter.model_list:
+                assert type(parameter.MA_days) is int
+                MA_width = (data_for_baseline.samples_per_day * parameter.MA_days)
             input_width = int(dataUtil.samples_per_day * parameter.input_days)
             label_width = int(dataUtil.samples_per_day * parameter.output_days)
             shift = int(dataUtil.samples_per_day * parameter.shifted_days)
@@ -334,10 +351,16 @@ def run():
             log.info("input days: {}".format(parameter.input_days))
             log.info("shift days: {}".format(parameter.shifted_days))
             log.info("output days: {}".format(parameter.output_days))
+            if "MA" in parameter.model_list:
+                log.info("MA days: {}".format(parameter.MA_days))
             log.info("samples per day: {}".format(dataUtil.samples_per_day))
             log.info("input width: {}".format(input_width))
             log.info("shift width: {}".format(shift))
             log.info("label width: {}".format(label_width))
+            if parameter.is_using_image_data:
+                log.info("images width: {}".format(image_input_width))
+            if "MA" in parameter.model_list:
+                log.info("MA width: {}".format(MA_width))
         # w1 = WindowGenerator(input_width=input_width,
         # 						image_input_width=1,
         # 						label_width=label_width,
