@@ -456,7 +456,7 @@ class WindowGenerator():
     def trainData(self, sepMode: str = "all", addcloud=False):
         # return self.input_dataset_2(self.trainDataX, self.trainCloudX, self.trainY_nor, addcloud=addcloud,
         #                             sequence_stride=1, use_shuffle=parameter.is_using_shuffle)
-        if self.is_sampling_within_day or parameter.input_days is None:
+        if self.is_sampling_within_day:
             if addcloud:
                 return self.input_dataset(self.trainDataX, self.trainY_nor, cloudData=self.trainCloudX,
                                           is_timestamp_as_data=self.using_timestamp_data,
@@ -477,7 +477,7 @@ class WindowGenerator():
 
     def valData(self, sepMode: str = "all", addcloud=False):
         # return self.input_dataset_2(self.valDataX, self.valCloudX, self.valY_nor, addcloud=addcloud, sequence_stride=1)
-        if self.is_sampling_within_day or parameter.input_days is None:
+        if self.is_sampling_within_day:
             if addcloud:
                 return self.input_dataset(self.valDataX, self.valY_nor, cloudData=self.valCloudX,
                                           is_timestamp_as_data=self.using_timestamp_data,
