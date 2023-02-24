@@ -55,7 +55,7 @@ class DataUtil(object):
                 parse_dates=["datetime"],
                 index_col="datetime")
             assert parameter.time_granularity is not None
-            self.train_df = self.train_df.resample(parameter.time_granularity).asfreq().dropna()
+            self.train_df = self.train_df.resample(parameter.time_granularity).asfreq()
             self.val_df = None
             self.test_df = None
             if (val_path != None):
@@ -63,13 +63,13 @@ class DataUtil(object):
                     val_path,
                     parse_dates=["datetime"],
                     index_col="datetime")
-                self.val_df = self.val_df.resample(parameter.time_granularity).asfreq().dropna()
+                self.val_df = self.val_df.resample(parameter.time_granularity).asfreq()
             if (test_path != None):
                 self.test_df = pd.read_csv(
                     test_path,
                     parse_dates=["datetime"],
                     index_col="datetime")
-                self.test_df = self.test_df.resample(parameter.time_granularity).asfreq().dropna()
+                self.test_df = self.test_df.resample(parameter.time_granularity).asfreq()
 
         except IOError as err:
             print("Error opening data file ... %s", err)
@@ -78,25 +78,11 @@ class DataUtil(object):
         ######################資料集切分
         ## split 照比例分
         if (split_mode == "all_year"):
-            if parameter.input_days is None or parameter.output_days is None or not parameter.between8_17:
-                # only viable when sampling sequence within each day e.t. short term prediction
                 self.train_df, self.val_df = train_test_split(self.train_df, test_size=val_split + test_split,
                                                               shuffle=False)
                 self.val_df, self.test_df = train_test_split(self.val_df,
                                                              test_size=test_split / (val_split + test_split),
                                                              shuffle=False)
-            else:
-                assert month_sep is not None and type(month_sep) is int
-                val_month = month_sep - 1 if (month_sep - 1) > 0 else month_sep + 1
-                self.test_df = self.train_df[self.train_df.index.month == month_sep]
-                self.val_df = self.train_df[self.train_df.index.month == val_month]
-                self.train_df = self.train_df[self.train_df.index.month != month_sep]
-                self.train_df = self.train_df[self.train_df.index.month != val_month]
-                # all_dates = np.unique(self.train_df.index.date)
-                # train_dates = all_dates[:int((1 - val_split) * len(all_dates))]
-                # val_dates = all_dates[int((1 - val_split) * len(all_dates)):]
-                # self.val_df = self.train_df[[True if (_ in val_dates) else False for _ in self.train_df.index.date]]
-                # self.train_df = self.train_df[[True if (_ in train_dates) else False for _ in self.train_df.index.date]]
         elif (split_mode == "month"):
             assert month_sep is not None and type(month_sep) is int
             vmonth = month_sep - 2
@@ -230,11 +216,11 @@ class DataUtil(object):
         '''
         if parameter.dataUtilParam.time_features:
             contain_col = contain_col + parameter.dataUtilParam.time_features_col'''
-        self.train_df = self.train_df[contain_col]
+        self.train_df = self.train_df[contain_col].dropna()
         if (self.val_df is not None):
-            self.val_df = self.val_df[contain_col]
+            self.val_df = self.val_df[contain_col].dropna()
         if (self.test_df is not None):
-            self.test_df = self.test_df[contain_col]
+            self.test_df = self.test_df[contain_col].dropna()
         # test if all input data is numerical data, exit if not
         numerical_col = [col_name for col_name, col_type in self.train_df.dtypes.items() if
                          np.issubdtype(col_type, np.number)]
