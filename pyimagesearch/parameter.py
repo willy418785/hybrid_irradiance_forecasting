@@ -43,6 +43,8 @@ norm_mode = 2
 time_granularity = 'H'  # 'H', 'min', 'T'
 between8_17 = False
 test_between8_17 = False
+split_days = True
+
 if between8_17 or test_between8_17:
     if time_granularity == 'H':
         start = '08:00:00'
