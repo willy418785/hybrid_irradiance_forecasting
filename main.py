@@ -1550,10 +1550,10 @@ def run():
             modelMetricsRecorder[logM]["transformer_w_mlp_decoder"] = metricsDict[logM]
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
-    if "autoregressive_convGRU" in parameter.model_list:
+    if "auto_convGRU" in parameter.model_list:
         best_perform, best_perform2 = None, None
         best_model, best_model2 = None, None
-        log.info("autoregressive_convGRU")
+        log.info("auto_convGRU")
         for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
             model = model_convGRU.ConvGRU(num_layers=model_convGRU.Config.layers, in_seq_len=input_width,
                                           in_dim=len(parameter.features),
@@ -1575,7 +1575,7 @@ def run():
                 model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))), model])
             datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
                                                                   generatorMode="data", testEpoch=testEpoch,
-                                                                  name="autoregressive_convGRU")
+                                                                  name="auto_convGRU")
             print(datamodel_CL_performance)
             if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
                 best_model = datamodel_CL
@@ -1583,23 +1583,23 @@ def run():
             print(best_perform)
             log.info("a model ok")
 
-        log.info("predicting SolarIrradiation by autoregressive_convGRU...")
+        log.info("predicting SolarIrradiation by auto_convGRU...")
 
         metricsDict = w.allPlot(model=[best_model],
-                                name="autoregressive_convGRU",
+                                name="auto_convGRU",
                                 scaler=dataUtil.labelScaler,
                                 datamode="data")
 
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
                 modelMetricsRecorder[logM] = {}
-            modelMetricsRecorder[logM]["autoregressive_convGRU"] = metricsDict[logM]
+            modelMetricsRecorder[logM]["auto_convGRU"] = metricsDict[logM]
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
-    if "autoregressive_transformer" in parameter.model_list:
+    if "auto_transformer" in parameter.model_list:
         best_perform, best_perform2 = None, None
         best_model, best_model2 = None, None
-        log.info("autoregressive_transformer")
+        log.info("auto_transformer")
         for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
             if not w.is_sampling_within_day and parameter.between8_17:
                 n_days = input_width // w.samples_per_day
@@ -1638,7 +1638,7 @@ def run():
 
             datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
                                                                   generatorMode="data", testEpoch=testEpoch,
-                                                                  name="autoregressive_transformer")
+                                                                  name="auto_transformer")
             print(datamodel_CL_performance)
             if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
                 best_model = datamodel_CL
@@ -1646,17 +1646,17 @@ def run():
             print(best_perform)
             log.info("a model ok")
 
-        log.info("predicting SolarIrradiation by autoregressive_transformer...")
+        log.info("predicting SolarIrradiation by auto_transformer...")
 
         metricsDict = w.allPlot(model=[best_model],
-                                name="autoregressive_transformer",
+                                name="auto_transformer",
                                 scaler=dataUtil.labelScaler,
                                 datamode="data")
 
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
                 modelMetricsRecorder[logM] = {}
-            modelMetricsRecorder[logM]["autoregressive_transformer"] = metricsDict[logM]
+            modelMetricsRecorder[logM]["auto_transformer"] = metricsDict[logM]
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
     if "LSTNet" in parameter.model_list:
