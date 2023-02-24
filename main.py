@@ -14,6 +14,7 @@ from pyimagesearch import model_multiCnnLSTM
 from pyimagesearch import model_3Dresnet
 from pyimagesearch import model_transformer, model_convGRU, preprocess_utils
 from pyimagesearch.lstnet_model import LSTNetModel
+from pyimagesearch.model_baseline import Persistence, MA
 from pyimagesearch.lstnet_util import GetArguments, LSTNetInit, GetArgumentsDict
 from pyimagesearch.preprocess_utils import SplitInputByDay, MultipleDaysConvEmbed
 from pyimagesearch import series_decomposition
@@ -445,58 +446,60 @@ def run():
                                                 using_timestamp_data=True)
         # log.info(w2)  # 3D
         dataUtil = data_for_baseline
-        w_for_persistance = WindowGenerator(input_width=input_width,
-                                            image_input_width=image_input_width,
-                                            label_width=label_width,
-                                            shift=shift,
+        if "Persistence" in parameter.model_list:
+            w_for_persistance = WindowGenerator(input_width=input_width,
+                                                image_input_width=image_input_width,
+                                                label_width=label_width,
+                                                shift=shift,
 
-                                            trainImages=dataUtil.trainImages,
-                                            trainData=dataUtil.train_df[dataUtil.feature_col],
-                                            trainCloud=dataUtil.train_df_cloud,  ######
-                                            trainAverage=dataUtil.train_df_average,  ######
-                                            trainY=dataUtil.train_df[dataUtil.label_col],
+                                                trainImages=dataUtil.trainImages,
+                                                trainData=dataUtil.train_df[dataUtil.feature_col],
+                                                trainCloud=dataUtil.train_df_cloud,  ######
+                                                trainAverage=dataUtil.train_df_average,  ######
+                                                trainY=dataUtil.train_df[dataUtil.label_col],
 
-                                            valImage=dataUtil.valImages,
-                                            valData=dataUtil.val_df[dataUtil.feature_col],
-                                            valCloud=dataUtil.val_df_cloud,  ######
-                                            valAverage=dataUtil.val_df_average,  ######
-                                            valY=dataUtil.val_df[dataUtil.label_col],
+                                                valImage=dataUtil.valImages,
+                                                valData=dataUtil.val_df[dataUtil.feature_col],
+                                                valCloud=dataUtil.val_df_cloud,  ######
+                                                valAverage=dataUtil.val_df_average,  ######
+                                                valY=dataUtil.val_df[dataUtil.label_col],
 
-                                            testImage=dataUtil.testImages,
-                                            testData=dataUtil.test_df[dataUtil.feature_col],
-                                            testCloud=dataUtil.test_df_cloud,  ######
-                                            testAverage=dataUtil.test_df_average,  ######
-                                            testY=dataUtil.test_df[dataUtil.label_col],
+                                                testImage=dataUtil.testImages,
+                                                testData=dataUtil.test_df[dataUtil.feature_col],
+                                                testCloud=dataUtil.test_df_cloud,  ######
+                                                testAverage=dataUtil.test_df_average,  ######
+                                                testY=dataUtil.test_df[dataUtil.label_col],
 
-                                            batch_size=parameter.batchsize,
-                                            label_columns="ShortWaveDown",
-                                            samples_per_day=dataUtil.samples_per_day)
-        w_for_MA = WindowGenerator(input_width=input_width,
-                                   image_input_width=image_input_width,
-                                   label_width=label_width,
-                                   shift=shift,
+                                                batch_size=parameter.batchsize,
+                                                label_columns="ShortWaveDown",
+                                                samples_per_day=dataUtil.samples_per_day)
+        if "MA" in parameter.model_list:
+            w_for_MA = WindowGenerator(input_width=MA_width,
+                                       image_input_width=image_input_width,
+                                       label_width=label_width,
+                                       shift=shift,
 
-                                   trainImages=dataUtil.trainImages,
-                                   trainData=dataUtil.train_df[dataUtil.feature_col],
-                                   trainCloud=dataUtil.train_df_cloud,  ######
-                                   trainAverage=dataUtil.train_df_average,  ######
-                                   trainY=dataUtil.train_df[dataUtil.label_col],
+                                       trainImages=dataUtil.trainImages,
+                                       trainData=dataUtil.train_df[dataUtil.feature_col],
+                                       trainCloud=dataUtil.train_df_cloud,  ######
+                                       trainAverage=dataUtil.train_df_average,  ######
+                                       trainY=dataUtil.train_df[dataUtil.label_col],
 
-                                   valImage=dataUtil.valImages,
-                                   valData=dataUtil.val_df[dataUtil.feature_col],
-                                   valCloud=dataUtil.val_df_cloud,  ######
-                                   valAverage=dataUtil.val_df_average,  ######
-                                   valY=dataUtil.val_df[dataUtil.label_col],
+                                       valImage=dataUtil.valImages,
+                                       valData=dataUtil.val_df[dataUtil.feature_col],
+                                       valCloud=dataUtil.val_df_cloud,  ######
+                                       valAverage=dataUtil.val_df_average,  ######
+                                       valY=dataUtil.val_df[dataUtil.label_col],
 
-                                   testImage=dataUtil.testImages,
-                                   testData=dataUtil.test_df[dataUtil.feature_col],
-                                   testCloud=dataUtil.test_df_cloud,  ######
-                                   testAverage=dataUtil.test_df_average,  ######
-                                   testY=dataUtil.test_df[dataUtil.label_col],
+                                       testImage=dataUtil.testImages,
+                                       testData=dataUtil.test_df[dataUtil.feature_col],
+                                       testCloud=dataUtil.test_df_cloud,  ######
+                                       testAverage=dataUtil.test_df_average,  ######
+                                       testY=dataUtil.test_df[dataUtil.label_col],
 
-                                   batch_size=parameter.batchsize,
-                                   label_columns="ShortWaveDown",
-                                   samples_per_day=dataUtil.samples_per_day)
+                                       batch_size=parameter.batchsize,
+                                       label_columns="ShortWaveDown",
+                                       samples_per_day=dataUtil.samples_per_day)
         # w2.checkWindow()
         # w3 = WindowGenerator(input_width=input_width,
         # 						image_input_width=image_input_width,
@@ -528,92 +531,52 @@ def run():
 
         w = w2
 
-        class Baseline(tf.keras.Model):
-            def __init__(self, is_within_day, samples_per_day, label_index=None):
-                super().__init__()
-                self.label_index = label_index
-                self.is_within_day = is_within_day
-                self.samples_per_day = samples_per_day
 
-            def call(self, inputs):
-                # inputs =
-                # print(inputs)
-                if self.is_within_day:
-                    result = inputs[:, -1:, :]
-                    result = tf.repeat(result, label_width, axis=1)
-                else:
-                    result = inputs[:, self.samples_per_day * -1:, :]
-                    result = tf.tile(result, [1, int(label_width / self.samples_per_day), 1])
-                # print(result)
-                return result
+    is_input_continuous_with_output = (shift == 0) and (not parameter.between8_17 or w.is_sampling_within_day)
+    metrics_path = "plot/{}/{}".format(parameter.experient_label, "all_metric")
 
-        if "Persistence" in parameter.model_list:
-            baseline = Baseline(w_for_persistance.is_sampling_within_day or (parameter.input_days is None),
-                                w_for_persistance.samples_per_day,
-                                label_index=0)
-            baseline.compile(loss=tf.losses.MeanSquaredError(),
-                             metrics=[tf.metrics.MeanAbsoluteError()
-                                 , tf.metrics.MeanAbsolutePercentageError()
-                                 , my_metrics.VWMAPE
-                                 , my_metrics.corr])
-            # performance = {}
-            modelList = {}
-            metricsDict = w_for_persistance.allPlot(model=[baseline],
-                                                    name="Persistence",
-                                                    scaler=dataUtil.labelScaler,
-                                                    datamode="data")
-            for logM in metricsDict:
-                if modelMetricsRecorder.get(logM) is None:
-                    modelMetricsRecorder[logM] = {}
-                modelMetricsRecorder[logM]["Persistence"] = metricsDict[logM]
-            metrics_path = "plot/{}/{}".format(parameter.experient_label, "all_metric")
-            pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
+    # test baseline model
+    dataUtil = data_for_baseline
+    if "Persistence" in parameter.model_list:
+        baseline = Persistence(w_for_persistance.is_sampling_within_day,
+                               w_for_persistance.samples_per_day,
+                               label_width)
+        baseline.compile(loss=tf.losses.MeanSquaredError(),
+                         metrics=[tf.metrics.MeanAbsoluteError()
+                             , tf.metrics.MeanAbsolutePercentageError()
+                             , my_metrics.VWMAPE
+                             , my_metrics.corr])
+        # performance = {}
+        modelList = {}
+        metricsDict = w_for_persistance.allPlot(model=[baseline],
+                                                name="Persistence",
+                                                scaler=dataUtil.labelScaler,
+                                                datamode="data")
+        for logM in metricsDict:
+            if modelMetricsRecorder.get(logM) is None:
+                modelMetricsRecorder[logM] = {}
+            modelMetricsRecorder[logM]["Persistence"] = metricsDict[logM]
+        metrics_path = "plot/{}/{}".format(parameter.experient_label, "all_metric")
+        pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
-        ##############################################################################################
-        # moving average
-        class MA(tf.keras.Model):
-            def __init__(self, window_len, label_index=None):
-                super().__init__()
-                self.label_index = label_index
-                self.window_len = window_len
+    if "MA" in parameter.model_list:
+        movingAverage = MA(MA_width, w_for_MA.is_sampling_within_day, w_for_MA.samples_per_day, label_width)
+        movingAverage.compile(loss=tf.losses.MeanSquaredError(),
+                              metrics=[tf.metrics.MeanAbsoluteError(),
+                                       tf.metrics.MeanAbsolutePercentageError(),
+                                       my_metrics.VWMAPE,
+                                       my_metrics.corr])
+        metricsDict = w_for_MA.allPlot(model=[movingAverage],
+                                       name="MA",
+                                       scaler=dataUtil.labelScaler,
+                                       datamode="data")
 
-            def call(self, inputs):
-                result = tf.reduce_mean(inputs[:, -self.window_len:, :], axis=1, keepdims=True)
-                result = tf.repeat(result, label_width, axis=1)
-                return result
-
-        if "MA" in parameter.model_list:
-            if w_for_MA.is_sampling_within_day:
-                MA_width = input_width
-            else:
-                MA_width = w_for_MA.samples_per_day
-            movingAverage = MA(MA_width, label_index=0)
-            movingAverage.compile(loss=tf.losses.MeanSquaredError(),
-                                  metrics=[tf.metrics.MeanAbsoluteError()
-                                      , tf.metrics.MeanAbsolutePercentageError()
-                                      , my_metrics.VWMAPE
-                                      , my_metrics.corr])
-            metricsDict = w_for_MA.allPlot(model=[movingAverage],
-                                           name="MA",
-                                           scaler=dataUtil.labelScaler,
-                                           datamode="data")
-
-            for logM in metricsDict:
-                if modelMetricsRecorder.get(logM) is None:
-                    modelMetricsRecorder[logM] = {}
-                modelMetricsRecorder[logM]["MA"] = metricsDict[logM]
-            metrics_path = "plot/{}/{}".format(parameter.experient_label, "all_metric")
-            pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
-    #############################################################
-    log = logging.getLogger(parameter.experient_label)
-    # if parameter.dynamic_model == "two":
-    #     sep_trainA = w.trainAC(sepMode="cloudA")
-    # elif parameter.dynamic_model == "one":
-    #     if parameter.addAverage:
-    #         sep_trainA = w.train(addcloud=True)
-    #     else:
-    #         sep_trainA = w.train(addcloud=False)
-    # log.info("Dataset shape: {}".format(sep_trainA))
+        for logM in metricsDict:
+            if modelMetricsRecorder.get(logM) is None:
+                modelMetricsRecorder[logM] = {}
+            modelMetricsRecorder[logM]["MA"] = metricsDict[logM]
+        metrics_path = "plot/{}/{}".format(parameter.experient_label, "all_metric")
+        pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
     dataUtil = data_with_weather_info
     is_input_continuous_with_output = (shift == 0) and (not parameter.between8_17 or w.is_sampling_within_day)
