@@ -205,9 +205,9 @@ def ModelTrainer_cloud(dataGnerator: WindowGenerator,
 
 def run():
     ap = argparse.ArgumentParser()
-    ap.add_argument("-m", "--test_month", type=int, required=False,
+    ap.add_argument("-m", "--test_month", type=int, required=False, default=parameter.test_month,
                     help="test_month")
-    ap.add_argument("-n", "--experient_label", type=str, required=False,
+    ap.add_argument("-n", "--experient_label", type=str, required=True, default=parameter.experient_label,
                     help="experient_label")
     args = vars(ap.parse_args())
     parameter.test_month = args["test_month"]
