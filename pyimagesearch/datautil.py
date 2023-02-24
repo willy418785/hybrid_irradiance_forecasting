@@ -95,6 +95,13 @@ class DataUtil(object):
             self.val_df = self.train_df[self.train_df.index.month == vmonth]
             # self.val_df = self.test_df
             self.train_df = self.train_df[self.train_df.index.month == train_month]
+        elif(split_mode == "cross_month_validate"):
+            assert month_sep is not None and type(month_sep) is int
+            val_month = month_sep - 1 if (month_sep - 1) > 0 else month_sep + 1
+            self.test_df = self.train_df[self.train_df.index.month == month_sep]
+            self.val_df = self.train_df[self.train_df.index.month == val_month]
+            self.train_df = self.train_df[self.train_df.index.month != month_sep]
+            self.train_df = self.train_df[self.train_df.index.month != val_month]
         ######################資料急保留時間欄目
         if (keep_date):
             try:
