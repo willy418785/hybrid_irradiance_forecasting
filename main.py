@@ -530,6 +530,16 @@ def run():
         # w3.checkWindow()
 
         w = w2
+    #############################################################
+    log = logging.getLogger(parameter.experient_label)
+    # if parameter.dynamic_model == "two":
+    #     sep_trainA = w.trainAC(sepMode="cloudA")
+    # elif parameter.dynamic_model == "one":
+    #     if parameter.addAverage:
+    #         sep_trainA = w.train(addcloud=True)
+    #     else:
+    #         sep_trainA = w.train(addcloud=False)
+    # log.info("Dataset shape: {}".format(sep_trainA))
 
 
     is_input_continuous_with_output = (shift == 0) and (not parameter.between8_17 or w.is_sampling_within_day)
@@ -578,10 +588,9 @@ def run():
         metrics_path = "plot/{}/{}".format(parameter.experient_label, "all_metric")
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
+    # test learning models
     dataUtil = data_with_weather_info
-    is_input_continuous_with_output = (shift == 0) and (not parameter.between8_17 or w.is_sampling_within_day)
-    metrics_path = "plot/{}/{}".format(parameter.experient_label, "all_metric")
-
+    w = w2
     if "conv3D_c_cnnlstm" in parameter.model_list:
         parameter.squeeze = False
         best_perform, best_perform2 = None, None
@@ -680,7 +689,7 @@ def run():
             modelMetricsRecorder[logM]["conv3D_c_cnnlstm"] = metricsDict[logM]
         metrics_path = "plot/{}/{}".format(parameter.experient_label, "all_metric")
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
-    #############################################################
+
     if "Cnn3dLSTM_c_cnnlstm" in parameter.model_list:
         parameter.squeeze = False
         best_perform, best_perform2 = None, None
@@ -764,7 +773,7 @@ def run():
             if modelMetricsRecorder.get(logM) is None:
                 modelMetricsRecorder[logM] = {}
             modelMetricsRecorder[logM]["Cnn3dLSTM_c_cnnlstm"] = metricsDict[logM]
-    #################################################################################
+
     if "Resnet50_c_cnnlstm" in parameter.model_list:
         parameter.squeeze = False
         best_perform, best_perform2 = None, None
@@ -898,7 +907,7 @@ def run():
             if modelMetricsRecorder.get(logM) is None:
                 modelMetricsRecorder[logM] = {}
             modelMetricsRecorder[logM]["Resnet50_c_cnnlstm"] = metricsDict[logM]
-    #################################################################################
+
     if "Efficient_c_cnnlstm" in parameter.model_list:
         parameter.squeeze = False
         best_perform, best_perform2 = None, None
@@ -1185,151 +1194,8 @@ def run():
     #             modelMetricsRecorder[logM] = {}
     #         modelMetricsRecorder[logM]["simple_transformer"] = metricsDict[logM]
     #     pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
-    if 'AR' in parameter.model_list:
-        try:
-            assert len(parameter.features) == len(parameter.target)
-            best_perform, best_perform2 = None, None
-            best_model, best_model2 = None, None
-            log.info("training AR model...")
-            for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
-                if not w.is_sampling_within_day and parameter.between8_17:
-                    model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))),
-                                                 SplitInputByDay(n_days=parameter.input_days,
-                                                                 n_samples=w.samples_per_day),
-                                                 MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
-                                                                       filter_size=preprocess_utils.Config.kernel_size,
-                                                                       n_days=parameter.input_days,
-                                                                       n_samples=w.samples_per_day),
-                                                 model_AR.AR(model_AR.Config.order, label_width,
-                                                             len(parameter.features))
-                                                 ])
-                else:
-                    model = model_AR.AR(model_AR.Config.order, label_width,
-                                        len(parameter.features))
-                    model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))), model])
 
-                datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
-                                                                      generatorMode="data", testEpoch=testEpoch,
-                                                                      name="AR")
-                print(datamodel_CL_performance)
-                if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
-                    best_model = datamodel_CL
-                    best_perform = datamodel_CL_performance
-                print(best_perform)
-                log.info("a model ok")
-
-            log.info("predicting SolarIrradiation by AR...")
-
-            metricsDict = w.allPlot(model=[best_model],
-                                    name="AR",
-                                    scaler=dataUtil.labelScaler,
-                                    datamode="data")
-            for logM in metricsDict:
-                if modelMetricsRecorder.get(logM) is None:
-                    modelMetricsRecorder[logM] = {}
-                modelMetricsRecorder[logM]["AR"] = metricsDict[logM]
-            pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
-        except AssertionError:
-            log.info('# of input channels is not equal to # of output channels: got {} and {}'.format(
-                len(parameter.features, len(parameter.target))))
-
-    if 'channelwise_AR' in parameter.model_list:
-        try:
-            assert len(parameter.features) == len(parameter.target)
-            best_perform, best_perform2 = None, None
-            best_model, best_model2 = None, None
-            log.info("training channelwise_AR model...")
-            for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
-                if not w.is_sampling_within_day and parameter.between8_17:
-                    model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))),
-                                                 SplitInputByDay(n_days=parameter.input_days,
-                                                                 n_samples=w.samples_per_day),
-                                                 MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
-                                                                       filter_size=preprocess_utils.Config.kernel_size,
-                                                                       n_days=parameter.input_days,
-                                                                       n_samples=w.samples_per_day),
-                                                 model_AR.ChannelIndependentAR(model_AR.Config.order, label_width,
-                                                                               len(parameter.features))
-                                                 ])
-                else:
-                    model = model_AR.ChannelIndependentAR(model_AR.Config.order, label_width,
-                                                          len(parameter.features))
-                    model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))), model])
-
-                datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
-                                                                      generatorMode="data", testEpoch=testEpoch,
-                                                                      name="channelwise_AR")
-                print(datamodel_CL_performance)
-                if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
-                    best_model = datamodel_CL
-                    best_perform = datamodel_CL_performance
-                print(best_perform)
-                log.info("a model ok")
-
-            log.info("predicting SolarIrradiation by channelwise_AR...")
-
-            metricsDict = w.allPlot(model=[best_model],
-                                    name="channelwise_AR",
-                                    scaler=dataUtil.labelScaler,
-                                    datamode="data")
-            for logM in metricsDict:
-                if modelMetricsRecorder.get(logM) is None:
-                    modelMetricsRecorder[logM] = {}
-                modelMetricsRecorder[logM]["channelwise_AR"] = metricsDict[logM]
-            pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
-        except AssertionError:
-            log.info('# of input channels is not equal to # of output channels: got {} and {}'.format(
-                len(parameter.features, len(parameter.target))))
-
-    if 'LR' in parameter.model_list:
-        try:
-            assert len(parameter.features) == len(parameter.target)
-            best_perform, best_perform2 = None, None
-            best_model, best_model2 = None, None
-            log.info("training LR model...")
-            for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
-                if not w.is_sampling_within_day and parameter.between8_17:
-                    model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))),
-                                                 SplitInputByDay(n_days=parameter.input_days,
-                                                                 n_samples=w.samples_per_day),
-                                                 MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
-                                                                       filter_size=preprocess_utils.Config.kernel_size,
-                                                                       n_days=parameter.input_days,
-                                                                       n_samples=w.samples_per_day),
-                                                 model_AR.TemporalChannelIndependentLR(model_AR.Config.order,
-                                                                                       label_width,
-                                                                                       len(parameter.features))
-                                                 ])
-                else:
-                    model = model_AR.TemporalChannelIndependentLR(model_AR.Config.order, label_width,
-                                                                  len(parameter.features))
-                    model = tf.keras.Sequential([tf.keras.Input(shape=(input_width, len(parameter.features))), model])
-
-                datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
-                                                                      generatorMode="data", testEpoch=testEpoch,
-                                                                      name="LR")
-                print(datamodel_CL_performance)
-                if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
-                    best_model = datamodel_CL
-                    best_perform = datamodel_CL_performance
-                print(best_perform)
-                log.info("a model ok")
-
-            log.info("predicting SolarIrradiation by LR...")
-
-            metricsDict = w.allPlot(model=[best_model],
-                                    name="LR",
-                                    scaler=dataUtil.labelScaler,
-                                    datamode="data")
-            for logM in metricsDict:
-                if modelMetricsRecorder.get(logM) is None:
-                    modelMetricsRecorder[logM] = {}
-                modelMetricsRecorder[logM]["LR"] = metricsDict[logM]
-            pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
-        except AssertionError:
-            log.info('# of input channels is not equal to # of output channels: got {} and {}'.format(
-                len(parameter.features, len(parameter.target))))
-
+    # pure numerical models
     if "convGRU" in parameter.model_list:
         best_perform, best_perform2 = None, None
         best_model, best_model2 = None, None
@@ -1442,135 +1308,6 @@ def run():
             if modelMetricsRecorder.get(logM) is None:
                 modelMetricsRecorder[logM] = {}
             modelMetricsRecorder[logM]["transformer"] = metricsDict[logM]
-        pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
-
-    if "convGRU_w_AR" in parameter.model_list:
-        best_perform, best_perform2 = None, None
-        best_model, best_model2 = None, None
-        log.info("convGRU_w_AR")
-        for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
-            model = model_convGRU.ConvGRU(num_layers=model_convGRU.Config.layers, in_seq_len=input_width,
-                                          in_dim=len(parameter.features),
-                                          out_seq_len=label_width, out_dim=len(parameter.target),
-                                          units=model_convGRU.Config.gru_units,
-                                          filters=model_convGRU.Config.embedding_filters,
-                                          gen_mode='unistep',
-                                          is_seq_continuous=is_input_continuous_with_output,
-                                          rate=model_convGRU.Config.dropout_rate)
-            if not w.is_sampling_within_day and parameter.between8_17:
-                inputs = tf.keras.Input(shape=(input_width, len(parameter.features)))
-                linear = model_AR.ChannelIndependentAR(model_AR.Config.order, label_width, len(parameter.features))(
-                    inputs)
-                embedding = SplitInputByDay(n_days=parameter.input_days, n_samples=w.samples_per_day)(inputs)
-                embedding = MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
-                                                  filter_size=preprocess_utils.Config.kernel_size,
-                                                  n_days=parameter.input_days,
-                                                  n_samples=w.samples_per_day)(embedding)
-                nonlinear = model(embedding)
-                outputs = tf.keras.layers.Add()([linear, nonlinear])
-                model = tf.keras.Model(inputs=inputs, outputs=outputs, name="convGRU_w_AR")
-            else:
-                inputs = tf.keras.Input(shape=(input_width, len(parameter.features)))
-                linear = model_AR.ChannelIndependentAR(model_AR.Config.order, label_width, len(parameter.features))(
-                    inputs)
-                nonlinear = model(inputs)
-                outputs = tf.keras.layers.Add()([linear, nonlinear])
-                model = tf.keras.Model(inputs=inputs, outputs=outputs, name="convGRU_w_AR")
-            datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
-                                                                  generatorMode="data", testEpoch=testEpoch,
-                                                                  name="convGRU_w_AR")
-            print(datamodel_CL_performance)
-            if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
-                best_model = datamodel_CL
-                best_perform = datamodel_CL_performance
-            print(best_perform)
-            log.info("a model ok")
-
-        log.info("predicting SolarIrradiation by convGRU_w_AR...")
-
-        metricsDict = w.allPlot(model=[best_model],
-                                name="convGRU_w_AR",
-                                scaler=dataUtil.labelScaler,
-                                datamode="data")
-
-        for logM in metricsDict:
-            if modelMetricsRecorder.get(logM) is None:
-                modelMetricsRecorder[logM] = {}
-            modelMetricsRecorder[logM]["convGRU_w_AR"] = metricsDict[logM]
-        pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
-
-    if "transformer_w_AR" in parameter.model_list:
-        best_perform, best_perform2 = None, None
-        best_model, best_model2 = None, None
-        log.info("training transformer_w_AR model...")
-        for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
-            if w.is_sampling_within_day:
-                token_len = input_width
-            else:
-                token_len = (min(input_width, label_width) // w.samples_per_day // 2 + 1) * w.samples_per_day
-            if not w.is_sampling_within_day and parameter.between8_17:
-                inputs = tf.keras.Input(shape=(input_width, len(parameter.features)))
-                linear = model_AR.ChannelIndependentAR(model_AR.Config.order, label_width, len(parameter.features))(
-                    inputs)
-                embedding = SplitInputByDay(n_days=parameter.input_days, n_samples=w.samples_per_day)(inputs)
-                embedding = MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
-                                                  filter_size=preprocess_utils.Config.kernel_size,
-                                                  n_days=parameter.input_days,
-                                                  n_samples=w.samples_per_day)(embedding)
-                nonlinear = model_transformer.Transformer(num_layers=model_transformer.Config.layers,
-                                                          d_model=model_transformer.Config.d_model,
-                                                          num_heads=model_transformer.Config.n_heads,
-                                                          dff=model_transformer.Config.dff,
-                                                          src_seq_len=w.samples_per_day,
-                                                          tar_seq_len=label_width,
-                                                          src_dim=preprocess_utils.Config.filters,
-                                                          tar_dim=len(parameter.target),
-                                                          rate=model_transformer.Config.dropout_rate,
-                                                          gen_mode="unistep",
-                                                          is_seq_continuous=is_input_continuous_with_output,
-                                                          is_pooling=False,
-                                                          token_len=0)(embedding)
-                outputs = tf.keras.layers.Add()([linear, nonlinear])
-                model = tf.keras.Model(inputs=inputs, outputs=outputs, name="transformer_w_AR")
-            else:
-                inputs = tf.keras.Input(shape=(input_width, len(parameter.features)))
-                linear = model_AR.ChannelIndependentAR(model_AR.Config.order, label_width, len(parameter.features))(
-                    inputs)
-                nonlinear = model_transformer.Transformer(num_layers=model_transformer.Config.layers,
-                                                          d_model=model_transformer.Config.d_model,
-                                                          num_heads=model_transformer.Config.n_heads,
-                                                          dff=model_transformer.Config.dff,
-                                                          src_seq_len=input_width,
-                                                          tar_seq_len=label_width, src_dim=len(parameter.features),
-                                                          tar_dim=len(parameter.target),
-                                                          rate=model_transformer.Config.dropout_rate,
-                                                          gen_mode="unistep",
-                                                          is_seq_continuous=is_input_continuous_with_output,
-                                                          is_pooling=False,
-                                                          token_len=token_len)(inputs)
-                outputs = tf.keras.layers.Add()([linear, nonlinear])
-                model = tf.keras.Model(inputs=inputs, outputs=outputs, name="transformer_w_AR")
-
-            datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
-                                                                  generatorMode="data", testEpoch=testEpoch,
-                                                                  name="transformer_w_AR")
-            print(datamodel_CL_performance)
-            if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
-                best_model = datamodel_CL
-                best_perform = datamodel_CL_performance
-            print(best_perform)
-            log.info("a model ok")
-
-        log.info("predicting SolarIrradiation by transformer_w_AR...")
-
-        metricsDict = w.allPlot(model=[best_model],
-                                name="transformer_w_AR",
-                                scaler=dataUtil.labelScaler,
-                                datamode="data")
-        for logM in metricsDict:
-            if modelMetricsRecorder.get(logM) is None:
-                modelMetricsRecorder[logM] = {}
-            modelMetricsRecorder[logM]["transformer_w_AR"] = metricsDict[logM]
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
     if "convGRU_w_LR" in parameter.model_list:
@@ -1957,6 +1694,7 @@ def run():
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
     # intergrated with timestamp data
+    dataUtil = data_with_weather_info
     w = w_with_timestamp_data
     if "convGRU_w_timestamps" in parameter.model_list:
         best_perform, best_perform2 = None, None
