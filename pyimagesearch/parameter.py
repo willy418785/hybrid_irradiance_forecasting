@@ -10,17 +10,17 @@ static_suffle = False
 dynamic_suffle = False
 timeseries = True
 datasetPath = "../skyImage"
-csv_name = 'ElectricityConsumption_2012-2014.csv'  # ["2020final.csv","2020new","2020shuffleDay", 'dataset_renheo_[2019].csv', 'ElectricityConsumption_2012-2014.csv']
+csv_name = 'ElectricityConsumption_2012-2014.csv'  # ["2020final.csv","2020new.csv","2020shuffleDay", 'dataset_renheo_[2019].csv', 'ElectricityConsumption_2012-2014.csv']
 # features = ['ShortWaveDown'] # target only
 # features = ['ShortWaveDown', 'CWB_Humidity', 'CWB_Temperature']  # david suggested
-# features = ["DC-1|Pdc", "DC-2|Pdc", "Temperature", "RH"] # david suggested
+# features = ["DC-1|Pdc", "DC-2|Pdc"] # ["DC-1|Pdc", "DC-2|Pdc", "Temperature", "RH"], ["DC-1|Pdc", "DC-2|Pdc"]
 # features = None
 # features = ["MT_001"]
 features = ["MT_{}".format(str(i).zfill(3)) for i in range(1, 371)]
-target = ["MT_{}".format(str(i).zfill(3)) for i in range(1, 371)]
-
+# target = ["MT_{}".format(str(i).zfill(3)) for i in range(1, 371)]
+target = features
 # target = ["MT_001"]
-# target = None   # "ShortWaveDown","difference5","difference10", ["DC-1|Pdc","DC-2|Pdc"]
+# target = ["DC-1|Pdc","DC-2|Pdc"]   # "ShortWaveDown","difference5","difference10", ["DC-1|Pdc","DC-2|Pdc"]
 # features = ['ShortWaveDown', 'CWB_Humidity', 'CWB_WindSpeed',
 #             'CWB_Temperature', 'EvapLevel', 'CWB_Rain05', 'CWB_Pressure', "CWB_WindDirection_Cosine",
 #             "CWB_WindDirection_Sine"]
@@ -52,23 +52,9 @@ if between8_17 or test_between8_17:
         start = '08:00:01'
     end = '17:00:00'
 labelScaler = MinMaxScaler()
-# suffle_static_threemodel_es_cnn_resnet_solarnet    
-# suffle_static_onemodel_es_cnn_resnet_solarnet_Kmeans5  
-# suffle_dynamic_10_5_es_convlstm_conv3D_cnnlstm
-# suffle_static_threemodel_170_220_es_cnn_resnet_solarnet
-# suffle_static_onemodel_es_cnn_resnet_solarnet
-# suffle_static_twomodel_200_es_cnn_resnet_solarnet
-# suffle_dynamic_20_5_es_conv3D_cnnLSTM
-# new_dynamic_10_5_es_conv3D_cnnLSTM_32
-# dynamic_5_5_es_conv3D_cnnLSTM_MinMax
-# dynamic_5_5_es_multiCnnLSTM_3Dresnet18_3Dresnet34
-# dynamic_5_5_es_combined
-# monthSep_dynamic_5_5_es_combined
-# monthSep_dynamic_5and1_5_es_combined
-# difference5_monthSep_dynamic_5and1_5_es_combined
-# seq_monthSep_dynamic_0-9_14-18
-experient_label = "test"  # 5x48x64x3-and-5x1-and-5x2-conv3D_c_cnnlstm    #new_twomodel_image
+experient_label = "test"
 after_minutes = 1
+
 input_days = 7
 shifted_days = 0
 output_days = 1
@@ -85,11 +71,11 @@ is_using_image_data = False
 epochs = 300
 # epoch_list = [100, 200, 250, 300, 400, 500]     #if no early stop
 # epoch_list = [1]
-epoch_list = [20000]
+# epoch_list = [20000]
 # epoch_list = [0]
 # epoch_list = [500]
 # epoch_list = [500, 500]
-# epoch_list = [500, 500, 500]
+epoch_list = [500, 500, 500]
 # epoch_list = [500, 500, 500, 500]
 # epoch_list = [500, 500, 500, 500, 500]
 batchsize = 16
@@ -113,7 +99,14 @@ earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=
 # model_list = ["Persistence", 'MA', "transformer_w_LR", 'convGRU_w_LR', 'LSTNet', "transformer_w_timestamps",
 #               "convGRU_w_timestamps", "convGRU", "transformer", "convGRU_w_LR_timestamps",
 #               "transformer_w_LR_timestamps"]
-model_list = ["Persistence", 'MA', "convGRU_w_LR_timestamps", "stationary_convGRU_w_LR_timestamps", 'transformer_w_LR_timestamps', 'stationary_transformer_w_LR_timestamps']
+model_list = ["Persistence", 'MA',
+              "convGRU", "transformer",
+              'convGRU_w_LR', "transformer_w_LR",
+              'convGRU_w_mlp_decoder', 'transformer_w_mlp_decoder',
+              'auto_convGRU', 'auto_transformer',
+              'convGRU_w_timestamps', "transformer_w_timestamps",
+              "convGRU_w_LR_timestamps", 'transformer_w_LR_timestamps',
+              "stationary_convGRU_w_LR_timestamps", "stationary_transformer_w_LR_timestamps"]
 # model_list = ["convGRU", "transformer", "convGRU_w_LR_timestamps", "transformer_w_LR_timestamps"]
 # model_list = ["Persistence", "MA", 'AR', 'channelwise_AR']
 # model_list = ["Persistence", "MA", "convGRU", "transformer", 'convGRU_w_mlp_decoder', 'transformer_w_mlp_decoder']
@@ -140,7 +133,7 @@ csvLogMetrics = ["MSE", "RMSE", "RMSPE", "MAE", "MAPE", "WMAPE", "VWMAPE", "corr
 model = "one"  # static use only
 class_type = "cloud"  # static use only    # "average","cloud"
 normalization = "MinMax"  # "MinMax","Mean","Standard","Max","No"
-split_mode = "all_year"  # "all_year","month"  # all_year就是整年按比例分割dataset  # month要去改test_month:if跑main.py則只做某個月，if跑month_sep.py則test_month自己從2-8更新病最後算平均
+split_mode = "all_year"  # "all_year", "month", 'cross_month_validate'  # all_year就是整年按比例分割dataset  # month要去改test_month:if跑main.py則只做某個月，if跑month_sep.py則test_month自己從2-8更新病最後算平均
 test_month = 2
 tailMonth = 12  # 最後一個月(val抓上一個月會用到)
 squeeze = False  # windowgenerator裡面image要不要降成2維，用於某些model
@@ -161,5 +154,5 @@ if is_using_cloud_location:
 
 timezone = 'Asia/Taipei'
 
-save_plot=False
-save_csv=True
+save_plot = False
+save_csv = True
