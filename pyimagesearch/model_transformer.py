@@ -195,7 +195,6 @@ class Transformer(tf.keras.Model):
         if self.gen_mode == 'unistep':
             if token_len is not None and is_seq_continuous:
                 assert type(token_len) is int
-                assert src_seq_len >= token_len
                 self.token_len = token_len
             else:
                 self.token_len = 0
