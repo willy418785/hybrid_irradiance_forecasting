@@ -1,18 +1,12 @@
 import os
 
 import tensorflow as tf
-import numpy as np
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import BatchNormalization, Conv2D, MaxPooling2D, Concatenate, Dropout, Dense, Flatten, \
-    Input, Add
-from tensorflow.keras.layers import Conv1D, MaxPooling1D, GRU, LayerNormalization, Reshape, ZeroPadding2D, \
-    MultiHeadAttention
-from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Dense, Input
 
 from pyimagesearch import parameter
 from pyimagesearch.datautil import DataUtil
 from pyimagesearch.windowsGenerator import WindowGenerator
-from pyimagesearch.model_transformer import positional_encoding
 gen_modes = ['unistep', 'auto', "mlp"]
 
 class Config():
