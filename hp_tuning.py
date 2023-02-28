@@ -54,17 +54,15 @@ class HyperTransformer(keras_tuner.HyperModel):
         if self.fine_tune:
             hp.Int("input_width", 24, 240, 24)
             hp.Int("layers", 1, 5)
-            hp.Int("d_model", 2, 512, step=2, sampling="log")
-            hp.Int("heads", 1, hp.get("d_model"), step=2,
-                   sampling="log")
+            hp.Int("d_model", 8, 512, step=2, sampling="log")
+            hp.Int("heads", 1, 8, step=2, sampling="log")
             hp.Int('dff_multiplier', 1, 8, step=2, sampling="log")
             hp.Int('kernel_size', 1, 17, step=2)
-            hp.Float('dropout_rate', 0.1, 0.5, 0.1)
+            hp.Float('dropout_rate', 0, 0.5, 0.1, default=0.1)
             hp.Boolean('is_using_pooling')
-            hp.Int("token_len", 0, hp.get("input_width"), 2)
-            hp.Int("avg_window", 1, 32, step=2, sampling="log", parent_name='is_using_stationary_module',
-                   parent_values=True)
-            hp.Int("LR_order", 24, hp.get("input_width"), 24, parent_name='is_using_LR', parent_values=True)
+            hp.Int("token_len", 0, 240, 24)
+            hp.Int("avg_window", 3, 17, step=2, parent_name='is_using_stationary_module', parent_values=True)
+            hp.Int("LR_order", 24, 240, 24, parent_name='is_using_LR', parent_values=True)
         else:
             hp.Fixed("input_width", 168)
             hp.Fixed("layers", 3)
@@ -197,13 +195,12 @@ class HyperConvGRU(keras_tuner.HyperModel):
         if self.fine_tune:
             hp.Int("input_width", 24, 240, 24)
             hp.Int("layers", 1, 5)
-            hp.Int('units', 2, 512, step=2, sampling="log")
-            hp.Int('filters', 2, 512, step=2, sampling="log")
+            hp.Int('units', 1, 512, step=2, sampling="log")
+            hp.Int('filters', 1, 512, step=2, sampling="log")
             hp.Int('kernel_size', 1, 17, step=2)
-            hp.Float('dropout_rate', 0.1, 0.5, 0.1)
-            hp.Int("avg_window", 1, 32, step=2, sampling="log", parent_name='is_using_stationary_module',
-                   parent_values=True)
-            hp.Int("LR_order", 24, hp.get("input_width"), 24, parent_name='is_using_LR', parent_values=True)
+            hp.Float('dropout_rate', 0, 0.5, 0.1, default=0.1)
+            hp.Int("avg_window", 3, 17, step=2, parent_name='is_using_stationary_module', parent_values=True)
+            hp.Int("LR_order", 24, 240, 24, parent_name='is_using_LR', parent_values=True)
         else:
             hp.Fixed("input_width", 168)
             hp.Fixed("layers", 3)
