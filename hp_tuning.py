@@ -334,3 +334,7 @@ if __name__ == '__main__':
         project_name="{}/convGRU".format(tuning_setup_str)
     )
     tuner2.search(callbacks=[parameter.earlystoper])
+    print("\n\n#####################Transformer's Best Result#####################")
+    tuner1.results_summary(num_trials=1)
+    print("\n\n#####################ConvGRU's Best Result#####################")
+    tuner2.results_summary(num_trials=1)
