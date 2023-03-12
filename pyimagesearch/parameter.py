@@ -43,7 +43,7 @@ norm_mode = 2
 time_granularity = 'H'  # 'H', 'min', 'T'
 between8_17 = False
 test_between8_17 = False
-split_days = True
+split_days = False
 
 if between8_17 or test_between8_17:
     if time_granularity == 'H':
@@ -57,8 +57,8 @@ after_minutes = 1
 
 input_days = 7
 shifted_days = 0
-output_days = 1
-MA_days = 8
+output_days = 7
+MA_days = 7
 
 input_width = 168
 shifted_width = 0
@@ -78,7 +78,7 @@ epochs = 300
 epoch_list = [500, 500, 500]
 # epoch_list = [500, 500, 500, 500]
 # epoch_list = [500, 500, 500, 500, 500]
-batchsize = 16
+batchsize = 32
 
 earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=10, min_delta=0.0001,
                             restore_best_weights=True)
@@ -100,13 +100,12 @@ earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=
 #               "convGRU_w_timestamps", "convGRU", "transformer", "convGRU_w_LR_timestamps",
 #               "transformer_w_LR_timestamps"]
 model_list = ["Persistence", 'MA',
-              "convGRU", "transformer",
               'convGRU_w_LR', "transformer_w_LR",
-              'convGRU_w_mlp_decoder', 'transformer_w_mlp_decoder',
-              'auto_convGRU', 'auto_transformer',
-              'convGRU_w_timestamps', "transformer_w_timestamps",
+              'stationary_convGRU_w_LR', "stationary_transformer_w_LR",
+              'movingznorm_transformer_w_LR',
               "convGRU_w_LR_timestamps", 'transformer_w_LR_timestamps',
-              "stationary_convGRU_w_LR_timestamps", "stationary_transformer_w_LR_timestamps"]
+              "stationary_convGRU_w_LR_timestamps", "stationary_transformer_w_LR_timestamps",
+              'movingznorm_transformer_w_LR_timestamps']
 # model_list = ["convGRU", "transformer", "convGRU_w_LR_timestamps", "transformer_w_LR_timestamps"]
 # model_list = ["Persistence", "MA", 'AR', 'channelwise_AR']
 # model_list = ["Persistence", "MA", "convGRU", "transformer", 'convGRU_w_mlp_decoder', 'transformer_w_mlp_decoder']
