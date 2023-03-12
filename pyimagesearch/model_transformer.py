@@ -11,7 +11,7 @@ from tensorflow.keras.models import Model
 
 from pyimagesearch import parameter, time_embedding
 from pyimagesearch.datautil import DataUtil
-from pyimagesearch.series_decomposition import SeriesDecompose
+from pyimagesearch.series_decomposition import SeriesDecompose, MovingZScoreNorm
 from pyimagesearch.windowsGenerator import WindowGenerator
 
 gen_modes = ['unistep', 'auto', "mlp"]
@@ -327,6 +327,77 @@ class StationaryTransformer(Transformer):
                 StationaryDecoderLayer(d_model=d_model, num_heads=num_heads, key_dim=self.decoder.k_dim,
                                        value_dim=self.decoder.v_dim,
                                        dff=dff, rate=rate, avg_window=avg_window) for _ in range(num_layers)]
+    def call(self, inputs, training, time_embedding_tuple=None):
+        seasonality, _ = self.decompose(inputs)
+        out = super().call(seasonality, training, time_embedding_tuple=time_embedding_tuple)
+        return out
+
+
+class MovingZScoreNormEncoderLayer(tf.keras.layers.Layer):
+    def __init__(self, d_model, num_heads, key_dim, value_dim, dff, rate=0.1, avg_window=9):
+        super().__init__()
+        self.mha = MultiHeadAttention(num_heads=num_heads, key_dim=key_dim, value_dim=value_dim, dropout=rate)
+        self.ff = feed_forward(d_model, dff, rate)
+        self.zn1 = MovingZScoreNorm(avg_window)
+        self.zn2 = MovingZScoreNorm(avg_window)
+        self.pooling = MaxPooling1D(pool_size=2, strides=2, padding='same')
+
+    def call(self, x, is_pooling, training, mask):
+        attn_output = self.mha(x, x, x, mask, training=training)  # (batch_size, input_seq_len, d_model)
+        out1 = self.zn1(x + attn_output)  # (batch_size, input_seq_len, d_model)
+        ff_output = self.ff(out1)  # (batch_size, input_seq_len, d_model)
+        out2 = self.zn2(ff_output + out1)  # (batch_size, input_seq_len, d_model)
+        if is_pooling:
+            out2 = self.pooling(out2)
+        return out2
+
+
+class MovingZScoreNormDecoderLayer(tf.keras.layers.Layer):
+    def __init__(self, d_model, num_heads, key_dim, value_dim, dff, rate=0.1, avg_window=9):
+        super().__init__()
+        self.mha1 = MultiHeadAttention(num_heads=num_heads, key_dim=key_dim, value_dim=value_dim, dropout=rate)
+        self.mha2 = MultiHeadAttention(num_heads=num_heads, key_dim=key_dim, value_dim=value_dim, dropout=rate)
+        self.ff = feed_forward(d_model, dff, rate)
+        self.zn1 = MovingZScoreNorm(avg_window)
+        self.zn2 = MovingZScoreNorm(avg_window)
+        self.zn3 = MovingZScoreNorm(avg_window)
+        self.pooling = MaxPooling1D(pool_size=2, strides=2, padding='same')
+
+    def call(self, x, enc_output, is_pooling, training):
+        look_ahead_mask = attention_masking(tf.shape(x)[1])
+        attn1 = self.mha1(x, x, x, look_ahead_mask, training=training)  # (batch_size, target_seq_len, d_model)
+        out1 = self.zn1(attn1 + x)
+        if is_pooling:
+            out1 = self.pooling(out1)
+
+        attn2 = self.mha2(out1, enc_output, training=training)  # (batch_size, target_seq_len, d_model)
+        out2 = self.zn2(attn2 + out1)  # (batch_size, target_seq_len, d_model)
+
+        ff_output = self.ff(out2)  # (batch_size, target_seq_len, d_model)
+        out3 = self.zn3(ff_output + out2)  # (batch_size, target_seq_len, d_model)
+        return out3
+
+
+class MovingZScoreNormTransformer(Transformer):
+    def __init__(self, num_layers, d_model, num_heads, dff, src_seq_len, tar_seq_len, src_dim, tar_dim, kernel_size=3,
+                 rate=0.1,
+                 gen_mode="unistep", is_seq_continuous=False, is_pooling=False, token_len=None, avg_window=9):
+        assert gen_mode in gen_modes
+        super().__init__(num_layers, d_model, num_heads, dff, src_seq_len, tar_seq_len, src_dim, tar_dim,
+                         kernel_size=kernel_size, rate=rate,
+                         gen_mode=gen_mode, is_seq_continuous=is_seq_continuous, is_pooling=is_pooling,
+                         token_len=token_len)
+        self.avg_window = avg_window
+        self.decompose = SeriesDecompose(avg_window)
+        self.encoder.enc_layers = [
+            MovingZScoreNormEncoderLayer(d_model=d_model, num_heads=num_heads, key_dim=self.encoder.k_dim,
+                                         value_dim=self.encoder.v_dim,
+                                         dff=dff, rate=rate, avg_window=avg_window) for _ in range(num_layers)]
+        if self.gen_mode == 'unistep' or self.gen_mode == 'auto':
+            self.decoder.dec_layers = [
+                MovingZScoreNormDecoderLayer(d_model=d_model, num_heads=num_heads, key_dim=self.decoder.k_dim,
+                                             value_dim=self.decoder.v_dim,
+                                             dff=dff, rate=rate, avg_window=avg_window) for _ in range(num_layers)]
 
     def call(self, inputs, training, time_embedding_tuple=None):
         seasonality, _ = self.decompose(inputs)
@@ -379,7 +450,7 @@ if __name__ == '__main__':
     input_time = Input(shape=(src_len + shift + tar_len, len(time_embedding.vocab_size)))
     embedding = time_embedding.TimeEmbedding(output_dims=Config.d_model, input_len=src_len, shift_len=shift,
                                              label_len=tar_len)(input_time)
-    LR = StationaryTransformer(num_layers=Config.layers, d_model=Config.d_model, num_heads=Config.n_heads,
+    LR = MovingZScoreNormTransformer(num_layers=Config.layers, d_model=Config.d_model, num_heads=Config.n_heads,
                                dff=Config.dff,
                                src_seq_len=src_len, tar_seq_len=tar_len,
                                src_dim=len(parameter.features),
