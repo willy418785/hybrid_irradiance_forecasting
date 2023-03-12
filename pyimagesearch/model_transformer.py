@@ -255,9 +255,14 @@ class Transformer(tf.keras.Model):
         return out
 
 
-class StationaryEncoderLayer(EncoderLayer):
+class StationaryEncoderLayer(tf.keras.layers.Layer):
     def __init__(self, d_model, num_heads, key_dim, value_dim, dff, rate=0.1, avg_window=9):
-        super().__init__(d_model, num_heads, key_dim, value_dim, dff, rate=rate)
+        super().__init__()
+        self.mha = MultiHeadAttention(num_heads=num_heads, key_dim=key_dim, value_dim=value_dim, dropout=rate)
+        self.ff = feed_forward(d_model, dff, rate)
+        self.ln1 = LayerNormalization()
+        self.ln2 = LayerNormalization()
+        self.pooling = MaxPooling1D(pool_size=2, strides=2, padding='same')
         self.decompose = SeriesDecompose(avg_window)
 
     def call(self, x, is_pooling, training, mask):
@@ -272,9 +277,16 @@ class StationaryEncoderLayer(EncoderLayer):
         return season2
 
 
-class StationaryDecoderLayer(DecoderLayer):
+class StationaryDecoderLayer(tf.keras.layers.Layer):
     def __init__(self, d_model, num_heads, key_dim, value_dim, dff, rate=0.1, avg_window=9):
-        super().__init__(d_model, num_heads, key_dim, value_dim, dff, rate=rate)
+        super().__init__()
+        self.mha1 = MultiHeadAttention(num_heads=num_heads, key_dim=key_dim, value_dim=value_dim, dropout=rate)
+        self.mha2 = MultiHeadAttention(num_heads=num_heads, key_dim=key_dim, value_dim=value_dim, dropout=rate)
+        self.ff = feed_forward(d_model, dff, rate)
+        self.ln1 = LayerNormalization()
+        self.ln2 = LayerNormalization()
+        self.ln3 = LayerNormalization()
+        self.pooling = MaxPooling1D(pool_size=2, strides=2, padding='same')
         self.decompose = SeriesDecompose(avg_window)
 
     def call(self, x, enc_output, is_pooling, training):
