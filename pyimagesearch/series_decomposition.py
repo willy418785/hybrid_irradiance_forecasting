@@ -2,7 +2,7 @@ import tensorflow as tf
 
 
 class Config():
-    window_size = 8
+    window_size = 17
 
 
 class SeriesDecompose(tf.keras.layers.Layer):

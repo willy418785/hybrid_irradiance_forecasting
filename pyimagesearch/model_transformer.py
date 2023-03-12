@@ -18,9 +18,9 @@ gen_modes = ['unistep', 'auto', "mlp"]
 
 
 class Config():
-    layers = 3
+    layers = 1
     d_model = 32
-    n_heads = 4
+    n_heads = 1
     dff = d_model * 4
     embedding_kernel_size = 3
     dropout_rate = 0.1
