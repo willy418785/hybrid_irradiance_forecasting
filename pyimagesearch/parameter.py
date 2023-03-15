@@ -76,9 +76,9 @@ epochs = 300
 # epoch_list = [0]
 # epoch_list = [500]
 # epoch_list = [500, 500]
-epoch_list = [500, 500, 500]
+# epoch_list = [500, 500, 500]
 # epoch_list = [500, 500, 500, 500]
-# epoch_list = [500, 500, 500, 500, 500]
+epoch_list = [500, 500, 500, 500, 500]
 batchsize = 32
 
 earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=10, min_delta=0.0001,
@@ -100,13 +100,16 @@ earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=
 # model_list = ["Persistence", 'MA', "transformer_w_LR", 'convGRU_w_LR', 'LSTNet', "transformer_w_timestamps",
 #               "convGRU_w_timestamps", "convGRU", "transformer", "convGRU_w_LR_timestamps",
 #               "transformer_w_LR_timestamps"]
+# model_list = ["Persistence", 'MA',
+#               'convGRU_w_LR', "transformer_w_LR",
+#               'stationary_convGRU_w_LR', "stationary_transformer_w_LR",
+#               'movingznorm_transformer_w_LR',
+#               "convGRU_w_LR_timestamps", 'transformer_w_LR_timestamps',
+#               "stationary_convGRU_w_LR_timestamps", "stationary_transformer_w_LR_timestamps",
+#               'movingznorm_transformer_w_LR_timestamps']
 model_list = ["Persistence", 'MA',
               'convGRU_w_LR', "transformer_w_LR",
-              'stationary_convGRU_w_LR', "stationary_transformer_w_LR",
-              'movingznorm_transformer_w_LR',
-              "convGRU_w_LR_timestamps", 'transformer_w_LR_timestamps',
-              "stationary_convGRU_w_LR_timestamps", "stationary_transformer_w_LR_timestamps",
-              'movingznorm_transformer_w_LR_timestamps']
+              'convGRU_w_MA', "transformer_w_MA"]
 # model_list = ["convGRU", "transformer", "convGRU_w_LR_timestamps", "transformer_w_LR_timestamps"]
 # model_list = ["Persistence", "MA", 'AR', 'channelwise_AR']
 # model_list = ["Persistence", "MA", "convGRU", "transformer", 'convGRU_w_mlp_decoder', 'transformer_w_mlp_decoder']
