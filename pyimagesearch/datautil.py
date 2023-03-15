@@ -21,7 +21,7 @@ class DataUtil(object):
     def __init__(self, train_path: str,
                  label_col: list = None,
                  feature_col: list = None,
-                 normalise=2,
+                 normalise=1, label_norm_mode=1,
                  val_path=None, test_path=None,
                  train_split=0.8, val_split=0.1, test_split=0.1, split_mode=False, month_sep=None, keep_date=False):
         # 0.8,0.05,0.15
@@ -30,7 +30,7 @@ class DataUtil(object):
         weather_col
         shift_weather_col 對於使用的天氣欄目，shift時間 例如使用預測日天氣就需要這個
         normalise: norm的方式，default 2 , 0 不做事 ,1 std , 2 minMax
-
+        label_norm_mode: label norm的方式，default 2 , 0 不做事 ,1 std , 2 minMax，優先級比normalise高
         train_split=0.8, val_split=0.05, test_split=0.15
         這三個會100%
 
@@ -40,13 +40,20 @@ class DataUtil(object):
         """
         self.norm_type_list = ['None', 'Stander', 'MinMax']
         self.normalise_mode = normalise
+        self.label_norm_mode = label_norm_mode
         self.train_df_cloud = None
         self.val_df_cloud = None
         self.test_df_cloud = None
         self.train_df_average = None
         self.val_df_average = None
         self.test_df_average = None
-        self.labelScaler = MinMaxScaler()  # TODO: make the label normalizer customizable
+        if self.label_norm_mode == 1:
+            self.labelScaler = StandardScaler()
+        elif self.label_norm_mode == 2:
+            self.labelScaler = MinMaxScaler()
+        else:
+            self.labelScaler = None
+
         # read_dataset
         try:
             self.train_df = pd.read_csv(

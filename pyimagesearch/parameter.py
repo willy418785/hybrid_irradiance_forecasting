@@ -40,6 +40,7 @@ addAverage = False  # True for one model:add cloud and average
 '''
 cloudLabel = "twoClass"
 norm_mode = 2
+label_norm_mode = 1
 time_granularity = 'H'  # 'H', 'min', 'T'
 between8_17 = False
 test_between8_17 = False
@@ -51,7 +52,7 @@ if between8_17 or test_between8_17:
     elif time_granularity == 'min' or time_granularity == 'T':
         start = '08:00:01'
     end = '17:00:00'
-labelScaler = MinMaxScaler()
+
 experient_label = "test"
 after_minutes = 1
 
