@@ -160,9 +160,116 @@ if __name__ == '__main__':
     print('#####################################################')
     best_for_WMAPE = min(WMAPE_dict, key=WMAPE_dict.get)
     best_for_corr = max(corr_dict, key=corr_dict.get)
+    print("          Dataset: {}".format(train_path))
     print('        Shift len: {}'.format(args.shift))
     print('       Output len: {}'.format(args.output))
     print("       Best WMAPE: {} with MA width of {}".format(WMAPE_dict[best_for_WMAPE], best_for_WMAPE))
     print("       Best  CORR: {} with MA width of {}".format(corr_dict[best_for_corr], best_for_corr))
     print("Persistence WMAPE: {}".format(persistence_metrics['WMAPE']))
     print("Persistence  CORR: {}".format(persistence_metrics['corr']))
+    #
+    #
+    #
+
+# #####################################################
+#           Dataset: ../\ElectricityConsumption_2012-2014.csv
+#         Shift len: 0
+#        Output len: 24
+#        Best WMAPE: 0.07847143709659576 with MA width of 24
+#        Best  CORR: 0.9080327749252319 with MA width of 192
+# Persistence WMAPE: 0.07847143709659576
+# Persistence  CORR: 0.8894655704498291
+# #####################################################
+#           Dataset: ../\ElectricityConsumption_2012-2014.csv
+#         Shift len: 0
+#        Output len: 96
+#        Best WMAPE: 0.08754201233386993 with MA width of 168
+#        Best  CORR: 0.8986331224441528 with MA width of 168
+# Persistence WMAPE: 0.09951511025428772
+# Persistence  CORR: 0.8456669449806213
+# #####################################################
+#           Dataset: ../\ElectricityConsumption_2012-2014.csv
+#         Shift len: 0
+#        Output len: 168
+#        Best WMAPE: 0.09105895459651947 with MA width of 168
+#        Best  CORR: 0.8920783996582031 with MA width of 168
+# Persistence WMAPE: 0.1048528179526329
+# Persistence  CORR: 0.8467888832092285
+# #####################################################
+#           Dataset: ../\ElectricityConsumption_2012-2014.csv
+#         Shift len: 0
+#        Output len: 336
+#        Best WMAPE: 0.0991450846195221 with MA width of 144
+#        Best  CORR: 0.8782457709312439 with MA width of 168
+# Persistence WMAPE: 0.11511020362377167
+# Persistence  CORR: 0.8334034085273743
+
+
+
+# #####################################################
+#           Dataset: ../\dataset_renheo_[2019].csv
+#         Shift len: 0
+#        Output len: 24
+#        Best WMAPE: 0.42745229601860046 with MA width of 672
+#        Best  CORR: 0.8492820262908936 with MA width of 696
+# Persistence WMAPE: 0.478567898273468
+# Persistence  CORR: 0.7851826548576355
+#####################################################
+#           Dataset: ../\dataset_renheo_[2019].csv
+#         Shift len: 0
+#        Output len: 96
+#        Best WMAPE: 0.4260925352573395 with MA width of 696
+#        Best  CORR: 0.8487889766693115 with MA width of 696
+# Persistence WMAPE: 0.5407254099845886
+# Persistence  CORR: 0.7366670370101929
+#####################################################
+#           Dataset: ../\dataset_renheo_[2019].csv
+#         Shift len: 0
+#        Output len: 168
+#        Best WMAPE: 0.4261748492717743 with MA width of 696
+#        Best  CORR: 0.8475924730300903 with MA width of 528
+# Persistence WMAPE: 0.5703415870666504
+# Persistence  CORR: 0.7234576940536499
+#####################################################
+#           Dataset: ../\dataset_renheo_[2019].csv
+#         Shift len: 0
+#        Output len: 336
+#        Best WMAPE: 0.4236150085926056 with MA width of 648
+#        Best  CORR: 0.8487817049026489 with MA width of 696
+# Persistence WMAPE: 0.5532902479171753
+# Persistence  CORR: 0.7455820441246033
+
+
+
+# #####################################################
+#           Dataset: ../\2020final.csv
+#         Shift len: 0
+#        Output len: 24
+#        Best WMAPE: 0.48449480533599854 with MA width of 120
+#        Best  CORR: 0.8245481252670288 with MA width of 720
+# Persistence WMAPE: 0.48463645577430725
+# Persistence  CORR: 0.7828278541564941
+# #####################################################
+#           Dataset: ../\2020final.csv
+#         Shift len: 0
+#        Output len: 96
+#        Best WMAPE: 0.49338969588279724 with MA width of 672
+#        Best  CORR: 0.8198636174201965 with MA width of 672
+# Persistence WMAPE: 0.5685784816741943
+# Persistence  CORR: 0.7204545140266418
+# #####################################################
+#           Dataset: ../\2020final.csv
+#         Shift len: 0
+#        Output len: 168
+#        Best WMAPE: 0.49925705790519714 with MA width of 720
+#        Best  CORR: 0.816164493560791 with MA width of 720
+# Persistence WMAPE: 0.5709657669067383
+# Persistence  CORR: 0.7242510914802551
+# #####################################################
+#           Dataset: ../\2020final.csv
+#         Shift len: 0
+#        Output len: 336
+#        Best WMAPE: 0.5042690634727478 with MA width of 720
+#        Best  CORR: 0.8111436367034912 with MA width of 720
+# Persistence WMAPE: 0.5987861752510071
+# Persistence  CORR: 0.7046056389808655
