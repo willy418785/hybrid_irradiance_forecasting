@@ -155,9 +155,23 @@ class ConvGRU(tf.keras.Model):
         return output
 
 
-class StationaryEncoder(Encoder):
+class StationaryEncoder(tf.keras.layers.Layer):
     def __init__(self, layers, units, avg_window, seq_len=None, filters=None, kernel_size=3, rate=0.1):
-        super().__init__(layers, units, seq_len=seq_len, filters=filters, kernel_size=kernel_size, rate=rate)
+        super().__init__()
+        self.layers = layers
+        self.units = units
+        if filters is None:
+            self.filters = units
+        else:
+            self.filters = filters
+        self.kernel_size = kernel_size
+        self.pos_vec = positional_encoding(seq_len, self.filters) if seq_len is not None else None
+        self.conv = Conv1D(filters=self.filters, kernel_size=self.kernel_size, strides=1, padding="same",
+                           activation='elu')
+
+        self.gru_layers = [
+            GRU(units, return_sequences=True, return_state=True, dropout=rate)
+            for _ in range(layers)]
         self.decompose = SeriesDecompose(avg_window)
 
     def call(self, input_seq, training, timestamp_embedding=None):
@@ -175,9 +189,23 @@ class StationaryEncoder(Encoder):
         return x, states
 
 
-class StationaryDecoder(Decoder):
+class StationaryDecoder(tf.keras.layers.Layer):
     def __init__(self, layers, units, avg_window, seq_len=None, filters=None, kernel_size=3, rate=0.1):
-        super().__init__(layers, units, seq_len=seq_len, filters=filters, kernel_size=kernel_size, rate=rate)
+        super().__init__()
+        self.layers = layers
+        self.units = units
+        if filters is None:
+            self.filters = units
+        else:
+            self.filters = filters
+        self.kernel_size = kernel_size
+        self.pos_vec = positional_encoding(seq_len, self.filters) if seq_len is not None else None
+
+        self.conv = Conv1D(filters=self.filters, kernel_size=kernel_size, strides=1, padding="causal",
+                           activation='elu')
+        self.gru_layers = [
+            GRU(units, return_sequences=True, return_state=True, dropout=rate)
+            for _ in range(layers)]
         self.decompose = SeriesDecompose(avg_window)
 
     def call(self, input_seq, initial_states, training, timestamp_embedding=None, iter_step=None):
