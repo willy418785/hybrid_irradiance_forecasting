@@ -344,9 +344,9 @@ class MovingZScoreNormEncoderLayer(tf.keras.layers.Layer):
 
     def call(self, x, is_pooling, training, mask):
         attn_output = self.mha(x, x, x, mask, training=training)  # (batch_size, input_seq_len, d_model)
-        out1 = self.zn1(x + attn_output)  # (batch_size, input_seq_len, d_model)
+        out1, _ = self.zn1(x + attn_output)  # (batch_size, input_seq_len, d_model)
         ff_output = self.ff(out1)  # (batch_size, input_seq_len, d_model)
-        out2 = self.zn2(ff_output + out1)  # (batch_size, input_seq_len, d_model)
+        out2, _ = self.zn2(ff_output + out1)  # (batch_size, input_seq_len, d_model)
         if is_pooling:
             out2 = self.pooling(out2)
         return out2
@@ -366,15 +366,15 @@ class MovingZScoreNormDecoderLayer(tf.keras.layers.Layer):
     def call(self, x, enc_output, is_pooling, training):
         look_ahead_mask = attention_masking(tf.shape(x)[1])
         attn1 = self.mha1(x, x, x, look_ahead_mask, training=training)  # (batch_size, target_seq_len, d_model)
-        out1 = self.zn1(attn1 + x)
+        out1, _ = self.zn1(attn1 + x)
         if is_pooling:
             out1 = self.pooling(out1)
 
         attn2 = self.mha2(out1, enc_output, training=training)  # (batch_size, target_seq_len, d_model)
-        out2 = self.zn2(attn2 + out1)  # (batch_size, target_seq_len, d_model)
+        out2, _ = self.zn2(attn2 + out1)  # (batch_size, target_seq_len, d_model)
 
         ff_output = self.ff(out2)  # (batch_size, target_seq_len, d_model)
-        out3 = self.zn3(ff_output + out2)  # (batch_size, target_seq_len, d_model)
+        out3, _ = self.zn3(ff_output + out2)  # (batch_size, target_seq_len, d_model)
         return out3
 
 
@@ -388,7 +388,7 @@ class MovingZScoreNormTransformer(Transformer):
                          gen_mode=gen_mode, is_seq_continuous=is_seq_continuous, is_pooling=is_pooling,
                          token_len=token_len)
         self.avg_window = avg_window
-        self.decompose = SeriesDecompose(avg_window)
+        self.decompose = MovingZScoreNorm(avg_window)
         self.encoder.enc_layers = [
             MovingZScoreNormEncoderLayer(d_model=d_model, num_heads=num_heads, key_dim=self.encoder.k_dim,
                                          value_dim=self.encoder.v_dim,
@@ -400,7 +400,7 @@ class MovingZScoreNormTransformer(Transformer):
                                              dff=dff, rate=rate, avg_window=avg_window) for _ in range(num_layers)]
 
     def call(self, inputs, training, time_embedding_tuple=None):
-        seasonality, _ = self.decompose(inputs)
+        seasonality, trend = self.decompose(inputs)
         out = super().call(seasonality, training, time_embedding_tuple=time_embedding_tuple)
         return out
 

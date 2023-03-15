@@ -7,7 +7,7 @@ from tensorflow.keras.layers import Dense, Flatten, Input, Conv1D, GRU, Reshape
 
 from pyimagesearch import parameter, time_embedding
 from pyimagesearch.datautil import DataUtil
-from pyimagesearch.series_decomposition import SeriesDecompose
+from pyimagesearch.series_decomposition import SeriesDecompose, MovingZScoreNorm
 from pyimagesearch.windowsGenerator import WindowGenerator
 from pyimagesearch.model_transformer import positional_encoding
 
@@ -239,6 +239,94 @@ class StationaryConvGRU(ConvGRU):
 
     def call(self, input_seq, training, time_embedding_tuple=None):
         seasonality, _ = self.decompose(input_seq)
+        out = super().call(seasonality, training, time_embedding_tuple=time_embedding_tuple)
+        return out
+
+
+class MovingZNormEncoder(tf.keras.layers.Layer):
+    def __init__(self, layers, units, avg_window, seq_len=None, filters=None, kernel_size=3, rate=0.1):
+        super().__init__()
+        self.layers = layers
+        self.units = units
+        if filters is None:
+            self.filters = units
+        else:
+            self.filters = filters
+        self.kernel_size = kernel_size
+        self.pos_vec = positional_encoding(seq_len, self.filters) if seq_len is not None else None
+        self.conv = Conv1D(filters=self.filters, kernel_size=self.kernel_size, strides=1, padding="same",
+                           activation='elu')
+
+        self.gru_layers = [
+            GRU(units, return_sequences=True, return_state=True, dropout=rate)
+            for _ in range(layers)]
+        self.decompose = MovingZScoreNorm(avg_window)
+
+    def call(self, input_seq, training, timestamp_embedding=None):
+        x = self.conv(input_seq)
+        if timestamp_embedding is not None:
+            x += timestamp_embedding
+        if self.pos_vec is not None:
+            x += self.pos_vec
+        states = []
+        for i in range(self.layers):
+            x, state = self.gru_layers[i](x, training=training)
+            x, _ = self.decompose(x)
+            states.append(state)
+        states = tf.stack(states, axis=-1)
+        return x, states
+
+
+class MovingZNormDecoder(tf.keras.layers.Layer):
+    def __init__(self, layers, units, avg_window, seq_len=None, filters=None, kernel_size=3, rate=0.1):
+        super().__init__()
+        self.layers = layers
+        self.units = units
+        if filters is None:
+            self.filters = units
+        else:
+            self.filters = filters
+        self.kernel_size = kernel_size
+        self.pos_vec = positional_encoding(seq_len, self.filters) if seq_len is not None else None
+
+        self.conv = Conv1D(filters=self.filters, kernel_size=kernel_size, strides=1, padding="causal",
+                           activation='elu')
+        self.gru_layers = [
+            GRU(units, return_sequences=True, return_state=True, dropout=rate)
+            for _ in range(layers)]
+        self.decompose = MovingZScoreNorm(avg_window)
+
+    def call(self, input_seq, initial_states, training, timestamp_embedding=None, iter_step=None):
+        x = self.conv(input_seq)
+        states = []
+        if timestamp_embedding is not None:
+            x += timestamp_embedding if iter_step is None else timestamp_embedding[:, iter_step:iter_step + 1, :]
+        if self.pos_vec is not None:
+            x += self.pos_vec if iter_step is None else self.pos_vec[:, iter_step:iter_step + 1, :]
+        for i in range(self.layers):
+            x, state = self.gru_layers[i](x, training=training, initial_state=initial_states[:, :, i])
+            x, _ = self.decompose(x)
+            states.append(state)
+        states = tf.stack(states, axis=-1)
+        return x, states
+
+
+class MovingZNormConvGRU(ConvGRU):
+    def __init__(self, num_layers, in_seq_len, in_dim, out_seq_len, out_dim, units, filters=None, kernel_size=3,
+                 gen_mode='unistep',
+                 is_seq_continuous=False, rate=0.1, avg_window=9):
+        super().__init__(num_layers, in_seq_len, in_dim, out_seq_len, out_dim, units, filters=filters,
+                         kernel_size=kernel_size,
+                         gen_mode=gen_mode,
+                         is_seq_continuous=is_seq_continuous, rate=rate)
+        self.decompose = MovingZScoreNorm(avg_window)
+        self.encoder = MovingZNormEncoder(num_layers, units, avg_window, seq_len=in_seq_len, filters=filters,
+                                          kernel_size=kernel_size, rate=rate)
+        self.decoder = MovingZNormDecoder(num_layers, units, avg_window, seq_len=out_seq_len, filters=filters,
+                                          kernel_size=kernel_size, rate=rate)
+
+    def call(self, input_seq, training, time_embedding_tuple=None):
+        seasonality, trend = self.decompose(input_seq)
         out = super().call(seasonality, training, time_embedding_tuple=time_embedding_tuple)
         return out
 

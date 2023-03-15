@@ -41,7 +41,7 @@ class MovingZScoreNorm(tf.keras.layers.Layer):
         # Compute z-score norm
         epsilon = 1e-7  # small constant that is set to address divide-by-0 problem
         output = (inputs - moving_mean) / (moving_std + epsilon)
-        return output
+        return output, moving_mean
 
 
 if __name__ == '__main__':
