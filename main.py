@@ -1472,7 +1472,7 @@ def run():
             if is_splitting_days:
                 inputs = tf.keras.Input(shape=(input_width, len(parameter.features)))
                 linear = MA(window_len=input_width, is_within_day=w.is_sampling_within_day,
-                            samples_per_day=w.samples_per_day, output_width=label_width)
+                            samples_per_day=w.samples_per_day, output_width=label_width)(inputs)
                 embedding = SplitInputByDay(n_days=parameter.input_days, n_samples=w.samples_per_day)(inputs)
                 embedding = MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
                                                   filter_size=preprocess_utils.Config.kernel_size,
@@ -1484,7 +1484,7 @@ def run():
             else:
                 inputs = tf.keras.Input(shape=(input_width, len(parameter.features)))
                 linear = MA(window_len=input_width, is_within_day=w.is_sampling_within_day,
-                            samples_per_day=w.samples_per_day, output_width=label_width)
+                            samples_per_day=w.samples_per_day, output_width=label_width)(inputs)
                 nonlinear = model(inputs)
                 outputs = tf.keras.layers.Add()([linear, nonlinear])
                 model = tf.keras.Model(inputs=inputs, outputs=outputs, name="convGRU_w_MA")
@@ -1523,7 +1523,7 @@ def run():
             if not w.is_sampling_within_day and parameter.between8_17:
                 inputs = tf.keras.Input(shape=(input_width, len(parameter.features)))
                 linear = MA(window_len=input_width, is_within_day=w.is_sampling_within_day,
-                            samples_per_day=w.samples_per_day, output_width=label_width)
+                            samples_per_day=w.samples_per_day, output_width=label_width)(inputs)
                 embedding = SplitInputByDay(n_days=parameter.input_days, n_samples=w.samples_per_day)(inputs)
                 embedding = MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
                                                   filter_size=preprocess_utils.Config.kernel_size,
@@ -1548,7 +1548,7 @@ def run():
             else:
                 inputs = tf.keras.Input(shape=(input_width, len(parameter.features)))
                 linear = MA(window_len=input_width, is_within_day=w.is_sampling_within_day,
-                            samples_per_day=w.samples_per_day, output_width=label_width)
+                            samples_per_day=w.samples_per_day, output_width=label_width)(inputs)
                 nonlinear = model_transformer.Transformer(num_layers=model_transformer.Config.layers,
                                                           d_model=model_transformer.Config.d_model,
                                                           num_heads=model_transformer.Config.n_heads,
