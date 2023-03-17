@@ -13,11 +13,41 @@ from pyimagesearch import parameter, model_AR
 from pyimagesearch.datautil import DataUtil
 from pyimagesearch.windowsGenerator import WindowGenerator
 
+import tensorflow.keras.backend as K
+
 vocab_size = {'month': 12, 'day': 31, "hour": 24, 'minute': 60}
 
 
 class Config():
     pass
+
+
+class Time2Vec(tf.keras.layers.Layer):
+    def __init__(self, output_dims, input_len, shift_len, label_len):
+        super().__init__()
+        self.output_dims = output_dims
+        self.input_len = input_len
+        self.shift_len = shift_len
+        self.label_len = label_len
+        self.input_slice = slice(None, input_len, None)
+        self.shift_slice = slice(input_len, input_len + shift_len, None)
+        self.label_slice = slice(-label_len, None, None)
+
+    def build(self, input_shape):
+        self.W = self.add_weight(name='W',
+                                 shape=(input_shape[-1], self.output_dims),
+                                 initializer='uniform',
+                                 trainable=True)
+        self.P = self.add_weight(name='P',
+                                 shape=(1, self.output_dims),
+                                 initializer='uniform',
+                                 trainable=True)
+        super().build(input_shape)
+
+    def call(self, inputs):
+        linear = K.dot(inputs, self.W) + self.P
+        output = K.concatenate([linear[:, :, 0:1], K.sin(linear[:, :, 1:])], -1)
+        return output[:, self.input_slice, :], output[:, self.shift_slice, :], output[:, self.label_slice, :]
 
 
 class TimeEmbedding(tf.keras.layers.Layer):
