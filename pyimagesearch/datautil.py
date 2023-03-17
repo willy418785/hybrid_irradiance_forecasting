@@ -85,11 +85,11 @@ class DataUtil(object):
         ######################資料集切分
         ## split 照比例分
         if (split_mode == "all_year"):
-                self.train_df, self.val_df = train_test_split(self.train_df, test_size=val_split + test_split,
-                                                              shuffle=False)
-                self.val_df, self.test_df = train_test_split(self.val_df,
-                                                             test_size=test_split / (val_split + test_split),
-                                                             shuffle=False)
+            self.train_df, self.val_df = train_test_split(self.train_df, test_size=val_split + test_split,
+                                                          shuffle=False)
+            self.val_df, self.test_df = train_test_split(self.val_df,
+                                                         test_size=test_split / (val_split + test_split),
+                                                         shuffle=False)
         elif (split_mode == "month"):
             assert month_sep is not None and type(month_sep) is int
             vmonth = month_sep - 2
@@ -102,7 +102,7 @@ class DataUtil(object):
             self.val_df = self.train_df[self.train_df.index.month == vmonth]
             # self.val_df = self.test_df
             self.train_df = self.train_df[self.train_df.index.month == train_month]
-        elif(split_mode == "cross_month_validate"):
+        elif (split_mode == "cross_month_validate"):
             assert month_sep is not None and type(month_sep) is int
             val_month = month_sep - 1 if (month_sep - 1) > 0 else month_sep + 1
             self.test_df = self.train_df[self.train_df.index.month == month_sep]
@@ -134,7 +134,8 @@ class DataUtil(object):
             self.test_df = self.timeFeatureProcess(self.test_df)
             self.val_df = self.timeFeatureProcess(self.val_df)'''
         # smoothing target data
-        if parameter.smoothing_type in parameter.smoothing_mode and (parameter.time_granularity == 'T' or parameter.time_granularity == 'min'):
+        if parameter.smoothing_type in parameter.smoothing_mode and (
+                parameter.time_granularity == 'T' or parameter.time_granularity == 'min'):
             for target in parameter.target:
                 self.train_df[target] = self.smoothing(self.train_df[target])
                 self.val_df[target] = self.smoothing(self.val_df[target])
@@ -241,10 +242,10 @@ class DataUtil(object):
         assert (len(contain_col) == len(numerical_col))
 
     def normalise_data(self):
+        all_data = self.train_df if self.val_df is None else pd.concat([self.train_df, self.val_df], axis=0)
+        all_data = all_data if self.test_df is None else pd.concat([all_data, self.test_df], axis=0)
         # normalize label by the scaler specified by user's config
         if self.labelScaler is not None:
-            all_data = self.train_df if self.val_df is None else pd.concat([self.train_df, self.val_df], axis=0)
-            all_data = all_data if self.test_df is None else pd.concat([all_data, self.test_df], axis=0)
             self.labelScaler.fit(all_data[self.label_col])
             self.train_df[self.label_col] = self.labelScaler.transform(self.train_df[self.label_col])
             if (self.val_df is not None):
@@ -264,7 +265,8 @@ class DataUtil(object):
         '''if parameter.dataUtilParam.time_features:
             feature_scale_col = feature_scale_col + parameter.dataUtilParam.time_features_col'''
         # exclude label column to avoid repeatedly normalized
-        feature_col_excluding_label = [ele for ele in self.feature_col if ele not in self.label_col]
+        feature_col_excluding_label = [ele for ele in self.feature_col
+                                       if ele not in self.label_col or self.labelScaler is None]
         if len(feature_col_excluding_label) > 0:
             # normalize features and fill nan with zero
             self.scaler.fit(all_data[feature_col_excluding_label])
@@ -282,6 +284,7 @@ class DataUtil(object):
         def is_subframe_complete(sub: pd.DataFrame):
             # return True if a subframe(grouped by day) has no missing sample
             return len(sub.index.time) == self.samples_per_day
+
         self.train_df = self.train_df.groupby(self.train_df.index.date).filter(is_subframe_complete)
         self.val_df = self.val_df.groupby(self.val_df.index.date).filter(is_subframe_complete)
         self.test_df = self.test_df.groupby(self.test_df.index.date).filter(is_subframe_complete)
