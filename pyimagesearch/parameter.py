@@ -10,7 +10,7 @@ static_suffle = False
 dynamic_suffle = False
 timeseries = True
 datasetPath = "../skyImage"
-csv_name = 'ElectricityConsumption_2012-2014.csv'  # ["2020final.csv","2020new.csv","2020shuffleDay", 'dataset_renheo_[2019].csv', 'ElectricityConsumption_2012-2014.csv']
+csv_name = 'EC.csv'  # ["2020final.csv","2020new.csv","2020shuffleDay", 'dataset_renheo_[2019].csv', 'EC.csv']
 # features = ['ShortWaveDown'] # target only
 # features = ['ShortWaveDown', 'CWB_Humidity', 'CWB_Temperature']  # david suggested
 # features = ["DC-1|Pdc", "DC-2|Pdc"] # ["DC-1|Pdc", "DC-2|Pdc", "Temperature", "RH"], ["DC-1|Pdc", "DC-2|Pdc"]
@@ -45,6 +45,12 @@ time_granularity = 'H'  # 'H', 'min', 'T'
 between8_17 = False
 test_between8_17 = False
 split_days = False
+
+bypass = 1
+bypass_list = [None, "LR", "MA"]
+
+time_embedding = 2
+time_embedding_list = [None, "t2v", "learnable"]
 
 if between8_17 or test_between8_17:
     if time_granularity == 'H':
@@ -107,9 +113,10 @@ earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=
 #               "convGRU_w_LR_timestamps", 'transformer_w_LR_timestamps',
 #               "stationary_convGRU_w_LR_timestamps", "stationary_transformer_w_LR_timestamps",
 #               'movingznorm_transformer_w_LR_timestamps']
-model_list = ["Persistence", 'MA',
-              'convGRU_w_LR', "transformer_w_LR",
-              'convGRU_w_MA', "transformer_w_MA"]
+model_list = ["Persistence", "MA",
+              "convGRU", "transformer",
+              'stationary_convGRU', "stationary_transformer",
+              'znorm_convGRU', 'znorm_transformer']
 # model_list = ["convGRU", "transformer", "convGRU_w_LR_timestamps", "transformer_w_LR_timestamps"]
 # model_list = ["Persistence", "MA", 'AR', 'channelwise_AR']
 # model_list = ["Persistence", "MA", "convGRU", "transformer", 'convGRU_w_mlp_decoder', 'transformer_w_mlp_decoder']
