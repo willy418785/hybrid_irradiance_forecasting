@@ -3,7 +3,7 @@
 import datetime
 
 import tensorflow as tf
-from pyimagesearch import datasets, model_AR, time_embedding
+from pyimagesearch import datasets, model_AR, time_embedding, time_embedding_factory, bypass_factory
 from pyimagesearch import models
 from pyimagesearch import model_resnet
 from pyimagesearch import model_solarnet
@@ -210,9 +210,9 @@ def run():
     ap.add_argument("-n", "--experient_label", type=str, required=True, default=parameter.experient_label,
                     help="experient_label")
     ap.add_argument("-by", "--bypass", type=int, required=False, default=parameter.bypass,
-                    help="bypass mode [None, LR, MA]")
+                    help="bypass mode: {}".format(bypass_factory.bypass_list))
     ap.add_argument("-te", "--time_embedding", type=int, required=False, default=parameter.time_embedding,
-                    help="time embedding mode [None, t2c, learnable]")
+                    help="time embedding mode: {}".format(time_embedding_factory.time_embedding_list))
     ap.add_argument("-sd", '--split_day', required=False, default=parameter.split_days, action='store_true',
                     help='using split-days module or not')
     args = vars(ap.parse_args())
@@ -222,10 +222,10 @@ def run():
     parameter.time_embedding = args["time_embedding"]
     parameter.split_days = args["split_day"]
 
-    parameter.experient_label += "_bypass-{}_TE-{}_split-{}".format(parameter.bypass_list[parameter.bypass],
-                                                                    parameter.time_embedding_list[
-                                                                        parameter.time_embedding],
-                                                                    parameter.split_days)
+    parameter.experient_label += "_bypass-{}_TE-{}_split-{}".format(
+        bypass_factory.BypassFac.get_bypass_mode(parameter.bypass),
+        time_embedding_factory.TEFac.get_te_mode(parameter.time_embedding),
+        parameter.split_days)
     # Initialise logging
     log = Msglog.LogInit(parameter.experient_label, "logs/{}".format(parameter.experient_label), 10, True, True)
 
@@ -400,7 +400,7 @@ def run():
                              batch_size=parameter.batchsize,
                              label_columns="ShortWaveDown",
                              samples_per_day=dataUtil.samples_per_day,
-                             using_timestamp_data=(parameter.time_embedding != 0))
+                             using_timestamp_data=time_embedding_factory.TEFac.get_te_mode(parameter.time_embedding) is not None)
         # log.info(w2)  # 3D
         dataUtil = data_for_baseline
         if "Persistence" in parameter.model_list:
@@ -518,20 +518,14 @@ def run():
         log.info("convGRU")
         for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
             input_scalar = Input(shape=(input_width, len(parameter.features)))
-            if parameter.time_embedding_list[parameter.time_embedding] is not None:
+
+            time_embedded = time_embedding_factory.TEFac.new_te_module(command=parameter.time_embedding,
+                                                                       tar_dim=model_convGRU.Config.embedding_filters,
+                                                                       seq_structure=(input_width, shift, label_width))
+            if time_embedded is not None:
                 input_time = Input(shape=(input_width + shift + label_width, len(time_embedding.vocab_size)))
-                if parameter.time_embedding_list[parameter.time_embedding] == 't2v':
-                    time_embedded = time_embedding.Time2Vec(output_dims=model_convGRU.Config.embedding_filters,
-                                                            input_len=input_width,
-                                                            shift_len=shift,
-                                                            label_len=label_width)(input_time)
-                elif parameter.time_embedding_list[parameter.time_embedding] == 'learnable':
-                    time_embedded = time_embedding.TimeEmbedding(output_dims=model_convGRU.Config.embedding_filters,
-                                                                 input_len=input_width,
-                                                                 shift_len=shift,
-                                                                 label_len=label_width)(input_time)
-            else:
-                pass
+                time_embedded = time_embedded(input_time)
+
             is_splitting_days = parameter.split_days or (not w.is_sampling_within_day and parameter.between8_17)
             if is_splitting_days:
                 n_days = input_width // w.samples_per_day
@@ -550,7 +544,7 @@ def run():
                                               gen_mode='unistep',
                                               is_seq_continuous=is_input_continuous_with_output,
                                               rate=model_convGRU.Config.dropout_rate)
-                if parameter.time_embedding_list[parameter.time_embedding] is not None:
+                if time_embedded is not None:
                     input_time_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
                         time_embedded[0])
                     input_time_embedded = MultipleDaysConvEmbed(filters=model_convGRU.Config.embedding_filters,
@@ -571,24 +565,26 @@ def run():
                                               gen_mode='unistep',
                                               is_seq_continuous=is_input_continuous_with_output,
                                               rate=model_convGRU.Config.dropout_rate)
-                if parameter.time_embedding_list[parameter.time_embedding] is not None:
-                    nonlinear = model(input_scalar, time_embedding_tuple=time_embedded)
-                else:
-                    nonlinear = model(input_scalar)
-            if parameter.bypass_list[parameter.bypass] == "LR":
-                linear = model_AR.TemporalChannelIndependentLR(model_AR.Config.order, label_width,
-                                                               len(parameter.features))(input_scalar)
-                outputs = tf.keras.layers.Add()([linear, nonlinear])
-            elif parameter.bypass_list[parameter.bypass] == "MA":
-                linear = MA(window_len=input_width, is_within_day=w.is_sampling_within_day,
-                            samples_per_day=w.samples_per_day, output_width=label_width)(input_scalar)
+                nonlinear = model(input_scalar, time_embedding_tuple=time_embedded)
+
+            linear = bypass_factory.BypassFac.new_bypass_module(command=parameter.bypass,
+                                                                out_width=label_width,
+                                                                order=model_AR.Config.order,
+                                                                in_dim=len(parameter.features),
+                                                                window_len=input_width,
+                                                                is_within_day=w.is_sampling_within_day,
+                                                                samples_per_day=w.samples_per_day)
+            if linear is not None:
+                linear = linear(input_scalar)
                 outputs = tf.keras.layers.Add()([linear, nonlinear])
             else:
                 outputs = nonlinear
-            if parameter.time_embedding_list[parameter.time_embedding] is not None:
+
+            if time_embedded is not None:
                 model = tf.keras.Model(inputs=[input_scalar, input_time], outputs=outputs, name="convGRU")
             else:
                 model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name="convGRU")
+
             datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
                                                                   generatorMode="data", testEpoch=testEpoch,
                                                                   name="convGRU")
@@ -622,20 +618,13 @@ def run():
             else:
                 token_len = (min(input_width, label_width) // w.samples_per_day // 2 + 1) * w.samples_per_day
             input_scalar = Input(shape=(input_width, len(parameter.features)))
-            if parameter.time_embedding_list[parameter.time_embedding] is not None:
+            time_embedded = time_embedding_factory.TEFac.new_te_module(command=parameter.time_embedding,
+                                                                       tar_dim=model_convGRU.Config.embedding_filters,
+                                                                       seq_structure=(input_width, shift, label_width))
+            if time_embedded is not None:
                 input_time = Input(shape=(input_width + shift + label_width, len(time_embedding.vocab_size)))
-                if parameter.time_embedding_list[parameter.time_embedding] == 't2v':
-                    time_embedded = time_embedding.Time2Vec(output_dims=model_convGRU.Config.embedding_filters,
-                                                            input_len=input_width,
-                                                            shift_len=shift,
-                                                            label_len=label_width)(input_time)
-                elif parameter.time_embedding_list[parameter.time_embedding] == 'learnable':
-                    time_embedded = time_embedding.TimeEmbedding(output_dims=model_convGRU.Config.embedding_filters,
-                                                                 input_len=input_width,
-                                                                 shift_len=shift,
-                                                                 label_len=label_width)(input_time)
-            else:
-                pass
+                time_embedded = time_embedded(input_time)
+
             is_splitting_days = parameter.split_days or (not w.is_sampling_within_day and parameter.between8_17)
             if is_splitting_days:
                 n_days = input_width // w.samples_per_day
@@ -658,7 +647,7 @@ def run():
                                                       gen_mode="unistep",
                                                       is_seq_continuous=is_input_continuous_with_output,
                                                       is_pooling=False, token_len=0)
-                if parameter.time_embedding_list[parameter.time_embedding] is not None:
+                if time_embedded is not None:
                     input_time_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
                         time_embedded[0])
                     input_time_embedded = MultipleDaysConvEmbed(filters=model_convGRU.Config.embedding_filters,
@@ -682,21 +671,22 @@ def run():
                                                       gen_mode="unistep",
                                                       is_seq_continuous=is_input_continuous_with_output,
                                                       is_pooling=False, token_len=token_len)
-                if parameter.time_embedding_list[parameter.time_embedding] is not None:
-                    nonlinear = model(input_scalar, time_embedding_tuple=time_embedded)
-                else:
-                    nonlinear = model(input_scalar)
-            if parameter.bypass_list[parameter.bypass] == "LR":
-                linear = model_AR.TemporalChannelIndependentLR(model_AR.Config.order, label_width,
-                                                               len(parameter.features))(input_scalar)
-                outputs = tf.keras.layers.Add()([linear, nonlinear])
-            elif parameter.bypass_list[parameter.bypass] == "MA":
-                linear = MA(window_len=input_width, is_within_day=w.is_sampling_within_day,
-                            samples_per_day=w.samples_per_day, output_width=label_width)(input_scalar)
+                nonlinear = model(input_scalar, time_embedding_tuple=time_embedded)
+            linear = bypass_factory.BypassFac.new_bypass_module(command=parameter.bypass,
+                                                                out_width=label_width,
+                                                                order=model_AR.Config.order,
+                                                                in_dim=len(parameter.features),
+                                                                window_len=input_width,
+                                                                is_within_day=w.is_sampling_within_day,
+                                                                samples_per_day=w.samples_per_day)
+
+            if linear is not None:
+                linear = linear(input_scalar)
                 outputs = tf.keras.layers.Add()([linear, nonlinear])
             else:
                 outputs = nonlinear
-            if parameter.time_embedding_list[parameter.time_embedding] is not None:
+
+            if time_embedded is not None:
                 model = tf.keras.Model(inputs=[input_scalar, input_time], outputs=outputs, name="transformer")
             else:
                 model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name="transformer")
@@ -728,20 +718,13 @@ def run():
         log.info("stationary_convGRU")
         for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
             input_scalar = Input(shape=(input_width, len(parameter.features)))
-            if parameter.time_embedding_list[parameter.time_embedding] is not None:
+            time_embedded = time_embedding_factory.TEFac.new_te_module(command=parameter.time_embedding,
+                                                                       tar_dim=model_convGRU.Config.embedding_filters,
+                                                                       seq_structure=(input_width, shift, label_width))
+            if time_embedded is not None:
                 input_time = Input(shape=(input_width + shift + label_width, len(time_embedding.vocab_size)))
-                if parameter.time_embedding_list[parameter.time_embedding] == 't2v':
-                    time_embedded = time_embedding.Time2Vec(output_dims=model_convGRU.Config.embedding_filters,
-                                                            input_len=input_width,
-                                                            shift_len=shift,
-                                                            label_len=label_width)(input_time)
-                elif parameter.time_embedding_list[parameter.time_embedding] == 'learnable':
-                    time_embedded = time_embedding.TimeEmbedding(output_dims=model_convGRU.Config.embedding_filters,
-                                                                 input_len=input_width,
-                                                                 shift_len=shift,
-                                                                 label_len=label_width)(input_time)
-            else:
-                pass
+                time_embedded = time_embedded(input_time)
+
             is_splitting_days = parameter.split_days or (not w.is_sampling_within_day and parameter.between8_17)
             if is_splitting_days:
                 n_days = input_width // w.samples_per_day
@@ -762,7 +745,7 @@ def run():
                                                         is_seq_continuous=is_input_continuous_with_output,
                                                         rate=model_convGRU.Config.dropout_rate,
                                                         avg_window=series_decomposition.Config.window_size)
-                if parameter.time_embedding_list[parameter.time_embedding] is not None:
+                if time_embedded is not None:
                     input_time_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
                         time_embedded[0])
                     input_time_embedded = MultipleDaysConvEmbed(filters=model_convGRU.Config.embedding_filters,
@@ -784,21 +767,22 @@ def run():
                                                         is_seq_continuous=is_input_continuous_with_output,
                                                         rate=model_convGRU.Config.dropout_rate,
                                                         avg_window=series_decomposition.Config.window_size)
-                if parameter.time_embedding_list[parameter.time_embedding] is not None:
-                    nonlinear = model(input_scalar, time_embedding_tuple=time_embedded)
-                else:
-                    nonlinear = model(input_scalar)
-            if parameter.bypass_list[parameter.bypass] == "LR":
-                linear = model_AR.TemporalChannelIndependentLR(model_AR.Config.order, label_width,
-                                                               len(parameter.features))(input_scalar)
-                outputs = tf.keras.layers.Add()([linear, nonlinear])
-            elif parameter.bypass_list[parameter.bypass] == "MA":
-                linear = MA(window_len=input_width, is_within_day=w.is_sampling_within_day,
-                            samples_per_day=w.samples_per_day, output_width=label_width)(input_scalar)
+                nonlinear = model(input_scalar, time_embedding_tuple=time_embedded)
+
+            linear = bypass_factory.BypassFac.new_bypass_module(command=parameter.bypass,
+                                                                out_width=label_width,
+                                                                order=model_AR.Config.order,
+                                                                in_dim=len(parameter.features),
+                                                                window_len=input_width,
+                                                                is_within_day=w.is_sampling_within_day,
+                                                                samples_per_day=w.samples_per_day)
+            if linear is not None:
+                linear = linear(input_scalar)
                 outputs = tf.keras.layers.Add()([linear, nonlinear])
             else:
                 outputs = nonlinear
-            if parameter.time_embedding_list[parameter.time_embedding] is not None:
+
+            if time_embedded is not None:
                 model = tf.keras.Model(inputs=[input_scalar, input_time], outputs=outputs, name="stationary_convGRU")
             else:
                 model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name="stationary_convGRU")
@@ -834,21 +818,15 @@ def run():
                 token_len = input_width
             else:
                 token_len = (min(input_width, label_width) // w.samples_per_day // 2 + 1) * w.samples_per_day
+
             input_scalar = Input(shape=(input_width, len(parameter.features)))
-            if parameter.time_embedding_list[parameter.time_embedding] is not None:
+            time_embedded = time_embedding_factory.TEFac.new_te_module(command=parameter.time_embedding,
+                                                                       tar_dim=model_convGRU.Config.embedding_filters,
+                                                                       seq_structure=(input_width, shift, label_width))
+            if time_embedded is not None:
                 input_time = Input(shape=(input_width + shift + label_width, len(time_embedding.vocab_size)))
-                if parameter.time_embedding_list[parameter.time_embedding] == 't2v':
-                    time_embedded = time_embedding.Time2Vec(output_dims=model_convGRU.Config.embedding_filters,
-                                                            input_len=input_width,
-                                                            shift_len=shift,
-                                                            label_len=label_width)(input_time)
-                elif parameter.time_embedding_list[parameter.time_embedding] == 'learnable':
-                    time_embedded = time_embedding.TimeEmbedding(output_dims=model_convGRU.Config.embedding_filters,
-                                                                 input_len=input_width,
-                                                                 shift_len=shift,
-                                                                 label_len=label_width)(input_time)
-            else:
-                pass
+                time_embedded = time_embedded(input_time)
+
             is_splitting_days = parameter.split_days or (not w.is_sampling_within_day and parameter.between8_17)
             if is_splitting_days:
                 n_days = input_width // w.samples_per_day
@@ -872,7 +850,7 @@ def run():
                                                                 is_seq_continuous=is_input_continuous_with_output,
                                                                 is_pooling=False, token_len=0,
                                                                 avg_window=series_decomposition.Config.window_size)
-                if parameter.time_embedding_list[parameter.time_embedding] is not None:
+                if time_embedded is not None:
                     input_time_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
                         time_embedded[0])
                     input_time_embedded = MultipleDaysConvEmbed(filters=model_convGRU.Config.embedding_filters,
@@ -898,21 +876,22 @@ def run():
                                                                 is_seq_continuous=is_input_continuous_with_output,
                                                                 is_pooling=False, token_len=token_len,
                                                                 avg_window=series_decomposition.Config.window_size)
-                if parameter.time_embedding_list[parameter.time_embedding] is not None:
-                    nonlinear = model(input_scalar, time_embedding_tuple=time_embedded)
-                else:
-                    nonlinear = model(input_scalar)
-            if parameter.bypass_list[parameter.bypass] == "LR":
-                linear = model_AR.TemporalChannelIndependentLR(model_AR.Config.order, label_width,
-                                                               len(parameter.features))(input_scalar)
-                outputs = tf.keras.layers.Add()([linear, nonlinear])
-            elif parameter.bypass_list[parameter.bypass] == "MA":
-                linear = MA(window_len=input_width, is_within_day=w.is_sampling_within_day,
-                            samples_per_day=w.samples_per_day, output_width=label_width)(input_scalar)
+                nonlinear = model(input_scalar, time_embedding_tuple=time_embedded)
+
+            linear = bypass_factory.BypassFac.new_bypass_module(command=parameter.bypass,
+                                                                out_width=label_width,
+                                                                order=model_AR.Config.order,
+                                                                in_dim=len(parameter.features),
+                                                                window_len=input_width,
+                                                                is_within_day=w.is_sampling_within_day,
+                                                                samples_per_day=w.samples_per_day)
+            if linear is not None:
+                linear = linear(input_scalar)
                 outputs = tf.keras.layers.Add()([linear, nonlinear])
             else:
                 outputs = nonlinear
-            if parameter.time_embedding_list[parameter.time_embedding] is not None:
+
+            if time_embedded is not None:
                 model = tf.keras.Model(inputs=[input_scalar, input_time], outputs=outputs,
                                        name="stationary_transformer")
             else:
@@ -945,20 +924,14 @@ def run():
         log.info("znorm_convGRU")
         for testEpoch in parameter.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
             input_scalar = Input(shape=(input_width, len(parameter.features)))
-            if parameter.time_embedding_list[parameter.time_embedding] is not None:
+
+            time_embedded = time_embedding_factory.TEFac.new_te_module(command=parameter.time_embedding,
+                                                                       tar_dim=model_convGRU.Config.embedding_filters,
+                                                                       seq_structure=(input_width, shift, label_width))
+            if time_embedded is not None:
                 input_time = Input(shape=(input_width + shift + label_width, len(time_embedding.vocab_size)))
-                if parameter.time_embedding_list[parameter.time_embedding] == 't2v':
-                    time_embedded = time_embedding.Time2Vec(output_dims=model_convGRU.Config.embedding_filters,
-                                                            input_len=input_width,
-                                                            shift_len=shift,
-                                                            label_len=label_width)(input_time)
-                elif parameter.time_embedding_list[parameter.time_embedding] == 'learnable':
-                    time_embedded = time_embedding.TimeEmbedding(output_dims=model_convGRU.Config.embedding_filters,
-                                                                 input_len=input_width,
-                                                                 shift_len=shift,
-                                                                 label_len=label_width)(input_time)
-            else:
-                pass
+                time_embedded = time_embedded(input_time)
+
             is_splitting_days = parameter.split_days or (not w.is_sampling_within_day and parameter.between8_17)
             if is_splitting_days:
                 n_days = input_width // w.samples_per_day
@@ -979,7 +952,7 @@ def run():
                                                          is_seq_continuous=is_input_continuous_with_output,
                                                          rate=model_convGRU.Config.dropout_rate,
                                                          avg_window=series_decomposition.Config.window_size)
-                if parameter.time_embedding_list[parameter.time_embedding] is not None:
+                if time_embedded is not None:
                     input_time_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
                         time_embedded[0])
                     input_time_embedded = MultipleDaysConvEmbed(filters=model_convGRU.Config.embedding_filters,
@@ -1001,21 +974,22 @@ def run():
                                                          is_seq_continuous=is_input_continuous_with_output,
                                                          rate=model_convGRU.Config.dropout_rate,
                                                          avg_window=series_decomposition.Config.window_size)
-                if parameter.time_embedding_list[parameter.time_embedding] is not None:
-                    nonlinear = model(input_scalar, time_embedding_tuple=time_embedded)
-                else:
-                    nonlinear = model(input_scalar)
-            if parameter.bypass_list[parameter.bypass] == "LR":
-                linear = model_AR.TemporalChannelIndependentLR(model_AR.Config.order, label_width,
-                                                               len(parameter.features))(input_scalar)
-                outputs = tf.keras.layers.Add()([linear, nonlinear])
-            elif parameter.bypass_list[parameter.bypass] == "MA":
-                linear = MA(window_len=input_width, is_within_day=w.is_sampling_within_day,
-                            samples_per_day=w.samples_per_day, output_width=label_width)(input_scalar)
+                nonlinear = model(input_scalar, time_embedding_tuple=time_embedded)
+
+            linear = bypass_factory.BypassFac.new_bypass_module(command=parameter.bypass,
+                                                                out_width=label_width,
+                                                                order=model_AR.Config.order,
+                                                                in_dim=len(parameter.features),
+                                                                window_len=input_width,
+                                                                is_within_day=w.is_sampling_within_day,
+                                                                samples_per_day=w.samples_per_day)
+            if linear is not None:
+                linear = linear(input_scalar)
                 outputs = tf.keras.layers.Add()([linear, nonlinear])
             else:
                 outputs = nonlinear
-            if parameter.time_embedding_list[parameter.time_embedding] is not None:
+
+            if time_embedded is not None:
                 model = tf.keras.Model(inputs=[input_scalar, input_time], outputs=outputs, name="znorm_convGRU")
             else:
                 model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name="znorm_convGRU")
@@ -1051,21 +1025,15 @@ def run():
                 token_len = input_width
             else:
                 token_len = (min(input_width, label_width) // w.samples_per_day // 2 + 1) * w.samples_per_day
+
             input_scalar = Input(shape=(input_width, len(parameter.features)))
-            if parameter.time_embedding_list[parameter.time_embedding] is not None:
+            time_embedded = time_embedding_factory.TEFac.new_te_module(command=parameter.time_embedding,
+                                                                       tar_dim=model_convGRU.Config.embedding_filters,
+                                                                       seq_structure=(input_width, shift, label_width))
+            if time_embedded is not None:
                 input_time = Input(shape=(input_width + shift + label_width, len(time_embedding.vocab_size)))
-                if parameter.time_embedding_list[parameter.time_embedding] == 't2v':
-                    time_embedded = time_embedding.Time2Vec(output_dims=model_convGRU.Config.embedding_filters,
-                                                            input_len=input_width,
-                                                            shift_len=shift,
-                                                            label_len=label_width)(input_time)
-                elif parameter.time_embedding_list[parameter.time_embedding] == 'learnable':
-                    time_embedded = time_embedding.TimeEmbedding(output_dims=model_convGRU.Config.embedding_filters,
-                                                                 input_len=input_width,
-                                                                 shift_len=shift,
-                                                                 label_len=label_width)(input_time)
-            else:
-                pass
+                time_embedded = time_embedded(input_time)
+
             is_splitting_days = parameter.split_days or (not w.is_sampling_within_day and parameter.between8_17)
             if is_splitting_days:
                 n_days = input_width // w.samples_per_day
@@ -1089,7 +1057,7 @@ def run():
                                                                       is_seq_continuous=is_input_continuous_with_output,
                                                                       is_pooling=False, token_len=0,
                                                                       avg_window=series_decomposition.Config.window_size)
-                if parameter.time_embedding_list[parameter.time_embedding] is not None:
+                if time_embedded is not None:
                     input_time_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
                         time_embedded[0])
                     input_time_embedded = MultipleDaysConvEmbed(filters=model_convGRU.Config.embedding_filters,
@@ -1115,21 +1083,22 @@ def run():
                                                                       is_seq_continuous=is_input_continuous_with_output,
                                                                       is_pooling=False, token_len=token_len,
                                                                       avg_window=series_decomposition.Config.window_size)
-                if parameter.time_embedding_list[parameter.time_embedding] is not None:
-                    nonlinear = model(input_scalar, time_embedding_tuple=time_embedded)
-                else:
-                    nonlinear = model(input_scalar)
-            if parameter.bypass_list[parameter.bypass] == "LR":
-                linear = model_AR.TemporalChannelIndependentLR(model_AR.Config.order, label_width,
-                                                               len(parameter.features))(input_scalar)
-                outputs = tf.keras.layers.Add()([linear, nonlinear])
-            elif parameter.bypass_list[parameter.bypass] == "MA":
-                linear = MA(window_len=input_width, is_within_day=w.is_sampling_within_day,
-                            samples_per_day=w.samples_per_day, output_width=label_width)(input_scalar)
+                nonlinear = model(input_scalar, time_embedding_tuple=time_embedded)
+
+            linear = bypass_factory.BypassFac.new_bypass_module(command=parameter.bypass,
+                                                                out_width=label_width,
+                                                                order=model_AR.Config.order,
+                                                                in_dim=len(parameter.features),
+                                                                window_len=input_width,
+                                                                is_within_day=w.is_sampling_within_day,
+                                                                samples_per_day=w.samples_per_day)
+            if linear is not None:
+                linear = linear(input_scalar)
                 outputs = tf.keras.layers.Add()([linear, nonlinear])
             else:
                 outputs = nonlinear
-            if parameter.time_embedding_list[parameter.time_embedding] is not None:
+
+            if time_embedded is not None:
                 model = tf.keras.Model(inputs=[input_scalar, input_time], outputs=outputs, name="znorm_transformer")
             else:
                 model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name="znorm_transformer")
