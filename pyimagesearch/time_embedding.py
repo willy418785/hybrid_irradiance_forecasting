@@ -72,6 +72,29 @@ class TimeEmbedding(tf.keras.layers.Layer):
         return output[:, self.input_slice, :], output[:, self.shift_slice, :], output[:, self.label_slice, :]
 
 
+class SinCosTimeEncoding(tf.keras.layers.Layer):
+    def __init__(self, output_dims, input_len, shift_len, label_len):
+        super().__init__()
+        self.output_dims = output_dims
+        self.input_len = input_len
+        self.shift_len = shift_len
+        self.label_len = label_len
+        self.input_slice = slice(None, input_len, None)
+        self.shift_slice = slice(input_len, input_len + shift_len, None)
+        self.label_slice = slice(-label_len, None, None)
+        self.linear = Dense(self.output_dims)
+
+    def call(self, inputs):
+        output = []
+        for i, key in enumerate(list(vocab_size)):
+            sin_transformed = tf.math.sin(2*np.pi*inputs[:, :, i] / vocab_size[key])
+            cos_transformed = tf.math.cos(2*np.pi*inputs[:, :, i] / vocab_size[key])
+            transformed = tf.stack([sin_transformed, cos_transformed], -1)
+            output.append(transformed)
+        output = tf.concat(output, -1)
+        output = self.linear(output)
+        return output[:, self.input_slice, :], output[:, self.shift_slice, :], output[:, self.label_slice, :]
+
 if __name__ == '__main__':
     train_path_with_weather_info = os.path.sep.join(["../{}".format(parameter.csv_name)])
     data_with_weather_info = DataUtil(train_path=train_path_with_weather_info,
