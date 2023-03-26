@@ -39,18 +39,15 @@ addAverage = False  # True for one model:add cloud and average
 4.two model:add average             -> dynamic_model = "two"  /  addAverage = True   /  inputs = ["ShortWaveDown", "sun_average"]
 '''
 cloudLabel = "twoClass"
-norm_mode = 2
-label_norm_mode = 1
+norm_mode = 1
+label_norm_mode = 0
 time_granularity = 'H'  # 'H', 'min', 'T'
 between8_17 = False
 test_between8_17 = False
+
 split_days = False
-
 bypass = 1
-bypass_list = [None, "LR", "MA"]
-
 time_embedding = 2
-time_embedding_list = [None, "t2v", "learnable"]
 
 if between8_17 or test_between8_17:
     if time_granularity == 'H':
@@ -164,5 +161,5 @@ if is_using_cloud_location:
 
 timezone = 'Asia/Taipei'
 
-save_plot = False
-save_csv = True
+save_plot = True if len(target) <= 5 else False
+save_csv = False
