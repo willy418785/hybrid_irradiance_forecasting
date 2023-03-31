@@ -3,7 +3,7 @@
 import datetime
 
 import tensorflow as tf
-from pyimagesearch import datasets, model_AR, time_embedding, time_embedding_factory, bypass_factory
+from pyimagesearch import datasets, model_AR, time_embedding, time_embedding_factory, bypass_factory, datautil
 from pyimagesearch import models
 from pyimagesearch import model_resnet
 from pyimagesearch import model_solarnet
@@ -268,7 +268,8 @@ def run():
                                       label_col=parameter.target,
                                       feature_col=parameter.features,
                                       split_mode=parameter.split_mode,
-                                      month_sep=parameter.test_month)
+                                      month_sep=parameter.test_month,
+                                      using_images=parameter.is_using_image_data)
 
     data_for_baseline = DataUtil(train_path=train_path,
                                  val_path=val_path,

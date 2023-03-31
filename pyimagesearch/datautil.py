@@ -15,6 +15,8 @@ import os
 import glob
 import cv2
 
+norm_type_list = ['None', 'std', 'minmax']
+split_mode_list = ["all_year", "month", 'cross_month_validate']
 
 class DataUtil(object):
 
@@ -23,7 +25,9 @@ class DataUtil(object):
                  feature_col: list = None,
                  normalise=1, label_norm_mode=1,
                  val_path=None, test_path=None,
-                 train_split=0.8, val_split=0.1, test_split=0.1, split_mode=False, month_sep=None, keep_date=False):
+                 train_split=0.8, val_split=0.1, test_split=0.1,
+                 split_mode=False, month_sep=None, keep_date=False,
+                 using_images=False):
         # 0.8,0.05,0.15
         """
         使用的天氣欄目
@@ -38,7 +42,7 @@ class DataUtil(object):
         month_sep:
         keep_date:
         """
-        self.norm_type_list = ['None', 'Stander', 'MinMax']
+        self.using_images = using_images
         self.normalise_mode = normalise
         self.label_norm_mode = label_norm_mode
         self.train_df_cloud = None
@@ -84,6 +88,14 @@ class DataUtil(object):
             # log.error("Error opening data file ... %s", err)
         ######################資料集切分
         ## split 照比例分
+        if type(split_mode) is int:
+            if split_mode < 0 or split_mode >= len(split_mode_list):
+                split_mode = split_mode_list[0]
+            else:
+                split_mode = split_mode_list[split_mode]
+        else:
+            if split_mode not in split_mode_list:
+                split_mode = split_mode_list[0]
         if (split_mode == "all_year"):
             self.train_df, self.val_df = train_test_split(self.train_df, test_size=val_split + test_split,
                                                           shuffle=False)
@@ -91,13 +103,16 @@ class DataUtil(object):
                                                          test_size=test_split / (val_split + test_split),
                                                          shuffle=False)
         elif (split_mode == "month"):
-            assert month_sep is not None and type(month_sep) is int
+            last_month = np.max(np.unique(self.train_df.index.month))
+            assert month_sep is not None
+            assert type(month_sep) is int
+            assert month_sep <= last_month
             vmonth = month_sep - 2
             train_month = month_sep - 1
             if vmonth <= 0:
-                vmonth = parameter.tailMonth + vmonth
+                vmonth = last_month + vmonth
             if train_month <= 0:
-                train_month = parameter.tailMonth + train_month
+                train_month = last_month + train_month
             self.test_df = self.train_df[self.train_df.index.month == month_sep]
             self.val_df = self.train_df[self.train_df.index.month == vmonth]
             # self.val_df = self.test_df
@@ -336,14 +351,14 @@ class DataUtil(object):
         return binarized
 
     def load_house_images(self, df, inputPath):
+        if not self.using_images:
+            return None
         # initialize our images array (i.e., the house images themselves)
         images = []
 
         df.index = df.index.tz_localize(parameter.timezone)
         # loop over the indexes of the houses
         for i in df.index:
-            if not parameter.is_using_image_data:
-                break
             # print(str(df["datetime"][i])[5:7])
             m = str(i)[5:7] + str(i)[8:10]
             n = str(i)[11:13] + str(i)[14:16]
