@@ -198,22 +198,69 @@ def ModelTrainer_cloud(dataGnerator: WindowGenerator,
 
 def run():
     ap = argparse.ArgumentParser()
+    ap.add_argument("-n", "--experiment_label", type=str, required=True, default=parameter.experient_label,
+                    help="experiment_label")
+    ap.add_argument("-i", "--input", type=int, required=False, default=parameter.input_width,
+                    help="length of input seq.")
+    ap.add_argument("-s", "--shift", type=int, required=False, default=parameter.shifted_width,
+                    help="length of shift seq.")
+    ap.add_argument("-o", "--output", type=int, required=False, default=parameter.label_width,
+                    help="length of output seq.")
+    ap.add_argument("-r", "--sample_rate", type=int, required=False, default=parameter.sample_rate,
+                    help="sample rate when generating training sequence")
+    ap.add_argument("-tr", "--test_sample_rate", type=int, required=False, default=parameter.test_sample_rate,
+                    help="sample rate when generating testing sequence")
     ap.add_argument("-m", "--test_month", type=int, required=False, default=parameter.test_month,
-                    help="test_month")
-    ap.add_argument("-n", "--experient_label", type=str, required=True, default=parameter.experient_label,
-                    help="experient_label")
+                    help="month for testing")
+    ap.add_argument("-d", "--dataset", type=str, required=False, default=parameter.csv_name,
+                    help="name of dataset")
+    ap.add_argument("-sm", "--split_mode", required=False, default=parameter.split_mode,
+                    help="dataset splitting mode : {}".format(datautil.split_mode_list))
+    ap.add_argument("-fn", "--feat_norm", required=False, default=parameter.norm_mode,
+                    help="norm mode for feature column: {}".format(datautil.norm_type_list))
+    ap.add_argument("-tn", "--target_norm", required=False, default=parameter.label_norm_mode,
+                    help="norm mode for target column: {}".format(datautil.norm_type_list))
+    ap.add_argument("-bs", "--batch_size", type=int, required=False, default=parameter.batchsize,
+                    help="batch size")
+    ap.add_argument("--shuffle", required=False, default=parameter.is_using_shuffle, action='store_true',
+                    help='shuffle dataset or not')
     ap.add_argument("-by", "--bypass", type=int, required=False, default=parameter.bypass,
                     help="bypass mode: {}".format(bypass_factory.bypass_list))
     ap.add_argument("-te", "--time_embedding", type=int, required=False, default=parameter.time_embedding,
                     help="time embedding mode: {}".format(time_embedding_factory.time_embedding_list))
     ap.add_argument("-sd", '--split_day', required=False, default=parameter.split_days, action='store_true',
                     help='using split-days module or not')
+    ap.add_argument('--use_image', required=False, default=parameter.is_using_image_data, action='store_true',
+                    help='using image data as feature or not')
+    ap.add_argument('--image_length', type=int, required=False, default=parameter.image_input_width3D,
+                    help='length(on time axis) of images')
+    ap.add_argument('--save_plot', required=False, default=parameter.save_plot, action='store_true',
+                    help='save plot figure as html or not')
+    ap.add_argument('--save_csv', required=False, default=parameter.save_csv, action='store_true',
+                    help='save prediction as csv or not')
+
     args = vars(ap.parse_args())
+    parameter.input_width = args["input"]
+    parameter.shifted_width = args["shift"]
+    parameter.label_width = args["output"]
+    parameter.sample_rate = args["sample_rate"]
+    parameter.test_sample_rate = args["test_sample_rate"]
     parameter.test_month = args["test_month"]
-    parameter.experient_label = args["experient_label"]
+    parameter.csv_name = args["dataset"]
+    parameter.features, parameter.target = parameter.set_dataset_related_params(args['dataset'])
+    parameter.split_mode = args["split_mode"]
+    parameter.norm_mode = args["feat_norm"]
+    parameter.label_norm_mode = args["target_norm"]
+    parameter.batchsize = args["batch_size"]
+    parameter.is_using_shuffle = args["shuffle"]
+    parameter.experient_label = args["experiment_label"]
     parameter.bypass = args["bypass"]
     parameter.time_embedding = args["time_embedding"]
     parameter.split_days = args["split_day"]
+    parameter.is_using_image_data = args["use_image"]
+    parameter.image_input_width3D = args["image_length"]
+    parameter.save_plot = args["save_plot"]
+    parameter.save_csv = args["save_csv"]
 
     parameter.experient_label += "_bypass-{}_TE-{}_split-{}".format(
         bypass_factory.BypassFac.get_bypass_mode(parameter.bypass),

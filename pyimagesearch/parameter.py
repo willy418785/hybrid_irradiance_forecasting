@@ -11,19 +11,32 @@ dynamic_suffle = False
 timeseries = True
 datasetPath = "../skyImage"
 csv_name = 'EC.csv'  # ["2020final.csv","2020new.csv","2020shuffleDay", 'dataset_renheo_[2019].csv', 'EC.csv']
+
+
 # features = ['ShortWaveDown'] # target only
 # features = ['ShortWaveDown', 'CWB_Humidity', 'CWB_Temperature']  # david suggested
 # features = ["DC-1|Pdc", "DC-2|Pdc"] # ["DC-1|Pdc", "DC-2|Pdc", "Temperature", "RH"], ["DC-1|Pdc", "DC-2|Pdc"]
 # features = None
 # features = ["MT_001"]
-features = ["MT_{}".format(str(i).zfill(3)) for i in range(1, 371)]
-# target = ["MT_{}".format(str(i).zfill(3)) for i in range(1, 371)]
-target = features
-# target = ["MT_001"]
-# target = ["DC-1|Pdc","DC-2|Pdc"]   # "ShortWaveDown","difference5","difference10", ["DC-1|Pdc","DC-2|Pdc"]
 # features = ['ShortWaveDown', 'CWB_Humidity', 'CWB_WindSpeed',
 #             'CWB_Temperature', 'EvapLevel', 'CWB_Rain05', 'CWB_Pressure', "CWB_WindDirection_Cosine",
 #             "CWB_WindDirection_Sine"]
+
+def set_dataset_related_params(name):
+    if name == 'EC.csv':
+        feat = ["MT_{}".format(str(i).zfill(3)) for i in range(1, 371)]
+        # feat = ["MT_{}".format(str(i).zfill(3)) for i in range(1, 2)]
+    elif name == '2020new.csv':
+        feat = ['ShortWaveDown']
+    elif name == 'dataset_renheo_[2019].csv':
+        feat = ["DC-1|Pdc", "DC-2|Pdc"]
+    tar = feat
+    return feat, tar
+
+
+features, target = set_dataset_related_params(csv_name)
+
+
 targetAdd = "before5"  # "before5","before10"           #same number as target
 
 dynamic_model = "one"
@@ -61,8 +74,10 @@ after_minutes = 1
 
 input_width = 168
 shifted_width = 0
-label_width = 24
-MA_width = 192
+label_width = 168
+MA_width = 168
+sample_rate = 24
+test_sample_rate = 168
 
 image_input_width3D = 10
 is_using_image_data = False
@@ -83,7 +98,6 @@ earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=
                             restore_best_weights=True)
 # earlystoper = []
 
-# model_list = ["data_cnn","data_cnnlstm","multiCnnLSTM_c_cnn","multiCnnLSTM_c_cnnlstm","CnnLSTM_c_cnn","CnnLSTM_c_cnnlstm"]    
 # model_list = ["conv3D","cnnLSTM","multiCnnLSTM","3Dresnet18",
 
 #             "conv3D_c_cnn",         "conv3D_c_cnnlstm",
@@ -92,33 +106,11 @@ earlystoper = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=
 #             "3Dresnet_c_cnn",       "3Dresnet_c_cnnlstm",
 
 #             "data_cnnlstm", "data_cnn"]
-# model_list = ["Persistence", "MA", "data_cnnlstm", "simple_transformer"]
-# model_list = ["Persistence", "MA", "autoregressive_transformer"]
-# model_list = ["Persistence", "MA", "convGRU", "transformer", 'convGRU_w_mlp_decoder', 'transformer_w_mlp_decoder', 'autoregressive_convGRU', 'autoregressive_transformer']
-# model_list = ["Persistence", 'MA', "transformer_w_LR", 'convGRU_w_LR', 'LSTNet', "transformer_w_timestamps",
-#               "convGRU_w_timestamps", "convGRU", "transformer", "convGRU_w_LR_timestamps",
-#               "transformer_w_LR_timestamps"]
-# model_list = ["Persistence", 'MA',
-#               'convGRU_w_LR', "transformer_w_LR",
-#               'stationary_convGRU_w_LR', "stationary_transformer_w_LR",
-#               'movingznorm_transformer_w_LR',
-#               "convGRU_w_LR_timestamps", 'transformer_w_LR_timestamps',
-#               "stationary_convGRU_w_LR_timestamps", "stationary_transformer_w_LR_timestamps",
-#               'movingznorm_transformer_w_LR_timestamps']
 model_list = ["Persistence", "MA",
               "convGRU", "transformer",
               'stationary_convGRU', "stationary_transformer",
               'znorm_convGRU', 'znorm_transformer']
-# model_list = ["convGRU", "transformer", "convGRU_w_LR_timestamps", "transformer_w_LR_timestamps"]
-# model_list = ["Persistence", "MA", 'AR', 'channelwise_AR']
-# model_list = ["Persistence", "MA", "convGRU", "transformer", 'convGRU_w_mlp_decoder', 'transformer_w_mlp_decoder']
-# model_list = ["Persistence", "MA", "simple_transformer"]
-# model_list = ["Persistence", "MA", "convGRU", "simple_transformer"]
-# model_list = ["Persistence","MA","conv3D_c_cnnlstm","Cnn3dLSTM_c_cnnlstm","data_cnnlstm"]
-# model_list = ["Persistence","conv3D_c_cnnlstm","Cnn3dLSTM_c_cnnlstm","resnet_c_cnnlstm","solarnet_c_cnnlstm","Cnn2dLSTM_c_cnnlstm","data_cnnlstm"]
-# model_list = ["Persistence","Resnet50_c_cnnlstm","Efficient_c_cnnlstm"]
-# model_list = ["Persistence","conv3D_c_cnnlstm","Cnn3dLSTM_c_cnnlstm","Resnet50_c_cnnlstm","Cnn2dLSTM_c_cnnlstm","Efficient_c_cnnlstm"]
-
+baselines = ["Persistence", "MA"]
 # "cnn","resnet","solarnet","convlstm","conv3D","cnn3dLSTM","multiCnnLSTM","3Dresnet","resnet2d"
 # "data_cnnlstm","data_cnn"
 # csvLogMetrics = ["MSE", "RMSE", "MAE", "MAPE", "WMAPE", "VWMAPE","corr"]
@@ -137,7 +129,6 @@ class_type = "cloud"  # static use only    # "average","cloud"
 normalization = "MinMax"  # "MinMax","Mean","Standard","Max","No"
 split_mode = "all_year"  # "all_year", "month", 'cross_month_validate'  # all_year就是整年按比例分割dataset  # month要去改test_month:if跑main.py則只做某個月，if跑month_sep.py則test_month自己從2-8更新病最後算平均
 test_month = 2
-tailMonth = 12  # 最後一個月(val抓上一個月會用到)
 squeeze = False  # windowgenerator裡面image要不要降成2維，用於某些model
 is_using_shuffle = False
 
@@ -156,5 +147,5 @@ if is_using_cloud_location:
 
 timezone = 'Asia/Taipei'
 
-save_plot = True if len(target) <= 5 else False
+save_plot = False
 save_csv = False
