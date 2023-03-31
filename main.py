@@ -285,88 +285,28 @@ def run():
     modelMetricsRecorder = {}
     if parameter.timeseries:
         dataUtil = data_with_weather_info
-        # trainY_nor = np.expand_dims(trainY_nor, axis=-1)
-        # valY_nor = np.expand_dims(valY_nor, axis=-1)
-        # testY = np.expand_dims(testY, axis=-1)
-        if parameter.input_days is None or parameter.output_days is None:
-            assert type(parameter.input_width) is int
-            assert type(parameter.shifted_width) is int
-            assert type(parameter.label_width) is int
-            if parameter.is_using_image_data:
-                assert type(parameter.image_input_width3D) is int
-                image_input_width = parameter.image_input_width3D
-            else:
-                image_input_width = 0
-            if "MA" in parameter.model_list:
-                assert type(parameter.MA_width) is int
-                MA_width = parameter.MA_width
-            input_width = parameter.input_width
-            shift = parameter.shifted_width
-            label_width = parameter.label_width
-            log.info("\n------In-day Prediction------")
-            log.info("input width: {}".format(input_width))
-            log.info("shift width: {}".format(shift))
-            log.info("label width: {}".format(label_width))
-            if parameter.is_using_image_data:
-                log.info("images width: {}".format(image_input_width))
-            if "MA" in parameter.model_list:
-                log.info("MA width: {}".format(MA_width))
+        assert type(parameter.input_width) is int
+        assert type(parameter.shifted_width) is int
+        assert type(parameter.label_width) is int
+        if parameter.is_using_image_data:
+            assert type(parameter.image_input_width3D) is int
+            image_input_width = parameter.image_input_width3D
         else:
-            assert type(parameter.input_days) is int
-            assert type(parameter.output_days) is int
-            assert type(parameter.shifted_days) is int
-            if parameter.is_using_image_data:
-                assert type(parameter.image_input_width3D) is int
-                image_input_width = parameter.image_input_width3D
-            else:
-                image_input_width = 0
-            if "MA" in parameter.model_list:
-                assert type(parameter.MA_days) is int
-                MA_width = (data_for_baseline.samples_per_day * parameter.MA_days)
-            input_width = int(dataUtil.samples_per_day * parameter.input_days)
-            label_width = int(dataUtil.samples_per_day * parameter.output_days)
-            shift = int(dataUtil.samples_per_day * parameter.shifted_days)
-            log.info("\n------Cross-day Prediction------")
-            log.info("input days: {}".format(parameter.input_days))
-            log.info("shift days: {}".format(parameter.shifted_days))
-            log.info("output days: {}".format(parameter.output_days))
-            if "MA" in parameter.model_list:
-                log.info("MA days: {}".format(parameter.MA_days))
-            log.info("samples per day: {}".format(dataUtil.samples_per_day))
-            log.info("input width: {}".format(input_width))
-            log.info("shift width: {}".format(shift))
-            log.info("label width: {}".format(label_width))
-            if parameter.is_using_image_data:
-                log.info("images width: {}".format(image_input_width))
-            if "MA" in parameter.model_list:
-                log.info("MA width: {}".format(MA_width))
-        # w1 = WindowGenerator(input_width=input_width,
-        # 						image_input_width=1,
-        # 						label_width=label_width,
-        # 						shift = parameter.after_minutes,
-
-        # 						trainImages = dataUtil.trainImages,
-        # 						trainData = dataUtil.train_df,
-        # 						trainCloud = dataUtil.train_df_cloud,######
-        # 						trainAverage = dataUtil.train_df_average,######
-        # 						trainY = dataUtil.train_df,
-
-        # 						valImage = dataUtil.valImages,
-        # 						valData = dataUtil.val_df,
-        # 						valCloud = dataUtil.val_df_cloud,######
-        # 						valAverage = dataUtil.val_df_average,######
-        # 						valY = dataUtil.val_df,
-
-        # 						testImage = dataUtil.testImages,
-        # 						testData = dataUtil.test_df,
-        # 						testCloud = dataUtil.test_df_cloud,######
-        # 						testAverage = dataUtil.test_df_average,######
-        # 						testY = dataUtil.test_df,
-
-        # 						batch_size = parameter.batchsize,
-        # 						label_columns = "ShortWaveDown")
-        # log.info(w1)	#2D
-        # w1.checkWindow()
+            image_input_width = 0
+        if "MA" in parameter.model_list:
+            assert type(parameter.MA_width) is int
+            MA_width = parameter.MA_width
+        input_width = parameter.input_width
+        shift = parameter.shifted_width
+        label_width = parameter.label_width
+        log.info("\n------IO Setup------")
+        log.info("input width: {}".format(input_width))
+        log.info("shift width: {}".format(shift))
+        log.info("label width: {}".format(label_width))
+        if parameter.is_using_image_data:
+            log.info("images width: {}".format(image_input_width))
+        if "MA" in parameter.model_list:
+            log.info("MA width: {}".format(MA_width))
 
         w2 = WindowGenerator(input_width=input_width,
                              image_input_width=image_input_width,

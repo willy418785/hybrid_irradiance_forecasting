@@ -59,11 +59,6 @@ if between8_17 or test_between8_17:
 experient_label = "test"
 after_minutes = 1
 
-input_days = 7
-shifted_days = 0
-output_days = 7
-MA_days = 7
-
 input_width = 168
 shifted_width = 0
 label_width = 24
