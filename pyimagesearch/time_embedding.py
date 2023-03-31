@@ -11,7 +11,6 @@ from tensorflow.keras.models import Model
 
 from pyimagesearch import parameter, model_AR
 from pyimagesearch.datautil import DataUtil
-from pyimagesearch.windowsGenerator import WindowGenerator
 
 import tensorflow.keras.backend as K
 
@@ -96,6 +95,8 @@ class SinCosTimeEncoding(tf.keras.layers.Layer):
         return output[:, self.input_slice, :], output[:, self.shift_slice, :], output[:, self.label_slice, :]
 
 if __name__ == '__main__':
+
+    from pyimagesearch.windowsGenerator import WindowGenerator
     train_path_with_weather_info = os.path.sep.join(["../{}".format(parameter.csv_name)])
     data_with_weather_info = DataUtil(train_path=train_path_with_weather_info,
                                       val_path=None,
@@ -134,8 +135,7 @@ if __name__ == '__main__':
 
                          batch_size=32,
                          label_columns="ShortWaveDown",
-                         samples_per_day=dataUtil.samples_per_day,
-                         using_timestamp_data=True)
+                         samples_per_day=dataUtil.samples_per_day)
     input_scalar = Input(shape=(src_len, len(parameter.features)))
     input_time = Input(shape=(src_len + shift + tar_len, len(vocab_size)))
     LR = model_AR.TemporalChannelIndependentLR(model_AR.Config.order, tar_seq_len=tar_len,
@@ -150,7 +150,7 @@ if __name__ == '__main__':
     # history = model.fit(w2.trainData(addcloud=parameter.addAverage),
     #                     validation_data=w2.valData(addcloud=parameter.addAverage),
     #                     epochs=100, batch_size=5, callbacks=[parameter.earlystoper])
-    for x, y in w2.trainData(addcloud=parameter.addAverage):
+    for x, y in w2.train(addcloud=parameter.addAverage):
         c = model(x)
         pass
     pass

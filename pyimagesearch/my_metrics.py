@@ -19,8 +19,8 @@ def corr(y_true, y_pred):
     num2 = y_pred - tf.keras.backend.mean(y_pred, axis=0)
     num = tf.keras.backend.mean(num1 * num2, axis=0)
     den = tf.keras.backend.std(y_true, axis=0) * tf.keras.backend.std(y_pred, axis=0)
-    i = (den!=0)
-    return tf.keras.backend.mean(num[i]/ den[i])
+    i = (den != 0)
+    return tf.keras.backend.mean(num[i] / den[i])
 
 
 def weighted_mean_absolute_percentage_error(y_true, y_pred):  # senpai version error method
@@ -34,11 +34,13 @@ def weighted_mean_absolute_percentage_error(y_true, y_pred):  # senpai version e
     #    y_true, y_pred = _check_1d_array(y_true, y_pred)
     return np.sum(np.abs(y_true - y_pred)) / np.sum(y_true)
 
+
 def root_relative_squared_error(y_true, y_pred):
     num = tf.keras.backend.sqrt(tf.keras.backend.mean(tf.keras.backend.square(y_true - y_pred), axis=None))
     den = tf.keras.backend.std(y_true, axis=None)
 
     return num / den
+
 
 def mean_absolute_percentage_error(y_true, y_pred):
     y_true = check_array(y_true, ensure_2d=False)
@@ -100,106 +102,71 @@ def log_metrics(df, name):
 
 
 def seperate_log_metrics(df, name, minutes):
-    '''for i in range(len(df.predict)):
-        if df.predict[i]<0.0:
-            df.predict[i]=0
-            # print(df)'''
-    # df.predict[df.predict < 0.0] = 0.0
-    # tdf = df[(df.ground_Truth != 0)]
-    # tdf = tdf[(df[0] != 0)]
-    # df[1][df[1] < 0] = 0
-    gt = df[0][parameter.target]
-    pd = df[1][parameter.target]
-    print(len(gt))
-    glist = [[] for _ in range(minutes)]
-    plist = [[] for _ in range(minutes)]
-
-    for i in range(len(gt)):
-        glist[i % minutes].append(gt.iloc[i])
-        plist[i % minutes].append(pd.iloc[i])
-
-    # print(glist)
-    # print(plist)
     sep_metircs_dist = {}
-    sepAvg_metircs_dist = {}
     log = logging.getLogger(parameter.experient_label)
-    sep_metircs_mse = np.zeros(minutes)
-    sep_metircs_rmse = np.zeros(minutes)
-    sep_metircs_rmspe = np.zeros(minutes)
-    sep_metircs_mae = np.zeros(minutes)
-    sep_metircs_mape = np.zeros(minutes)
-    sep_metircs_wmape = np.zeros(minutes)
-    sep_metircs_rse = np.zeros(minutes)
-    sep_metircs_vwmape = np.zeros(minutes)
-    sep_metircs_corr = np.zeros(minutes)
-
     for i in range(minutes):
-        sep_metircs_mse[i] = mean_squared_error(glist[i], plist[i])
-        sep_metircs_rmse[i] = mean_squared_error(glist[i], plist[i], squared=False)
-        sep_metircs_rmspe[i] = RMSPE(glist[i], plist[i])
-        sep_metircs_mae[i] = mean_absolute_error(glist[i], plist[i])
-        sep_metircs_mape[i] = mean_absolute_percentage_error(glist[i], plist[i])
-        sep_metircs_wmape[i] = weighted_mean_absolute_percentage_error(glist[i], plist[i])
-        gt = tf.convert_to_tensor(glist[i])
-        pred = tf.convert_to_tensor(plist[i])
-        sep_metircs_rse[i] = root_relative_squared_error(gt, pred).numpy()
-        sep_metircs_vwmape[i] = VWMAPE(gt, pred).numpy()
-        sep_metircs_corr[i] = corr(gt, pred).numpy()
-
-        log = logging.getLogger(parameter.experient_label)
-        # log.info("Name: {}_{}---------------------------------------------------------".format(name,i+1))
-        # log.info("MSE : {}".format(sep_metircs_mse[i]))
-        # log.info("RMSE : {}".format(sep_metircs_rmse[i]))
-        # log.info("MAE : {}".format(sep_metircs_mae[i]))
-        # log.info("MAPE : {}".format(sep_metircs_mape[i]))
-        # log.info("WMAPE : {}".format(sep_metircs_wmape[i]))
-        log.info("{}min MSE : {}, RMSE : {}, RMSPE : {}, MAE : {}, MAPE : {}, WMAPE : {}, VWMAPE : {}, corr : {}"
-                 .format(i + 1, sep_metircs_mse[i], sep_metircs_rmse[i], sep_metircs_rmspe[i], sep_metircs_mae[i],
-                         sep_metircs_mape[i], sep_metircs_wmape[i], sep_metircs_vwmape[i], sep_metircs_corr[i]))
-        sep_metircs_dist["MSE {}min".format(i + 1)] = sep_metircs_mse[i]
-        sep_metircs_dist["RMSE {}min".format(i + 1)] = sep_metircs_rmse[i]
-        sep_metircs_dist["RMSPE {}min".format(i + 1)] = sep_metircs_rmspe[i]
-        sep_metircs_dist["MAE {}min".format(i + 1)] = sep_metircs_mae[i]
-        sep_metircs_dist["MAPE {}min".format(i + 1)] = sep_metircs_mape[i]
-        sep_metircs_dist["WMAPE {}min".format(i + 1)] = sep_metircs_wmape[i]
-        sep_metircs_dist["RSE {}min".format(i + 1)] = sep_metircs_rse[i]
-        sep_metircs_dist["VWMAPE {}min".format(i + 1)] = sep_metircs_vwmape[i]
-        sep_metircs_dist["corr {}min".format(i + 1)] = sep_metircs_corr[i]
-
-    sepAvg_metircs_dist["MSE avg"] = sep_metircs_mse.mean()
-    sepAvg_metircs_dist["RMSE avg"] = sep_metircs_rmse.mean()
-    sepAvg_metircs_dist["RMSPE avg"] = sep_metircs_rmspe.mean()
-    sepAvg_metircs_dist["MAE avg"] = sep_metircs_mae.mean()
-    sepAvg_metircs_dist["MAPE avg"] = sep_metircs_mape.mean()
-    sepAvg_metircs_dist["WMAPE avg"] = sep_metircs_wmape.mean()
-    sepAvg_metircs_dist["RSE avg"] = sep_metircs_rse.mean()
-    sepAvg_metircs_dist["VWMAPE avg"] = sep_metircs_vwmape.mean()
-    sepAvg_metircs_dist["corr avg"] = sep_metircs_corr.mean()
-
-    # log.info("Name: {}_avg---------------------------------------------------------".format(name))
-    # log.info("avg MSE : {}".format(sepAvg_metircs_dist["MSE avg"]))
-    # log.info("avg RMSE : {}".format(sepAvg_metircs_dist["RMSE avg"]))
-    # log.info("avg MAE : {}".format(sepAvg_metircs_dist["MAE avg"]))
-    # log.info("avg MAPE : {}".format(sepAvg_metircs_dist["MAPE avg"]))
-    # log.info("avg WMAPE : {}".format(sepAvg_metircs_dist["WMAPE avg"]))
-
-    log.info(sepAvg_metircs_dist)
-
-    return sep_metircs_dist, sepAvg_metircs_dist
+        gt, pd = df[0][:, i, :], df[1][:, i, :]
+        sep_metircs_dist["MSE {}min".format(i + 1)] = mean_squared_error(gt, pd)
+        sep_metircs_dist["RMSE {}min".format(i + 1)] = mean_squared_error(gt, pd, squared=False)
+        sep_metircs_dist["RMSPE {}min".format(i + 1)] = RMSPE(gt, pd)
+        sep_metircs_dist["MAE {}min".format(i + 1)] = mean_absolute_error(gt, pd)
+        sep_metircs_dist["MAPE {}min".format(i + 1)] = mean_absolute_percentage_error(gt, pd)
+        sep_metircs_dist["WMAPE {}min".format(i + 1)] = weighted_mean_absolute_percentage_error(gt, pd)
+        gt_t, pd_t = tf.convert_to_tensor(gt), tf.convert_to_tensor(pd)
+        sep_metircs_dist["RSE {}min".format(i + 1)] = root_relative_squared_error(gt_t, pd_t).numpy()
+        sep_metircs_dist["VWMAPE {}min".format(i + 1)] = VWMAPE(gt_t, pd_t).numpy()
+        sep_metircs_dist["corr {}min".format(i + 1)] = corr(gt_t, pd_t).numpy()
+        log.info("{}min MSE: {}, RMSE: {}, RMSPE: {}, MAE: {}, MAPE: {}, WMAPE: {}, RSE: {}, VWMAPE: {}, corr: {}"
+                 .format(i + 1,
+                         sep_metircs_dist["MSE {}min".format(i + 1)],
+                         sep_metircs_dist["RMSE {}min".format(i + 1)],
+                         sep_metircs_dist["RMSPE {}min".format(i + 1)],
+                         sep_metircs_dist["MAE {}min".format(i + 1)],
+                         sep_metircs_dist["MAPE {}min".format(i + 1)],
+                         sep_metircs_dist["WMAPE {}min".format(i + 1)],
+                         sep_metircs_dist["RSE {}min".format(i + 1)],
+                         sep_metircs_dist["VWMAPE {}min".format(i + 1)],
+                         sep_metircs_dist["corr {}min".format(i + 1)]
+                         )
+                 )
+    return sep_metircs_dist
 
 
 def log_metrics_day_by_day(df, name, n_days):
     if n_days is None:
         return {}
-    gt = df[0][parameter.target]
-    pd = df[1][parameter.target]
-    glist = []
-    plist = []
-    for nth_day in range(n_days):
-        nth_dates = np.unique(pd.index.date)[nth_day::n_days]
-        glist.append(gt[[True if date in nth_dates else False for date in gt.index.date]])
-        plist.append(pd[[True if date in nth_dates else False for date in pd.index.date]])
-
+    b, l, c = df[0].shape
+    n_samples = l // n_days
+    sep_metircs_dist = {}
+    log = logging.getLogger(parameter.experient_label)
+    for i in range(n_days):
+        start = i*n_samples
+        split_day = slice(start, start+n_samples)
+        gt, pd = df[0][:, split_day, :].reshape((-1, c)), df[1][:, split_day, :].reshape((-1, c))
+        sep_metircs_dist["MSE {}th day".format(i + 1)] = mean_squared_error(gt, pd)
+        sep_metircs_dist["RMSE {}th day".format(i + 1)] = mean_squared_error(gt, pd, squared=False)
+        sep_metircs_dist["RMSPE {}th day".format(i + 1)] = RMSPE(gt, pd)
+        sep_metircs_dist["MAE {}th day".format(i + 1)] = mean_absolute_error(gt, pd)
+        sep_metircs_dist["MAPE {}th day".format(i + 1)] = mean_absolute_percentage_error(gt, pd)
+        sep_metircs_dist["WMAPE {}th day".format(i + 1)] = weighted_mean_absolute_percentage_error(gt, pd)
+        gt_t, pd_t = tf.convert_to_tensor(gt), tf.convert_to_tensor(pd)
+        sep_metircs_dist["RSE {}th day".format(i + 1)] = root_relative_squared_error(gt_t, pd_t).numpy()
+        sep_metircs_dist["VWMAPE {}th day".format(i + 1)] = VWMAPE(gt_t, pd_t).numpy()
+        sep_metircs_dist["corr {}th day".format(i + 1)] = corr(gt_t, pd_t).numpy()
+        log.info("{}th day MSE: {}, RMSE: {}, RMSPE: {}, MAE: {}, MAPE: {}, WMAPE: {}, RSE: {}, VWMAPE: {}, corr: {}"
+                 .format(i + 1,
+                         sep_metircs_dist["MSE {}th day".format(i + 1)],
+                         sep_metircs_dist["RMSE {}th day".format(i + 1)],
+                         sep_metircs_dist["RMSPE {}th day".format(i + 1)],
+                         sep_metircs_dist["MAE {}th day".format(i + 1)],
+                         sep_metircs_dist["MAPE {}th day".format(i + 1)],
+                         sep_metircs_dist["WMAPE {}th day".format(i + 1)],
+                         sep_metircs_dist["RSE {}th day".format(i + 1)],
+                         sep_metircs_dist["VWMAPE {}th day".format(i + 1)],
+                         sep_metircs_dist["corr {}th day".format(i + 1)]
+                         )
+                 )
+    return sep_metircs_dist
     sep_metircs_dist = {}
 
     sep_metircs_mse = np.zeros(n_days)

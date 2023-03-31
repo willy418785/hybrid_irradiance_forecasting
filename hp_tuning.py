@@ -157,11 +157,13 @@ class HyperTransformer(keras_tuner.HyperModel):
 
                             batch_size=hp.get("batch_size"),
                             label_columns="ShortWaveDown",
-                            samples_per_day=data.samples_per_day,
-                            using_timestamp_data=True,
-                            using_shuffle=hp.get('is_shuffle'))
-        return model.fit(w.trainData(addcloud=parameter.addAverage),
-                         validation_data=w.valData(addcloud=parameter.addAverage),
+                            samples_per_day=data.samples_per_day)
+        return model.fit(w.train(parameter.sample_rate, addcloud=parameter.addAverage,
+                                 using_timestamp_data=hp.get('is_using_time_embedding'),
+                                 is_shuffle=hp.get('is_shuffle')),
+                         validation_data=w.val(parameter.sample_rate, addcloud=parameter.addAverage,
+                                               using_timestamp_data=hp.get('is_using_time_embedding'),
+                                               is_shuffle=hp.get('is_shuffle')),
                          epochs=parameter.epochs,
                          **kwargs)
 
@@ -288,11 +290,13 @@ class HyperConvGRU(keras_tuner.HyperModel):
 
                             batch_size=hp.get("batch_size"),
                             label_columns="ShortWaveDown",
-                            samples_per_day=data.samples_per_day,
-                            using_timestamp_data=True,
-                            using_shuffle=hp.get('is_shuffle'))
-        return model.fit(w.trainData(addcloud=parameter.addAverage),
-                         validation_data=w.valData(addcloud=parameter.addAverage),
+                            samples_per_day=data.samples_per_day)
+        return model.fit(w.train(parameter.sample_rate, addcloud=parameter.addAverage,
+                                 using_timestamp_data=hp.get('is_using_time_embedding'),
+                                 is_shuffle=hp.get('is_shuffle')),
+                         validation_data=w.val(parameter.sample_rate, addcloud=parameter.addAverage,
+                                               using_timestamp_data=hp.get('is_using_time_embedding'),
+                                               is_shuffle=hp.get('is_shuffle')),
                          epochs=parameter.epochs,
                          **kwargs)
 
@@ -305,7 +309,8 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--trials', type=int, default=3, help='max trials when perform hp searching')
     parser.add_argument('-ft', '--finetune', default=False, action='store_true', help='fine-tuning or not')
     parser.add_argument('-at', '--arch', default=False, action='store_true', help='tuning network architecture or not')
-    parser.add_argument('-tt', '--training', default=False, action='store_true', help='tuning training parameters or not')
+    parser.add_argument('-tt', '--training', default=False, action='store_true',
+                        help='tuning training parameters or not')
     parser.add_argument('--overwrite', default=False, action='store_true', help='overwrite tuning history or not')
     args = parser.parse_args()
 

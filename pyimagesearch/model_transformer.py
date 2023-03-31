@@ -444,8 +444,7 @@ if __name__ == '__main__':
 
                          batch_size=32,
                          label_columns="ShortWaveDown",
-                         samples_per_day=dataUtil.samples_per_day,
-                         using_timestamp_data=True)
+                         samples_per_day=dataUtil.samples_per_day)
     input_scalar = Input(shape=(src_len, len(parameter.features)))
     input_time = Input(shape=(src_len + shift + tar_len, len(time_embedding.vocab_size)))
     embedding = time_embedding.TimeEmbedding(output_dims=Config.d_model, input_len=src_len, shift_len=shift,
@@ -463,10 +462,10 @@ if __name__ == '__main__':
             , tf.metrics.MeanAbsolutePercentageError()])
     model.summary()
     tf.keras.backend.clear_session()
-    history = model.fit(w2.trainData(addcloud=parameter.addAverage),
-                        validation_data=w2.valData(addcloud=parameter.addAverage),
+    history = model.fit(w2.train(w2.samples_per_day, addcloud=False, using_timestamp_data=True, is_shuffle=False),
+                        validation_data=w2.val(w2.samples_per_day, addcloud=False, using_timestamp_data=True, is_shuffle=False),
                         epochs=100, batch_size=5, callbacks=[parameter.earlystoper])
-    for x, y in w2.trainData(addcloud=parameter.addAverage):
+    for x, y in w2.train(w2.samples_per_day, addcloud=False, using_timestamp_data=True, is_shuffle=False):
         c = model(x)
     model.summary()
     pass

@@ -129,7 +129,7 @@ if __name__ == '__main__':
     # history = model.fit(w2.trainData(addcloud=parameter.addAverage),
     #                     validation_data=w2.valData(addcloud=parameter.addAverage),
     #                     epochs=100, batch_size=5, callbacks=[parameter.earlystoper])
-    for x, y in w2.trainData(addcloud=parameter.addAverage):
+    for x, y in w2.train(w2.samples_per_day, addcloud=False, using_timestamp_data=False, is_shuffle=False):
         c = model(x[:1, :, :])
     model.summary()
     pass

@@ -71,28 +71,21 @@ def ModelTrainer(dataGnerator: WindowGenerator,
     model.summary()
     tf.keras.backend.clear_session()
     print("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&")
-    if generatorMode == "combined":
-        history = model.fit(dataGnerator.train(addcloud=parameter.addAverage),
-                            validation_data=dataGnerator.val(addcloud=parameter.addAverage),
-                            epochs=testEpoch, batch_size=parameter.batchsize, callbacks=[parameter.earlystoper])
-        all_pred, all_y = dataGnerator.plotPredictUnit(model, dataGnerator.val(addcloud=parameter.addAverage),
+    using_timestamp_data = time_embedding_factory.TEFac.get_te_mode(parameter.time_embedding) is not None
+    if generatorMode == "combined" or generatorMode == "data":
+        history = model.fit(
+            dataGnerator.train(parameter.sample_rate, addcloud=parameter.addAverage,
+                               using_timestamp_data=using_timestamp_data,
+                               is_shuffle=parameter.is_using_shuffle),
+            validation_data=dataGnerator.val(parameter.sample_rate, addcloud=parameter.addAverage,
+                                             using_timestamp_data=using_timestamp_data,
+                                             is_shuffle=parameter.is_using_shuffle),
+            epochs=testEpoch, batch_size=parameter.batchsize, callbacks=[parameter.earlystoper])
+        all_pred, all_y = dataGnerator.plotPredictUnit(model, dataGnerator.val(parameter.sample_rate,
+                                                                               addcloud=parameter.addAverage,
+                                                                               using_timestamp_data=using_timestamp_data,
+                                                                               is_shuffle=parameter.is_using_shuffle),
                                                        datamode=generatorMode)
-    # history = model.fit(dataGnerator.train(), validation_data=dataGnerator.val(),
-    # 			epochs=testEpoch, batch_size=parameter.batchsize, callbacks=[parameter.earlystoper])
-    # all_pred, all_y = dataGnerator.plotPredictUnit(model, dataGnerator.val())
-
-    elif generatorMode == "data":
-        # log_dir = "logs/fit/{}_".format(name) + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-        # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
-        history = model.fit(dataGnerator.trainData(addcloud=parameter.addAverage),
-                            validation_data=dataGnerator.valData(addcloud=parameter.addAverage),
-                            epochs=testEpoch, batch_size=parameter.batchsize,
-                            callbacks=[parameter.earlystoper])  # [tensorboard_callback, parameter.earlystoper]
-        all_pred, all_y = dataGnerator.plotPredictUnit(model, dataGnerator.valData(addcloud=parameter.addAverage),
-                                                       datamode=generatorMode)
-    # history = model.fit(dataGnerator.trainData(), validation_data=dataGnerator.valData(),
-    # 			epochs=testEpoch, batch_size=parameter.batchsize, callbacks=[parameter.earlystoper])
-    # all_pred, all_y = dataGnerator.plotPredictUnit(model, dataGnerator.valData())
 
     elif generatorMode == "image":
         history = model.fit(dataGnerator.trainWithArg, validation_data=dataGnerator.valWithArg,
@@ -399,8 +392,7 @@ def run():
 
                              batch_size=parameter.batchsize,
                              label_columns="ShortWaveDown",
-                             samples_per_day=dataUtil.samples_per_day,
-                             using_timestamp_data=time_embedding_factory.TEFac.get_te_mode(parameter.time_embedding) is not None)
+                             samples_per_day=dataUtil.samples_per_day)
         # log.info(w2)  # 3D
         dataUtil = data_for_baseline
         if "Persistence" in parameter.model_list:
@@ -460,7 +452,7 @@ def run():
 
     #############################################################
     log = logging.getLogger(parameter.experient_label)
-
+    w = w2
     is_input_continuous_with_output = (shift == 0) and (not parameter.between8_17 or w.is_sampling_within_day)
     metrics_path = "plot/{}/{}".format(parameter.experient_label, "all_metric")
 

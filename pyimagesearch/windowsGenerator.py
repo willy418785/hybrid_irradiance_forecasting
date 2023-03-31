@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from pyimagesearch import parameter
+from pyimagesearch import parameter, time_embedding_factory
 import pandas as pd
 import logging
 from sklearn.metrics import mean_squared_error, mean_absolute_error
@@ -17,8 +17,7 @@ class WindowGenerator():
                  trainImages, trainData, trainCloud, trainAverage, trainY,
                  valImage, valData, valCloud, valAverage, valY,
                  testImage, testData, testCloud, testAverage, testY,
-                 batch_size=32, label_columns=None, samples_per_day=None,
-                 using_timestamp_data=False, using_shuffle=parameter.is_using_shuffle):
+                 batch_size=32, label_columns=None, samples_per_day=None):
 
         # Work out the window parameters.
         self.input_width = input_width
@@ -26,8 +25,6 @@ class WindowGenerator():
         self.label_width = label_width
         self.shift = shift
         self.batch_size = batch_size
-        self.using_timestamp_data = using_timestamp_data
-        self.using_shuffle = using_shuffle
         self.total_window_size = self.input_width + self.label_width + self.shift
         self.samples_per_day = samples_per_day
         self.is_sampling_within_day = True if self.total_window_size <= self.samples_per_day else False
@@ -83,33 +80,6 @@ class WindowGenerator():
         all_y = None
         all_pred = None
         for inputs, targets in dataset.as_numpy_iterator():
-            # print("@@@@@@@@@@@@@@@@@@@@@@",inputs.shape)
-            # inputs, targets = batch
-            # print(inputs)
-            # print("$targets.shape$", targets.shape)
-            # if isinstance(inputs, tuple):
-            #     for data in inputs:
-            #         print
-            # else:
-            #     pass
-            # if datamode == "data":
-            #     if parameter.addAverage:
-            #         data, average = inputs
-            #         print("$combined  data prediction inputs shape", data.shape)
-            #         print("$combined average prediction inputs shape", average.shape)
-            #     else:
-            #         data = inputs
-            #         print("$combined  data prediction inputs shape", data.shape)
-            # elif datamode == "combined":
-            #     if parameter.addAverage:
-            #         image, data, average = inputs
-            #         print("$combined image prediction inputs shape", image.shape)
-            #         print("$combined  data prediction inputs shape", data.shape)
-            #         print("$combined average prediction inputs shape", average.shape)
-            #     else:
-            #         image, data = inputs
-            #         print("$combined image prediction inputs shape", image.shape)
-            #         print("$combined  data prediction inputs shape", data.shape)
             targets = targets.reshape((-1, targets.shape[-1]))
             # print("$targets.shape$", targets.shape)
             if all_y is None:
@@ -124,9 +94,6 @@ class WindowGenerator():
                 all_pred = pred
             else:
                 all_pred = np.vstack((all_pred, pred))
-            # all_pred = model.predict(all_input)
-        # print(">>>>>>>>",all_y.shape)
-        # print("!!!!!!!!",all_pred.shape)
         return all_pred, all_y
 
     def image_split_window(self, features):
@@ -175,7 +142,7 @@ class WindowGenerator():
             # data = data[['timestamp']]
             label = pd.DataFrame(label.index.values.astype(np.int64), index=label.index, columns=['timestamp'])
             # label = label[['timestamp']]
-
+            cloudData, image, is_timestamp_as_data = None, None, False
         for date in np.unique(data.index.date):
             num_of_rows = len(data[data.index.date == date].index)
             data_on_date = data[
@@ -453,91 +420,37 @@ class WindowGenerator():
         # c = c.cache("cache/test2")
         return c
 
-    def trainData(self, sepMode: str = "all", addcloud=False):
-        # return self.input_dataset_2(self.trainDataX, self.trainCloudX, self.trainY_nor, addcloud=addcloud,
-        #                             sequence_stride=1, use_shuffle=parameter.is_using_shuffle)
-        if self.is_sampling_within_day:
-            if addcloud:
-                return self.input_dataset(self.trainDataX, self.trainY_nor, cloudData=self.trainCloudX,
-                                          is_timestamp_as_data=self.using_timestamp_data,
-                                          sequence_stride=1, use_shuffle=self.using_shuffle)
-            else:
-                return self.input_dataset(self.trainDataX, self.trainY_nor,
-                                          is_timestamp_as_data=self.using_timestamp_data,
-                                          sequence_stride=1, use_shuffle=self.using_shuffle)
-        else:
-            if addcloud:
-                return self.input_dataset(self.trainDataX, self.trainY_nor, cloudData=self.trainCloudX,
-                                          is_timestamp_as_data=self.using_timestamp_data,
-                                          sequence_stride=self.samples_per_day, use_shuffle=self.using_shuffle)
-            else:
-                return self.input_dataset(self.trainDataX, self.trainY_nor,
-                                          is_timestamp_as_data=self.using_timestamp_data,
-                                          sequence_stride=self.samples_per_day, use_shuffle=self.using_shuffle)
-
-    def valData(self, sepMode: str = "all", addcloud=False):
-        # return self.input_dataset_2(self.valDataX, self.valCloudX, self.valY_nor, addcloud=addcloud, sequence_stride=1)
-        if self.is_sampling_within_day:
-            if addcloud:
-                return self.input_dataset(self.valDataX, self.valY_nor, cloudData=self.valCloudX,
-                                          is_timestamp_as_data=self.using_timestamp_data,
-                                          sequence_stride=1)
-            else:
-                return self.input_dataset(self.valDataX, self.valY_nor, is_timestamp_as_data=self.using_timestamp_data,
-                                          sequence_stride=1)
-        else:
-            if addcloud:
-                return self.input_dataset(self.valDataX, self.valY_nor, cloudData=self.valCloudX,
-                                          is_timestamp_as_data=self.using_timestamp_data,
-                                          sequence_stride=self.samples_per_day)
-            else:
-                return self.input_dataset(self.valDataX, self.valY_nor, is_timestamp_as_data=self.using_timestamp_data,
-                                          sequence_stride=self.samples_per_day)
-
-    def testData(self, sepMode: str = "all", ganIndex=False, addcloud=False):
-        # return self.input_dataset_2(self.testDataX, self.testCloudX, self.testY, ganIndex=ganIndex, addcloud=addcloud,
-        #                             sequence_stride=parameter.label_width)
-        if addcloud:
-            return self.input_dataset(self.testDataX, self.testY, cloudData=self.testCloudX,
-                                      is_timestamp_as_data=self.using_timestamp_data, ganIndex=ganIndex,
-                                      sequence_stride=self.label_width)
-        else:
-            return self.input_dataset(self.testDataX, self.testY, is_timestamp_as_data=self.using_timestamp_data,
-                                      ganIndex=ganIndex,
-                                      sequence_stride=self.label_width)
-        ############################################################################################################################################
-
-    def train(self, sepMode: str = "all", addcloud=False):
+    def train(self, sample_rate, addcloud=False, using_timestamp_data=False, is_shuffle=False):
         if addcloud:
             return self.input_dataset(self.trainDataX, self.trainY_nor, cloudData=self.trainCloudX,
-                                      image=self.trainImagesX, is_timestamp_as_data=self.using_timestamp_data,
-                                      sequence_stride=1, use_shuffle=self.using_shuffle)
+                                      image=self.trainImagesX, is_timestamp_as_data=using_timestamp_data,
+                                      sequence_stride=sample_rate, use_shuffle=is_shuffle)
         else:
             return self.input_dataset(self.trainDataX, self.trainY_nor, image=self.trainImagesX,
-                                      is_timestamp_as_data=self.using_timestamp_data,
-                                      sequence_stride=1, use_shuffle=self.using_shuffle)
+                                      is_timestamp_as_data=using_timestamp_data,
+                                      sequence_stride=sample_rate, use_shuffle=is_shuffle)
 
-    def val(self, sepMode: str = "all", addcloud=False):
+    def val(self, sample_rate, addcloud=False, using_timestamp_data=False, is_shuffle=False):
         if addcloud:
             return self.input_dataset(self.valDataX, self.valY_nor, cloudData=self.valCloudX, image=self.valImageX,
-                                      is_timestamp_as_data=self.using_timestamp_data,
-                                      sequence_stride=1)
+                                      is_timestamp_as_data=using_timestamp_data,
+                                      sequence_stride=sample_rate, use_shuffle=is_shuffle)
         else:
             return self.input_dataset(self.valDataX, self.valY_nor, image=self.valImageX,
-                                      is_timestamp_as_data=self.using_timestamp_data,
-                                      sequence_stride=1)
+                                      is_timestamp_as_data=using_timestamp_data,
+                                      sequence_stride=sample_rate, use_shuffle=is_shuffle)
 
-    def test(self, sepMode: str = "all", ganIndex=False, addcloud=False):
+    def test(self, sample_rate, ganIndex=False, addcloud=False, using_timestamp_data=False):
         if addcloud:
             return self.input_dataset(self.testDataX, self.testY, cloudData=self.testCloudX, image=self.testImagesX,
-                                      is_timestamp_as_data=self.using_timestamp_data,
+                                      is_timestamp_as_data=using_timestamp_data,
                                       ganIndex=ganIndex,
-                                      sequence_stride=parameter.label_width, use_shuffle=False)
+                                      sequence_stride=sample_rate, use_shuffle=False)
         else:
             return self.input_dataset(self.testDataX, self.testY, image=self.testImagesX,
-                                      is_timestamp_as_data=self.using_timestamp_data,
+                                      is_timestamp_as_data=using_timestamp_data,
                                       ganIndex=ganIndex,
-                                      sequence_stride=parameter.label_width, use_shuffle=False)
+                                      sequence_stride=sample_rate, use_shuffle=False)
 
     ##############################################################################################################################################
     ## two model
@@ -694,12 +607,10 @@ class WindowGenerator():
             log.debug("NEXT TACK=========================================================")
 
     # 產生label資料的 時間timeindex
-    def getlabelDataIndex(self, index_dataset, name=None):
+    def getTimeIndex(self, index_dataset, name=None):
         all_y_index = None
         all_x_index = None
         for inputs, label in index_dataset.as_numpy_iterator():
-            if name != "Persistence" and name != "MA":
-                inputs, _ = inputs
             if all_x_index is None:
                 # print(inputs)
                 all_x_index = inputs
@@ -764,19 +675,17 @@ class WindowGenerator():
         cloudA_label_index = None
         cloudC_label_index = None
         log = logging.getLogger(parameter.experient_label)
+        using_timestamp_data = time_embedding_factory.TEFac.get_te_mode(
+            parameter.time_embedding) is not None and name not in parameter.baselines
         if len(model) == 1:
-            if datamode == "data":  # persistence, moving average
-                all_pred, all_y = self.plotPredictUnit(model[0], self.testData(sepMode="all", ganIndex=False,
-                                                                               addcloud=parameter.addAverage),
+            if datamode == "data" or datamode == "combined":
+                all_pred, all_y = self.plotPredictUnit(model[0],
+                                                       self.test(parameter.test_sample_rate, ganIndex=False,
+                                                                 addcloud=parameter.addAverage,
+                                                                 using_timestamp_data=using_timestamp_data),
                                                        datamode=datamode)
-                _, all_y_index = self.getlabelDataIndex_withData(
-                    self.testData(sepMode="all", ganIndex=True, addcloud=parameter.addAverage), name)
-            elif datamode == "combined":
-                all_pred, all_y = self.plotPredictUnit(model[0], self.test(sepMode="all", ganIndex=False,
-                                                                           addcloud=parameter.addAverage),
-                                                       datamode=datamode)
-                _, all_y_index = self.getlabelDataIndex_withImage(
-                    self.test(sepMode="all", ganIndex=True, addcloud=parameter.addAverage), name)
+                _, all_y_index = self.getTimeIndex(
+                    self.test(parameter.test_sample_rate, ganIndex=True, addcloud=False, using_timestamp_data=False), name)
         elif len(model) == 2:
             if datamode == "data":  # cnnlstm
                 cloudA_pred, cloudA_y = self.plotPredictUnit(model[0],
@@ -878,8 +787,8 @@ class WindowGenerator():
         # print("$$$$$$$$$$$$$$$$", all_y_index.shape)
         # print("$$$$$$$$$$$$$$$$", all_y.shape)
 
-        df_pred = pd.DataFrame(all_pred, columns=parameter.target, index=all_y_index.ravel()).sort_index()
-        df_gt = pd.DataFrame(all_y, columns=parameter.target, index=all_y_index.ravel()).sort_index()
+        df_pred = pd.DataFrame(all_pred, columns=parameter.target, index=all_y_index.ravel())
+        df_gt = pd.DataFrame(all_y, columns=parameter.target, index=all_y_index.ravel())
         # df.index = all_y_index.ravel()
         # df = df.sort_index()
         if parameter.test_between8_17:
@@ -888,12 +797,16 @@ class WindowGenerator():
 
         # post process
         tdf = [df_gt, df_pred]
-        # tdf[1][tdf[1] < 0.0] = 0.0  # 預測負值 轉 0.0
 
-        log = logging.getLogger(parameter.experient_label)
+        # recover from collapsed time axis
+        l, c = self.label_width, len(parameter.target)
+        pred_recovered = all_pred.reshape((-1, l, c))
+        gt_recovered = all_y.reshape((-1, l, c))
+
+        output_days = None if self.label_width % self.samples_per_day != 0 else self.label_width // self.samples_per_day
         metircs_dist = my_metrics.log_metrics(tdf, name)
-        sep_metircs_dist, _ = my_metrics.seperate_log_metrics(tdf, name, self.label_width)
-        metircs_dist_by_day = my_metrics.log_metrics_day_by_day(tdf, name, parameter.output_days)
+        sep_metircs_dist = my_metrics.seperate_log_metrics([gt_recovered, pred_recovered], name, self.label_width)
+        metircs_dist_by_day = my_metrics.log_metrics_day_by_day([gt_recovered, pred_recovered], name, output_days)
         all_dict = {**metircs_dist, **sep_metircs_dist, **metircs_dist_by_day}
 
         # cloud_label 標籤
