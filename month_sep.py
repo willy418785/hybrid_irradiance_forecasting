@@ -10,7 +10,7 @@ import gc
 ############################
 
 if __name__ == '__main__':
-    olabel=parameter.experient_label
+    olabel=parameter.experiment_label
     df_dict = {}
     # 各地區有資料的月份
     # renheo    1-12        
@@ -22,7 +22,7 @@ if __name__ == '__main__':
     # 3:9 => train二月 test三月 val一月，最多test到八月
     for m in range(2,9):
         parameter.test_month = m      #2,3,4,5,6,7,8
-        parameter.experient_label = olabel+"_"+str(m)
+        parameter.experiment_label = olabel + "_" + str(m)
 
         metircLoger=main.run()
 

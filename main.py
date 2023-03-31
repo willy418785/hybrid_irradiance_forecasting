@@ -198,7 +198,7 @@ def ModelTrainer_cloud(dataGnerator: WindowGenerator,
 
 def run():
     ap = argparse.ArgumentParser()
-    ap.add_argument("-n", "--experiment_label", type=str, required=True, default=parameter.experient_label,
+    ap.add_argument("-n", "--experiment_label", type=str, required=True, default=parameter.experiment_label,
                     help="experiment_label")
     ap.add_argument("-i", "--input", type=int, required=False, default=parameter.input_width,
                     help="length of input seq.")
@@ -253,7 +253,7 @@ def run():
     parameter.label_norm_mode = args["target_norm"]
     parameter.batchsize = args["batch_size"]
     parameter.is_using_shuffle = args["shuffle"]
-    parameter.experient_label = args["experiment_label"]
+    parameter.experiment_label = args["experiment_label"]
     parameter.bypass = args["bypass"]
     parameter.time_embedding = args["time_embedding"]
     parameter.split_days = args["split_day"]
@@ -262,12 +262,12 @@ def run():
     parameter.save_plot = args["save_plot"]
     parameter.save_csv = args["save_csv"]
 
-    parameter.experient_label += "_bypass-{}_TE-{}_split-{}".format(
+    parameter.experiment_label += "_bypass-{}_TE-{}_split-{}".format(
         bypass_factory.BypassFac.get_bypass_mode(parameter.bypass),
         time_embedding_factory.TEFac.get_te_mode(parameter.time_embedding),
         parameter.split_days)
     # Initialise logging
-    log = Msglog.LogInit(parameter.experient_label, "logs/{}".format(parameter.experient_label), 10, True, True)
+    log = Msglog.LogInit(parameter.experiment_label, "logs/{}".format(parameter.experiment_label), 10, True, True)
 
     log.info("Python version: %s", sys.version)
     log.info("Tensorflow version: %s", tf.__version__)
@@ -439,10 +439,10 @@ def run():
                                        samples_per_day=dataUtil.samples_per_day)
 
     #############################################################
-    log = logging.getLogger(parameter.experient_label)
+    log = logging.getLogger(parameter.experiment_label)
     w = w2
     is_input_continuous_with_output = (shift == 0) and (not parameter.between8_17 or w.is_sampling_within_day)
-    metrics_path = "plot/{}/{}".format(parameter.experient_label, "all_metric")
+    metrics_path = "plot/{}/{}".format(parameter.experiment_label, "all_metric")
 
     # test baseline model
     dataUtil = data_for_baseline
@@ -465,7 +465,7 @@ def run():
             if modelMetricsRecorder.get(logM) is None:
                 modelMetricsRecorder[logM] = {}
             modelMetricsRecorder[logM]["Persistence"] = metricsDict[logM]
-        metrics_path = "plot/{}/{}".format(parameter.experient_label, "all_metric")
+        metrics_path = "plot/{}/{}".format(parameter.experiment_label, "all_metric")
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
     if "MA" in parameter.model_list:
@@ -484,7 +484,7 @@ def run():
             if modelMetricsRecorder.get(logM) is None:
                 modelMetricsRecorder[logM] = {}
             modelMetricsRecorder[logM]["MA"] = metricsDict[logM]
-        metrics_path = "plot/{}/{}".format(parameter.experient_label, "all_metric")
+        metrics_path = "plot/{}/{}".format(parameter.experiment_label, "all_metric")
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
     # test learning models
@@ -1138,7 +1138,7 @@ def run():
             modelMetricsRecorder[logM]["LSTNet"] = metricsDict[logM]
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
-    metrics_path = "plot/{}/{}".format(parameter.experient_label, "all_metric")
+    metrics_path = "plot/{}/{}".format(parameter.experiment_label, "all_metric")
     pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
     return modelMetricsRecorder

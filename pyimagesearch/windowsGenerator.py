@@ -595,7 +595,7 @@ class WindowGenerator():
             # labels = labels[:, :, 0]
             inputs = inputs
             labels = labels
-            log = logging.getLogger(parameter.experient_label)
+            log = logging.getLogger(parameter.experiment_label)
             log.debug((inputs.numpy().shape, "=>", labels.numpy().shape))
             log.debug("1st batch in batches-----------------------")
             log.debug((inputs.numpy()[0, :].tolist(), "\n=>", labels.numpy()[0, :].tolist()))
@@ -670,11 +670,11 @@ class WindowGenerator():
                 save_csv=parameter.save_csv, save_plot=parameter.save_plot,
                 rainSepMode=False, datamode="data"):
         pattern = "[" + "|\'\"" + "]"
-        output_filelabel = "plot/{}/{}".format(parameter.experient_label, name)
+        output_filelabel = "plot/{}/{}".format(parameter.experiment_label, name)
         output_filelabel = re.sub(pattern, "", output_filelabel)
         cloudA_label_index = None
         cloudC_label_index = None
-        log = logging.getLogger(parameter.experient_label)
+        log = logging.getLogger(parameter.experiment_label)
         using_timestamp_data = time_embedding_factory.TEFac.get_te_mode(
             parameter.time_embedding) is not None and name not in parameter.baselines
         if len(model) == 1:
@@ -811,7 +811,7 @@ class WindowGenerator():
 
         # cloud_label 標籤
         try:
-            os.mkdir(Path("plot/{}".format(parameter.experient_label)))
+            os.mkdir(Path("plot/{}".format(parameter.experiment_label)))
         except:
             print("plotDir exist")
         if cloudA_label_index is not None:

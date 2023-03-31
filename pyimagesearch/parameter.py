@@ -69,7 +69,7 @@ if between8_17 or test_between8_17:
         start = '08:00:01'
     end = '17:00:00'
 
-experient_label = "test"
+experiment_label = "test"
 after_minutes = 1
 
 input_width = 168

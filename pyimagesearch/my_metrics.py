@@ -87,7 +87,7 @@ def log_metrics(df, name):
     metircs_dist["RSE"] = root_relative_squared_error(gt, pred).numpy()
     metircs_dist["VWMAPE"] = VWMAPE(gt, pred).numpy()
     metircs_dist["corr"] = corr(gt, pred).numpy()
-    log = logging.getLogger(parameter.experient_label)
+    log = logging.getLogger(parameter.experiment_label)
     log.info("Name: {}---------------------------------------------------------".format(name))
     log.info("MSE : {}".format(metircs_dist["MSE"]))
     log.info("RMSE : {}".format(metircs_dist["RMSE"]))
@@ -103,7 +103,7 @@ def log_metrics(df, name):
 
 def seperate_log_metrics(df, name, minutes):
     sep_metircs_dist = {}
-    log = logging.getLogger(parameter.experient_label)
+    log = logging.getLogger(parameter.experiment_label)
     for i in range(minutes):
         gt, pd = df[0][:, i, :], df[1][:, i, :]
         sep_metircs_dist["MSE {}min".format(i + 1)] = mean_squared_error(gt, pd)
@@ -138,7 +138,7 @@ def log_metrics_day_by_day(df, name, n_days):
     b, l, c = df[0].shape
     n_samples = l // n_days
     sep_metircs_dist = {}
-    log = logging.getLogger(parameter.experient_label)
+    log = logging.getLogger(parameter.experiment_label)
     for i in range(n_days):
         start = i*n_samples
         split_day = slice(start, start+n_samples)
@@ -192,7 +192,7 @@ def log_metrics_day_by_day(df, name, n_days):
         sep_metircs_vwmape[i] = VWMAPE(gt, pred).numpy()
         sep_metircs_corr[i] = corr(gt, pred).numpy()
 
-        log = logging.getLogger(parameter.experient_label)
+        log = logging.getLogger(parameter.experiment_label)
         log.info("{}th day MSE : {}, RMSE : {}, RMSPE : {}, MAE : {}, MAPE : {}, WMAPE : {}, VWMAPE : {}, corr : {}"
                  .format(i + 1, sep_metircs_mse[i], sep_metircs_rmse[i], sep_metircs_rmspe[i], sep_metircs_mae[i],
                          sep_metircs_mape[i], sep_metircs_wmape[i], sep_metircs_vwmape[i], sep_metircs_corr[i]))
