@@ -284,7 +284,7 @@ def GetArguments():
 
 def GetArgumentsDict():
     args = {}
-    args["data"] = parameter.csv_name
+    args["data"] = parameter.data_params.csv_name
     args["window"] = 24 * 7
     args["horizon"] = 12
     args["CNNFilters"] = 100

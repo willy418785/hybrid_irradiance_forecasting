@@ -82,22 +82,23 @@ class TemporalChannelIndependentLR(tf.keras.layers.Layer):
         return output
 
 if __name__ == '__main__':
-    train_path_with_weather_info = os.path.sep.join(["../{}".format(parameter.csv_name)])
+    train_path_with_weather_info = os.path.sep.join(["../{}".format(parameter.data_params.csv_name)])
     data_with_weather_info = DataUtil(train_path=train_path_with_weather_info,
                                       val_path=None,
                                       test_path=None,
                                       normalise=0,
-                                      label_col=parameter.target,
-                                      feature_col=parameter.features,
-                                      split_mode=parameter.split_mode,
-                                      month_sep=parameter.test_month)
+                                      label_col=parameter.data_params.target,
+                                      feature_col=parameter.data_params.features,
+                                      split_mode=parameter.data_params.split_mode,
+                                      month_sep=parameter.data_params.test_month)
     dataUtil = data_with_weather_info
     src_len = 10
     tar_len = 10
+    shift = 0
     w2 = WindowGenerator(input_width=src_len,
                          image_input_width=0,
                          label_width=tar_len,
-                         shift=parameter.after_minutes,
+                         shift=shift,
 
                          trainImages=dataUtil.trainImages,
                          trainData=dataUtil.train_df[dataUtil.feature_col],
@@ -120,7 +121,7 @@ if __name__ == '__main__':
                          batch_size=1,
                          label_columns="ShortWaveDown",
                          samples_per_day=dataUtil.samples_per_day)
-    model = Sequential([Input(shape=(src_len, len(parameter.features))), TemporalChannelIndependentLR(5, 10, len(parameter.features))])
+    model = Sequential([Input(shape=(src_len, len(parameter.data_params.features))), TemporalChannelIndependentLR(5, 10, len(parameter.data_params.features))])
     model.compile(loss=tf.losses.MeanSquaredError(), optimizer="Adam"
                   , metrics=[tf.metrics.MeanAbsoluteError()
             , tf.metrics.MeanAbsolutePercentageError()])

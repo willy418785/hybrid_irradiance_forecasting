@@ -10,7 +10,7 @@ import gc
 ############################
 
 if __name__ == '__main__':
-    olabel=parameter.experiment_label
+    olabel=parameter.exp_params.experiment_label
     df_dict = {}
     # 各地區有資料的月份
     # renheo    1-12        
@@ -21,15 +21,15 @@ if __name__ == '__main__':
     # range 2,13 以測試月為準 2 ~ 12 這樣
     # 3:9 => train二月 test三月 val一月，最多test到八月
     for m in range(2,9):
-        parameter.test_month = m      #2,3,4,5,6,7,8
-        parameter.experiment_label = olabel + "_" + str(m)
+        parameter.data_params.test_month = m      #2,3,4,5,6,7,8
+        parameter.exp_params.experiment_label = olabel + "_" + str(m)
 
         metircLoger=main.run()
 
         # metircLoger 就是訓練結束後回傳的各metric結果 並且在這以下取用彙整
         for metircKey in parameter.csvLogMetrics:
             if df_dict.get(metircKey) is None:
-                df_dict[metircKey] = pd.DataFrame({'Model': list(parameter.model_list)})
+                df_dict[metircKey] = pd.DataFrame({'Model': list(parameter.exp_params.model_list)})
             # print(metircLoger[metircKey])
             # print(df_dict)
             # print(df_dict[metircKey][str(m)])

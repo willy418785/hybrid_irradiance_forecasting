@@ -51,24 +51,24 @@ class MA(tf.keras.Model):
 
 
 if __name__ == '__main__':
-    train_path = os.path.sep.join(['../', parameter.csv_name])
+    train_path = os.path.sep.join(['../', parameter.data_params.csv_name])
     val_path = None
     test_path = None
     data = DataUtil(train_path=train_path,
                     val_path=val_path,
                     test_path=test_path,
-                    normalise=parameter.norm_mode,
-                    label_col=parameter.target,
-                    feature_col=parameter.target,
-                    split_mode=parameter.split_mode,
-                    month_sep=parameter.test_month,
+                    normalise=parameter.data_params.norm_mode,
+                    label_col=parameter.data_params.target,
+                    feature_col=parameter.data_params.target,
+                    split_mode=parameter.data_params.split_mode,
+                    month_sep=parameter.data_params.test_month,
                     val_split=0.01,
                     test_split=0.01)
     data.test_df = data.train_df
     parser = argparse.ArgumentParser(description='hyper-parameters tuning')
-    parser.add_argument('-s', '--shift', type=int, default=parameter.shifted_width,
+    parser.add_argument('-s', '--shift', type=int, default=parameter.data_params.shifted_width,
                         help='lag between input and output sequence')
-    parser.add_argument('-o', '--output', type=int, default=parameter.label_width, help='length of output sequence')
+    parser.add_argument('-o', '--output', type=int, default=parameter.data_params.label_width, help='length of output sequence')
     args = parser.parse_args()
     WMAPE_dict = {}
     corr_dict = {}
@@ -96,7 +96,7 @@ if __name__ == '__main__':
                                    testAverage=data.test_df_average,  ######
                                    testY=data.test_df[data.label_col],
 
-                                   batch_size=parameter.batchsize,
+                                   batch_size=parameter.exp_params.batch_size,
                                    label_columns="ShortWaveDown",
                                    samples_per_day=data.samples_per_day)
         movingAverage = MA(ma_width, w_for_MA.is_sampling_within_day, w_for_MA.samples_per_day, args.output)
@@ -139,7 +139,7 @@ if __name__ == '__main__':
                                         testAverage=data.test_df_average,  ######
                                         testY=data.test_df[data.label_col],
 
-                                        batch_size=parameter.batchsize,
+                                        batch_size=parameter.exp_params.batch_size,
                                         label_columns="ShortWaveDown",
                                         samples_per_day=data.samples_per_day)
     baseline = Persistence(w_for_persistance.is_sampling_within_day,
@@ -172,7 +172,7 @@ if __name__ == '__main__':
     #
 
 # #####################################################
-#           Dataset: ../\ElectricityConsumption_2012-2014.csv
+#           Dataset: ../\EC.csv
 #         Shift len: 0
 #        Output len: 24
 #        Best WMAPE: 0.07847143709659576 with MA width of 24
@@ -180,7 +180,7 @@ if __name__ == '__main__':
 # Persistence WMAPE: 0.07847143709659576
 # Persistence  CORR: 0.8894655704498291
 # #####################################################
-#           Dataset: ../\ElectricityConsumption_2012-2014.csv
+#           Dataset: ../\EC.csv
 #         Shift len: 0
 #        Output len: 96
 #        Best WMAPE: 0.08754201233386993 with MA width of 168
@@ -188,7 +188,7 @@ if __name__ == '__main__':
 # Persistence WMAPE: 0.09951511025428772
 # Persistence  CORR: 0.8456669449806213
 # #####################################################
-#           Dataset: ../\ElectricityConsumption_2012-2014.csv
+#           Dataset: ../\EC.csv
 #         Shift len: 0
 #        Output len: 168
 #        Best WMAPE: 0.09105895459651947 with MA width of 168
@@ -196,7 +196,7 @@ if __name__ == '__main__':
 # Persistence WMAPE: 0.1048528179526329
 # Persistence  CORR: 0.8467888832092285
 # #####################################################
-#           Dataset: ../\ElectricityConsumption_2012-2014.csv
+#           Dataset: ../\EC.csv
 #         Shift len: 0
 #        Output len: 336
 #        Best WMAPE: 0.0991450846195221 with MA width of 144

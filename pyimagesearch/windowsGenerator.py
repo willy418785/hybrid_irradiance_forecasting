@@ -63,7 +63,7 @@ class WindowGenerator():
         self.testAverageX = testAverage
         self.testY = testY
 
-        if parameter.dynamic_model == "one" and parameter.addAverage == True:
+        if parameter.dynamic_model == "one" and parameter.data_params.addAverage == True:
             self.trainCloudX = pd.concat([trainCloud, trainAverage], axis=1)
             self.valCloudX = pd.concat([valCloud, valAverage], axis=1)
             self.testCloudX = pd.concat([testCloud, testAverage], axis=1)
@@ -103,7 +103,7 @@ class WindowGenerator():
         # labels = la_features[:, labels_slice]
         inputs.set_shape([None, self.image_input_width, None, None, None])
         # print("#####################",inputs)       #shape=(None, 1, 48, 64, 3),
-        if parameter.squeeze == True:
+        if parameter.data_params.squeeze == True:
             inputs = tf.squeeze(inputs, axis=1)
         # print("#####################",inputs)       #shape=(None, 48, 64, 3),
         # labels.set_shape([None, label_width])
@@ -134,7 +134,7 @@ class WindowGenerator():
 
     def input_dataset(self, data, label, cloudData=None, image=None,
                       is_timestamp_as_data=False, ganIndex=False,
-                      sequence_stride=parameter.label_width, use_shuffle=False):
+                      sequence_stride=parameter.data_params.sample_rate, use_shuffle=False):
         ds_t, ds_u, ds_c, ds_v, ds_d = None, None, None, None, None
         rows_counter = 0
         if ganIndex:
@@ -146,46 +146,46 @@ class WindowGenerator():
         for date in np.unique(data.index.date):
             num_of_rows = len(data[data.index.date == date].index)
             data_on_date = data[
-                data.index.date == date] if parameter.between8_17 and self.is_sampling_within_day else data
+                data.index.date == date] if parameter.data_params.between8_17 and self.is_sampling_within_day else data
             label_on_date = label[
-                label.index.date == date] if parameter.between8_17 and self.is_sampling_within_day else label
+                label.index.date == date] if parameter.data_params.between8_17 and self.is_sampling_within_day else label
             data_dataset = tf.keras.preprocessing.timeseries_dataset_from_array(
                 data=data_on_date,
                 targets=None,
                 sequence_length=self.total_window_size,
                 sequence_stride=sequence_stride,
-                shuffle=parameter.dynamic_suffle).map(self.data_split_window).unbatch()
+                shuffle=False).map(self.data_split_window).unbatch()
             ds_u = data_dataset if ds_u is None else ds_u.concatenate(data_dataset)
             label_dataset = tf.keras.preprocessing.timeseries_dataset_from_array(
                 data=label_on_date,
                 targets=None,
                 sequence_length=self.total_window_size,
                 sequence_stride=sequence_stride,
-                shuffle=parameter.dynamic_suffle).map(self.label_split_window).unbatch()
+                shuffle=False).map(self.label_split_window).unbatch()
             ds_v = label_dataset if ds_v is None else ds_v.concatenate(label_dataset)
             if cloudData is not None:
                 cloudData_on_date = cloudData[
-                    cloudData.index.date == date] if parameter.between8_17 and self.is_sampling_within_day else cloudData
+                    cloudData.index.date == date] if parameter.data_params.between8_17 and self.is_sampling_within_day else cloudData
                 cloud_dataset = tf.keras.preprocessing.timeseries_dataset_from_array(
                     data=cloudData_on_date,
                     targets=None,
                     sequence_length=self.total_window_size,
                     sequence_stride=sequence_stride,
-                    shuffle=parameter.dynamic_suffle).map(self.data_split_window).unbatch()
+                    shuffle=False).map(self.data_split_window).unbatch()
                 ds_c = cloud_dataset if ds_c is None else ds_c.concatenate(cloud_dataset)
             if image is not None:
                 images_on_date = image[
-                                 rows_counter:rows_counter + num_of_rows] if parameter.between8_17 and self.is_sampling_within_day else image
+                                 rows_counter:rows_counter + num_of_rows] if parameter.data_params.between8_17 and self.is_sampling_within_day else image
                 images_dataset = tf.keras.preprocessing.timeseries_dataset_from_array(
                     data=images_on_date,
                     targets=None,
                     sequence_length=self.total_window_size,
                     sequence_stride=sequence_stride,
-                    shuffle=parameter.dynamic_suffle).map(self.image_split_window).unbatch()
+                    shuffle=False).map(self.image_split_window).unbatch()
                 ds_t = images_dataset if ds_t is None else ds_t.concatenate(images_dataset)
             if is_timestamp_as_data:
                 timestamps = pd.DataFrame(data_on_date.index.values, index=data_on_date.index, columns=['timestamp']) \
-                    if parameter.between8_17 and self.is_sampling_within_day else pd.DataFrame(data.index.values,
+                    if parameter.data_params.between8_17 and self.is_sampling_within_day else pd.DataFrame(data.index.values,
                                                                                                index=data.index,
                                                                                                columns=['timestamp'])
                 timestamps['month'] = timestamps['timestamp'].apply(lambda x: x.month - 1)
@@ -198,9 +198,9 @@ class WindowGenerator():
                     targets=None,
                     sequence_length=self.total_window_size,
                     sequence_stride=sequence_stride,
-                    shuffle=parameter.dynamic_suffle).unbatch()
+                    shuffle=False).unbatch()
                 ds_d = datetime_dataset if ds_d is None else ds_d.concatenate(datetime_dataset)
-            if not self.is_sampling_within_day or not parameter.between8_17:
+            if not self.is_sampling_within_day or not parameter.data_params.between8_17:
                 # this means there is no need to fix the discontinuous sequence problem
                 # which might happen when the data is not in continuous manner
                 break
@@ -334,7 +334,7 @@ class WindowGenerator():
         ds_v = tf.data.Dataset.zip((ds_v, ds_c))  ######
         ds_v = ds_v.map(lambda x, cloud: self.cloud_label_split_window(x, cloud, allowed_labels=allowed_labels))  ######
 
-        if parameter.addAverage:
+        if parameter.data_params.addAverage:
             c = tf.data.Dataset.zip((ds_t, ds_u, ds_a))  ######
             c = tf.data.Dataset.zip((c, ds_v))  ######
         else:
@@ -405,7 +405,7 @@ class WindowGenerator():
         ds_v = ds_v.map(lambda x, cloud: self.cloud_label_split_window(x, cloud, allowed_labels=allowed_labels))
         # print(ds_v)
 
-        if parameter.addAverage:
+        if parameter.data_params.addAverage:
             c = tf.data.Dataset.zip((ds_u, ds_a))
             c = tf.data.Dataset.zip((c, ds_v))
         else:
@@ -474,7 +474,7 @@ class WindowGenerator():
         all_y = None
         all_input0, all_input1, all_input2 = None, None, None
         # inputs0, inputs1 = None, None
-        if parameter.addAverage:
+        if parameter.data_params.addAverage:
             for inputs, targets in c.as_numpy_iterator():
                 image, data, average = inputs
                 print("$train combined image prediction inputs shape", image.shape)
@@ -595,7 +595,7 @@ class WindowGenerator():
             # labels = labels[:, :, 0]
             inputs = inputs
             labels = labels
-            log = logging.getLogger(parameter.experiment_label)
+            log = logging.getLogger(parameter.exp_params.experiment_label)
             log.debug((inputs.numpy().shape, "=>", labels.numpy().shape))
             log.debug("1st batch in batches-----------------------")
             log.debug((inputs.numpy()[0, :].tolist(), "\n=>", labels.numpy()[0, :].tolist()))
@@ -650,7 +650,7 @@ class WindowGenerator():
         all_x_index = None
         print(">>>>>>>>", index_dataset)
         for inputs, label in index_dataset.as_numpy_iterator():
-            if parameter.addAverage:
+            if parameter.data_params.addAverage:
                 inputs, _ = inputs
             if all_x_index is None:
                 # print(inputs)
@@ -667,25 +667,25 @@ class WindowGenerator():
         return all_x_index, all_y_index
 
     def allPlot(self, model=None, plot_col_index=0, name="Example", scaler=None,
-                save_csv=parameter.save_csv, save_plot=parameter.save_plot,
+                save_csv=parameter.exp_params.save_csv, save_plot=parameter.exp_params.save_plot,
                 rainSepMode=False, datamode="data"):
         pattern = "[" + "|\'\"" + "]"
-        output_filelabel = "plot/{}/{}".format(parameter.experiment_label, name)
+        output_filelabel = "plot/{}/{}".format(parameter.exp_params.experiment_label, name)
         output_filelabel = re.sub(pattern, "", output_filelabel)
         cloudA_label_index = None
         cloudC_label_index = None
-        log = logging.getLogger(parameter.experiment_label)
+        log = logging.getLogger(parameter.exp_params.experiment_label)
         using_timestamp_data = time_embedding_factory.TEFac.get_te_mode(
-            parameter.time_embedding) is not None and name not in parameter.baselines
+            parameter.model_params.time_embedding) is not None and name not in parameter.exp_params.baselines
         if len(model) == 1:
             if datamode == "data" or datamode == "combined":
                 all_pred, all_y = self.plotPredictUnit(model[0],
-                                                       self.test(parameter.test_sample_rate, ganIndex=False,
-                                                                 addcloud=parameter.addAverage,
+                                                       self.test(parameter.data_params.test_sample_rate, ganIndex=False,
+                                                                 addcloud=parameter.data_params.addAverage,
                                                                  using_timestamp_data=using_timestamp_data),
                                                        datamode=datamode)
                 _, all_y_index = self.getTimeIndex(
-                    self.test(parameter.test_sample_rate, ganIndex=True, addcloud=False, using_timestamp_data=False), name)
+                    self.test(parameter.data_params.test_sample_rate, ganIndex=True, addcloud=False, using_timestamp_data=False), name)
         elif len(model) == 2:
             if datamode == "data":  # cnnlstm
                 cloudA_pred, cloudA_y = self.plotPredictUnit(model[0],
@@ -787,19 +787,19 @@ class WindowGenerator():
         # print("$$$$$$$$$$$$$$$$", all_y_index.shape)
         # print("$$$$$$$$$$$$$$$$", all_y.shape)
 
-        df_pred = pd.DataFrame(all_pred, columns=parameter.target, index=all_y_index.ravel())
-        df_gt = pd.DataFrame(all_y, columns=parameter.target, index=all_y_index.ravel())
+        df_pred = pd.DataFrame(all_pred, columns=parameter.data_params.target, index=all_y_index.ravel())
+        df_gt = pd.DataFrame(all_y, columns=parameter.data_params.target, index=all_y_index.ravel())
         # df.index = all_y_index.ravel()
         # df = df.sort_index()
-        if parameter.test_between8_17:
-            df_pred = df_pred.between_time(parameter.start, parameter.end)
-            df_gt = df_gt.between_time(parameter.start, parameter.end)
+        if parameter.data_params.test_between8_17:
+            df_pred = df_pred.between_time(parameter.data_params.start, parameter.data_params.end)
+            df_gt = df_gt.between_time(parameter.data_params.start, parameter.data_params.end)
 
         # post process
         tdf = [df_gt, df_pred]
 
         # recover from collapsed time axis
-        l, c = self.label_width, len(parameter.target)
+        l, c = self.label_width, len(parameter.data_params.target)
         pred_recovered = all_pred.reshape((-1, l, c))
         gt_recovered = all_y.reshape((-1, l, c))
 
@@ -811,7 +811,7 @@ class WindowGenerator():
 
         # cloud_label 標籤
         try:
-            os.mkdir(Path("plot/{}".format(parameter.experiment_label)))
+            os.mkdir(Path("plot/{}".format(parameter.exp_params.experiment_label)))
         except:
             print("plotDir exist")
         if cloudA_label_index is not None:

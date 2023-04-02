@@ -58,7 +58,7 @@ def create_mlp(SequenceLength, regress=False):
 
 ###################################### use #########################
 
-def cnnlstm_david(SequenceLength, num, predict_length=parameter.label_width, regress=False, expand=False):
+def cnnlstm_david(SequenceLength, num, predict_length=parameter.data_params.label_width, regress=False, expand=False):
 	inputs = Input(shape=(SequenceLength, num))			#len(parameter.inputs)
 	# x = Conv1D(filters=100, kernel_size=5, strides=1, padding='same', activation='relu')(inputs)
 	# x = ZeroPadding1D(padding=2)(x)

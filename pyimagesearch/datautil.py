@@ -17,6 +17,8 @@ import cv2
 
 norm_type_list = ['None', 'std', 'minmax']
 split_mode_list = ["all_year", "month", 'cross_month_validate']
+smoothing_mode_list = [None, 'MA', 'EMA']
+
 
 class DataUtil(object):
 
@@ -27,7 +29,7 @@ class DataUtil(object):
                  val_path=None, test_path=None,
                  train_split=0.8, val_split=0.1, test_split=0.1,
                  split_mode=False, month_sep=None, keep_date=False,
-                 using_images=False):
+                 using_images=False, smoothing_mode=None, smoothing_parameter=None):
         # 0.8,0.05,0.15
         """
         使用的天氣欄目
@@ -65,8 +67,8 @@ class DataUtil(object):
                 keep_date_col=True,
                 parse_dates=["datetime"],
                 index_col="datetime")
-            assert parameter.time_granularity is not None
-            self.train_df = self.train_df.resample(parameter.time_granularity).asfreq()
+            assert parameter.data_params.time_granularity is not None
+            self.train_df = self.train_df.resample(parameter.data_params.time_granularity).asfreq()
             self.val_df = None
             self.test_df = None
             if (val_path != None):
@@ -74,13 +76,13 @@ class DataUtil(object):
                     val_path,
                     parse_dates=["datetime"],
                     index_col="datetime")
-                self.val_df = self.val_df.resample(parameter.time_granularity).asfreq()
+                self.val_df = self.val_df.resample(parameter.data_params.time_granularity).asfreq()
             if (test_path != None):
                 self.test_df = pd.read_csv(
                     test_path,
                     parse_dates=["datetime"],
                     index_col="datetime")
-                self.test_df = self.test_df.resample(parameter.time_granularity).asfreq()
+                self.test_df = self.test_df.resample(parameter.data_params.time_granularity).asfreq()
 
         except IOError as err:
             print("Error opening data file ... %s", err)
@@ -149,17 +151,23 @@ class DataUtil(object):
             self.test_df = self.timeFeatureProcess(self.test_df)
             self.val_df = self.timeFeatureProcess(self.val_df)'''
         # smoothing target data
-        if parameter.smoothing_type in parameter.smoothing_mode and (
-                parameter.time_granularity == 'T' or parameter.time_granularity == 'min'):
-            for target in parameter.target:
-                self.train_df[target] = self.smoothing(self.train_df[target])
-                self.val_df[target] = self.smoothing(self.val_df[target])
-                self.test_df[target] = self.smoothing(self.test_df[target])
+        if type(smoothing_mode) is int:
+            if smoothing_mode < 0 or smoothing_mode >= len(smoothing_mode_list):
+                smoothing_mode = smoothing_mode_list[0]
+            else:
+                smoothing_mode = smoothing_mode_list[smoothing_mode]
+        else:
+            if smoothing_mode not in smoothing_mode_list:
+                smoothing_mode = smoothing_mode_list[0]
+        for target in parameter.data_params.target:
+            self.train_df[target] = self.smoothing(self.train_df[target], smoothing_mode, smoothing_parameter)
+            self.val_df[target] = self.smoothing(self.val_df[target], smoothing_mode, smoothing_parameter)
+            self.test_df[target] = self.smoothing(self.test_df[target], smoothing_mode, smoothing_parameter)
             ## 24H to 10H 小時的資料
-        if (parameter.between8_17):
-            self.train_df = self.train_df.between_time(parameter.start, parameter.end)
-            self.val_df = self.val_df.between_time(parameter.start, parameter.end)
-            self.test_df = self.test_df.between_time(parameter.start, parameter.end)
+        if (parameter.data_params.between8_17):
+            self.train_df = self.train_df.between_time(parameter.data_params.start, parameter.data_params.end)
+            self.val_df = self.val_df.between_time(parameter.data_params.start, parameter.data_params.end)
+            self.test_df = self.test_df.between_time(parameter.data_params.start, parameter.data_params.end)
 
         if parameter.dynamic_model == "two" or ("twoClass" in parameter.inputs):
             self.train_df_cloud = self.train_df["twoClass"].astype(np.str)
@@ -215,9 +223,9 @@ class DataUtil(object):
         # print(self.train_df)
         # print(self.val_df)
         # print(self.test_df)
-        self.trainImages = self.load_house_images(self.train_df, parameter.datasetPath)
-        self.valImages = self.load_house_images(self.val_df, parameter.datasetPath)
-        self.testImages = self.load_house_images(self.test_df, parameter.datasetPath)
+        self.trainImages = self.load_house_images(self.train_df, parameter.data_params.image_path)
+        self.valImages = self.load_house_images(self.val_df, parameter.data_params.image_path)
+        self.testImages = self.load_house_images(self.test_df, parameter.data_params.image_path)
 
     def timeFeatureProcess(self, data):
         data['month'] = data.index.month
@@ -229,12 +237,14 @@ class DataUtil(object):
 
         return data
 
-    def smoothing(self, series):
-        if parameter.smoothing_type == "MA":
-            smoothed = series.rolling(parameter.smoothing_mode["MA"]["num_of_entries"]).mean()
-        elif parameter.smoothing_type == "EMA":
-            smoothed = series.ewm(span=parameter.smoothing_mode["EMA"]["span"]).mean()
-        else:
+    def smoothing(self, series, smooth_mode, smooth_parameter):
+        if smooth_mode == "MA":
+            assert smooth_parameter is type(int)
+            smoothed = series.rolling(smooth_parameter).mean()
+        elif smooth_mode == "EMA":
+            assert smooth_parameter is type(int)
+            smoothed = series.ewm(span=smooth_parameter).mean()
+        elif smooth_mode is None:
             smoothed = series
         return smoothed
 
@@ -356,7 +366,7 @@ class DataUtil(object):
         # initialize our images array (i.e., the house images themselves)
         images = []
 
-        df.index = df.index.tz_localize(parameter.timezone)
+        df.index = df.index.tz_localize(parameter.data_params.timezone)
         # loop over the indexes of the houses
         for i in df.index:
             # print(str(df["datetime"][i])[5:7])
@@ -372,11 +382,11 @@ class DataUtil(object):
                 image = cv2.resize(image, (64, 48))
                 # cv2.imshow('img', image)
                 image = self.mask(image)
-                if parameter.is_using_sun_location:
+                if parameter.data_params.is_using_sun_location:
                     sun_region = self.locate_sun(i)
                     sun_region = self.mask(sun_region)
                     image = np.concatenate((image, sun_region), axis=-1)
-                if parameter.is_using_cloud_location:
+                if parameter.data_params.is_using_cloud_location:
                     cloud_region = self.binarize_by_BR_ratio(image)
                     cloud_region = self.mask(cloud_region)
                     image = np.concatenate((image, cloud_region), axis=-1)

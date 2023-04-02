@@ -97,15 +97,15 @@ class SinCosTimeEncoding(tf.keras.layers.Layer):
 if __name__ == '__main__':
 
     from pyimagesearch.windowsGenerator import WindowGenerator
-    train_path_with_weather_info = os.path.sep.join(["../{}".format(parameter.csv_name)])
+    train_path_with_weather_info = os.path.sep.join(["../{}".format(parameter.data_params.csv_name)])
     data_with_weather_info = DataUtil(train_path=train_path_with_weather_info,
                                       val_path=None,
                                       test_path=None,
                                       normalise=0,
-                                      label_col=parameter.target,
-                                      feature_col=parameter.features,
-                                      split_mode=parameter.split_mode,
-                                      month_sep=parameter.test_month)
+                                      label_col=parameter.data_params.target,
+                                      feature_col=parameter.data_params.features,
+                                      split_mode=parameter.data_params.split_mode,
+                                      month_sep=parameter.data_params.test_month)
     dataUtil = data_with_weather_info
     src_len = 15
     shift = 5
@@ -136,10 +136,10 @@ if __name__ == '__main__':
                          batch_size=32,
                          label_columns="ShortWaveDown",
                          samples_per_day=dataUtil.samples_per_day)
-    input_scalar = Input(shape=(src_len, len(parameter.features)))
+    input_scalar = Input(shape=(src_len, len(parameter.data_params.features)))
     input_time = Input(shape=(src_len + shift + tar_len, len(vocab_size)))
     LR = model_AR.TemporalChannelIndependentLR(model_AR.Config.order, tar_seq_len=tar_len,
-                                               src_dims=len(parameter.features))(input_scalar)
+                                               src_dims=len(parameter.data_params.features))(input_scalar)
     embedding = TimeEmbedding(output_dims=32, input_len=src_len, shift_len=shift, label_len=tar_len)(input_time)
     model = Model(inputs=[input_scalar, input_time], outputs=[LR, embedding])
     model.compile(loss=tf.losses.MeanSquaredError(), optimizer="Adam"
@@ -150,7 +150,7 @@ if __name__ == '__main__':
     # history = model.fit(w2.trainData(addcloud=parameter.addAverage),
     #                     validation_data=w2.valData(addcloud=parameter.addAverage),
     #                     epochs=100, batch_size=5, callbacks=[parameter.earlystoper])
-    for x, y in w2.train(addcloud=parameter.addAverage):
+    for x, y in w2.train(parameter.data_params.sample_rate, addcloud=parameter.data_params.addAverage):
         c = model(x)
         pass
     pass

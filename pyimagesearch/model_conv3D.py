@@ -6,7 +6,7 @@ from tensorflow.keras.models import Model
 from pyimagesearch import parameter
 
 
-def conv3D(SequenceLength, height, width, depth = parameter.image_depth, predict_length=parameter.label_width, regress=False):
+def conv3D(SequenceLength, height, width, depth = parameter.data_params.image_depth, predict_length=parameter.data_params.label_width, regress=False):
     input_shape = (SequenceLength, height, width, depth)
 
     inp = Input(shape=input_shape)

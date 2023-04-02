@@ -406,15 +406,15 @@ class MovingZScoreNormTransformer(Transformer):
 
 
 if __name__ == '__main__':
-    train_path_with_weather_info = os.path.sep.join(["../{}".format(parameter.csv_name)])
+    train_path_with_weather_info = os.path.sep.join(["../{}".format(parameter.data_params.csv_name)])
     data_with_weather_info = DataUtil(train_path=train_path_with_weather_info,
                                       val_path=None,
                                       test_path=None,
                                       normalise=0,
-                                      label_col=parameter.target,
-                                      feature_col=parameter.features,
-                                      split_mode=parameter.split_mode,
-                                      month_sep=parameter.test_month)
+                                      label_col=parameter.data_params.target,
+                                      feature_col=parameter.data_params.features,
+                                      split_mode=parameter.data_params.split_mode,
+                                      month_sep=parameter.data_params.test_month)
     dataUtil = data_with_weather_info
     src_len = 15
     shift = 5
@@ -445,15 +445,15 @@ if __name__ == '__main__':
                          batch_size=32,
                          label_columns="ShortWaveDown",
                          samples_per_day=dataUtil.samples_per_day)
-    input_scalar = Input(shape=(src_len, len(parameter.features)))
+    input_scalar = Input(shape=(src_len, len(parameter.data_params.features)))
     input_time = Input(shape=(src_len + shift + tar_len, len(time_embedding.vocab_size)))
     embedding = time_embedding.TimeEmbedding(output_dims=Config.d_model, input_len=src_len, shift_len=shift,
                                              label_len=tar_len)(input_time)
     LR = MovingZScoreNormTransformer(num_layers=Config.layers, d_model=Config.d_model, num_heads=Config.n_heads,
                                dff=Config.dff,
                                src_seq_len=src_len, tar_seq_len=tar_len,
-                               src_dim=len(parameter.features),
-                               tar_dim=len(parameter.target), rate=0.1, gen_mode="unistep", is_seq_continuous=True,
+                               src_dim=len(parameter.data_params.features),
+                               tar_dim=len(parameter.data_params.target), rate=0.1, gen_mode="unistep", is_seq_continuous=True,
                                is_pooling=True, token_len=5)(input_scalar, time_embedding_tuple=embedding)
 
     model = Model(inputs=[input_scalar, input_time], outputs=LR)
@@ -464,7 +464,7 @@ if __name__ == '__main__':
     tf.keras.backend.clear_session()
     history = model.fit(w2.train(w2.samples_per_day, addcloud=False, using_timestamp_data=True, is_shuffle=False),
                         validation_data=w2.val(w2.samples_per_day, addcloud=False, using_timestamp_data=True, is_shuffle=False),
-                        epochs=100, batch_size=5, callbacks=[parameter.earlystoper])
+                        epochs=100, batch_size=5, callbacks=parameter.exp_params.callbacks)
     for x, y in w2.train(w2.samples_per_day, addcloud=False, using_timestamp_data=True, is_shuffle=False):
         c = model(x)
     model.summary()

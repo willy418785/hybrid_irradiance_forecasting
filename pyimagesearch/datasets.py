@@ -23,7 +23,7 @@ def load_house_attributes(inputPath, mode=1, month_sep=None):
 	# 	# print(df)
 	# 	df = shuffle(df)
 	# 	print(df)
-	if parameter.split_mode =="month":
+	if parameter.data_params.split_mode =="month":
 		vmonth = month_sep - 2
 		if vmonth == 0:
 			vmonth = parameter.tailMonth
@@ -127,19 +127,19 @@ def load_house_images(df, inputPath):
 	return np.array(images) 
 
 def data_preprocess(df=None, train_df=None, val_df=None, test_df=None):
-	if parameter.split_mode == "all_year":
-		images = load_house_images(df, parameter.datasetPath)
+	if parameter.data_params.split_mode == "all_year":
+		images = load_house_images(df, parameter.data_params.image_path)
 		images = images / 255.0
 		num_val_samples = len(images) // 10
 		trainAttrX, valAttrX, testAttrX = df[0 : 8*num_val_samples], df[8*num_val_samples : 9*num_val_samples], df[9*num_val_samples : 10*num_val_samples]
 		trainImagesX, valImageX, testImagesX = images[0 : 8*num_val_samples], images[8*num_val_samples : 9*num_val_samples], images[9*num_val_samples : 10*num_val_samples]
-	elif parameter.split_mode == "month":
+	elif parameter.data_params.split_mode == "month":
 		trainAttrX, valAttrX, testAttrX = train_df, val_df, test_df
-		trainImagesX = load_house_images(trainAttrX, parameter.datasetPath)
+		trainImagesX = load_house_images(trainAttrX, parameter.data_params.image_path)
 		trainImagesX = trainImagesX / 255.0
-		valImageX = load_house_images(valAttrX, parameter.datasetPath)
+		valImageX = load_house_images(valAttrX, parameter.data_params.image_path)
 		valImageX = valImageX / 255.0
-		testImagesX = load_house_images(testAttrX, parameter.datasetPath)
+		testImagesX = load_house_images(testAttrX, parameter.data_params.image_path)
 		testImagesX = testImagesX / 255.0
 
 	# maxPrice = trainAttrX["ShortWaveDown"].max()
@@ -147,10 +147,10 @@ def data_preprocess(df=None, train_df=None, val_df=None, test_df=None):
 	# valY_nor = valAttrX["ShortWaveDown"] / maxPrice
 	# testY = testAttrX["ShortWaveDown"]
 	# testIndex = testAttrX["datetime"]
-	maxPrice = trainAttrX[parameter.target].max()
-	minPrice = trainAttrX[parameter.target].min()
-	meanPrice = trainAttrX[parameter.target].mean()
-	stdPrice = trainAttrX[parameter.target].std()
+	maxPrice = trainAttrX[parameter.data_params.target].max()
+	minPrice = trainAttrX[parameter.data_params.target].min()
+	meanPrice = trainAttrX[parameter.data_params.target].mean()
+	stdPrice = trainAttrX[parameter.data_params.target].std()
 	
 	trainCloudX = trainAttrX[parameter.cloudLabel].astype(np.str)
 	trainCloudX[trainCloudX.isin(['a'])] = 0
@@ -172,25 +172,25 @@ def data_preprocess(df=None, train_df=None, val_df=None, test_df=None):
 	testCloudX = np.expand_dims(testCloudX, axis=-1)
 	
 	if parameter.normalization == "MinMax":
-		trainDataX = (trainAttrX[parameter.target]-minPrice) / (maxPrice-minPrice)
-		valDataX = (valAttrX[parameter.target]-minPrice) / (maxPrice-minPrice)
-		testDataX = (testAttrX[parameter.target]-minPrice) / (maxPrice-minPrice)
+		trainDataX = (trainAttrX[parameter.data_params.target]-minPrice) / (maxPrice-minPrice)
+		valDataX = (valAttrX[parameter.data_params.target]-minPrice) / (maxPrice-minPrice)
+		testDataX = (testAttrX[parameter.data_params.target]-minPrice) / (maxPrice-minPrice)
 	elif parameter.normalization == "Mean":
-		trainDataX = (trainAttrX[parameter.target]-meanPrice) / (maxPrice-minPrice)
-		valDataX = (valAttrX[parameter.target]-meanPrice) / (maxPrice-minPrice)
-		testDataX = (testAttrX[parameter.target]-meanPrice) / (maxPrice-minPrice)
+		trainDataX = (trainAttrX[parameter.data_params.target]-meanPrice) / (maxPrice-minPrice)
+		valDataX = (valAttrX[parameter.data_params.target]-meanPrice) / (maxPrice-minPrice)
+		testDataX = (testAttrX[parameter.data_params.target]-meanPrice) / (maxPrice-minPrice)
 	elif parameter.normalization == "Standard":
-		trainDataX = (trainAttrX[parameter.target]-meanPrice) / stdPrice
-		valDataX = (valAttrX[parameter.target]-meanPrice) / stdPrice
-		testDataX = (testAttrX[parameter.target]-meanPrice) / stdPrice
+		trainDataX = (trainAttrX[parameter.data_params.target]-meanPrice) / stdPrice
+		valDataX = (valAttrX[parameter.data_params.target]-meanPrice) / stdPrice
+		testDataX = (testAttrX[parameter.data_params.target]-meanPrice) / stdPrice
 	elif parameter.normalization == "Max":
-		trainDataX = trainAttrX[parameter.target] / maxPrice
-		valDataX = valAttrX[parameter.target] / maxPrice
-		testDataX = testAttrX[parameter.target] / maxPrice
+		trainDataX = trainAttrX[parameter.data_params.target] / maxPrice
+		valDataX = valAttrX[parameter.data_params.target] / maxPrice
+		testDataX = testAttrX[parameter.data_params.target] / maxPrice
 	else:
-		trainDataX = trainAttrX[parameter.target]
-		valDataX = valAttrX[parameter.target]
-		testDataX = testAttrX[parameter.target]
+		trainDataX = trainAttrX[parameter.data_params.target]
+		valDataX = valAttrX[parameter.data_params.target]
+		testDataX = testAttrX[parameter.data_params.target]
 	
 	trainDataX = np.expand_dims(trainDataX, axis=-1)
 	valDataX = np.expand_dims(valDataX, axis=-1)

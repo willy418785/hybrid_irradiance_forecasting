@@ -12,17 +12,17 @@ from pyimagesearch.windowsGenerator import WindowGenerator
 shift = None
 label_width = None
 is_input_continuous_with_output = None
-train_path = os.path.sep.join([parameter.csv_name])
+train_path = os.path.sep.join([parameter.data_params.csv_name])
 val_path = None
 test_path = None
 data = DataUtil(train_path=train_path,
                 val_path=val_path,
                 test_path=test_path,
-                normalise=parameter.norm_mode,
-                label_col=parameter.target,
-                feature_col=parameter.features,
-                split_mode=parameter.split_mode,
-                month_sep=parameter.test_month)
+                normalise=parameter.data_params.norm_mode,
+                label_col=parameter.data_params.target,
+                feature_col=parameter.data_params.features,
+                split_mode=parameter.data_params.split_mode,
+                month_sep=parameter.data_params.test_month)
 
 
 class HyperTransformer(keras_tuner.HyperModel):
@@ -76,15 +76,15 @@ class HyperTransformer(keras_tuner.HyperModel):
             hp.Fixed("avg_window", 17, parent_name='is_using_stationary_module', parent_values=True)
             hp.Fixed("LR_order", 24, parent_name='is_using_LR', parent_values=True)
         input_width = hp.get("input_width")
-        input_scalar = Input(shape=(input_width, len(parameter.features)))
+        input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
         if hp.get('is_using_stationary_module'):
             model = model_transformer.StationaryTransformer(num_layers=hp.get("layers"),
                                                             d_model=hp.get("d_model"),
                                                             num_heads=hp.get("heads"),
                                                             dff=hp.get("d_model") * hp.get('dff_multiplier'),
                                                             src_seq_len=input_width,
-                                                            tar_seq_len=label_width, src_dim=len(parameter.features),
-                                                            tar_dim=len(parameter.target),
+                                                            tar_seq_len=label_width, src_dim=len(parameter.data_params.features),
+                                                            tar_dim=len(parameter.data_params.target),
                                                             kernel_size=hp.get('kernel_size'),
                                                             rate=hp.get('dropout_rate'),
                                                             gen_mode="unistep",
@@ -98,8 +98,8 @@ class HyperTransformer(keras_tuner.HyperModel):
                                                   num_heads=hp.get("heads"),
                                                   dff=hp.get("d_model") * hp.get('dff_multiplier'),
                                                   src_seq_len=input_width,
-                                                  tar_seq_len=label_width, src_dim=len(parameter.features),
-                                                  tar_dim=len(parameter.target),
+                                                  tar_seq_len=label_width, src_dim=len(parameter.data_params.features),
+                                                  tar_dim=len(parameter.data_params.target),
                                                   kernel_size=hp.get('kernel_size'),
                                                   rate=hp.get('dropout_rate'),
                                                   gen_mode="unistep",
@@ -118,7 +118,7 @@ class HyperTransformer(keras_tuner.HyperModel):
         if hp.get('is_using_LR'):
             linear = model_AR.TemporalChannelIndependentLR(hp.get("LR_order"),
                                                            label_width,
-                                                           len(parameter.features))(input_scalar)
+                                                           len(parameter.data_params.features))(input_scalar)
             outputs = tf.keras.layers.Add()([linear, nonlinear])
         else:
             outputs = nonlinear
@@ -158,13 +158,13 @@ class HyperTransformer(keras_tuner.HyperModel):
                             batch_size=hp.get("batch_size"),
                             label_columns="ShortWaveDown",
                             samples_per_day=data.samples_per_day)
-        return model.fit(w.train(parameter.sample_rate, addcloud=parameter.addAverage,
+        return model.fit(w.train(parameter.data_params.sample_rate, addcloud=parameter.data_params.addAverage,
                                  using_timestamp_data=hp.get('is_using_time_embedding'),
                                  is_shuffle=hp.get('is_shuffle')),
-                         validation_data=w.val(parameter.sample_rate, addcloud=parameter.addAverage,
+                         validation_data=w.val(parameter.data_params.sample_rate, addcloud=parameter.data_params.addAverage,
                                                using_timestamp_data=hp.get('is_using_time_embedding'),
                                                is_shuffle=hp.get('is_shuffle')),
-                         epochs=parameter.epochs,
+                         epochs=parameter.exp_params.epochs,
                          **kwargs)
 
 
@@ -213,13 +213,13 @@ class HyperConvGRU(keras_tuner.HyperModel):
             hp.Fixed("avg_window", 17, parent_name='is_using_stationary_module', parent_values=True)
             hp.Fixed("LR_order", 24, parent_name='is_using_LR', parent_values=True)
         input_width = hp.get("input_width")
-        input_scalar = Input(shape=(input_width, len(parameter.features)))
+        input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
         if hp.get('is_using_stationary_module'):
             model = model_convGRU.StationaryConvGRU(num_layers=hp.get("layers"),
                                                     in_seq_len=input_width,
-                                                    in_dim=len(parameter.features),
+                                                    in_dim=len(parameter.data_params.features),
                                                     out_seq_len=label_width,
-                                                    out_dim=len(parameter.target),
+                                                    out_dim=len(parameter.data_params.target),
                                                     units=hp.get('units'),
                                                     filters=hp.get('filters'),
                                                     kernel_size=hp.get('kernel_size'),
@@ -230,9 +230,9 @@ class HyperConvGRU(keras_tuner.HyperModel):
         else:
             model = model_convGRU.ConvGRU(num_layers=hp.get("layers"),
                                           in_seq_len=input_width,
-                                          in_dim=len(parameter.features),
+                                          in_dim=len(parameter.data_params.features),
                                           out_seq_len=label_width,
-                                          out_dim=len(parameter.target),
+                                          out_dim=len(parameter.data_params.target),
                                           units=hp.get('units'),
                                           filters=hp.get('filters'),
                                           kernel_size=hp.get('kernel_size'),
@@ -251,7 +251,7 @@ class HyperConvGRU(keras_tuner.HyperModel):
         if hp.get('is_using_LR'):
             linear = model_AR.TemporalChannelIndependentLR(hp.get("LR_order"),
                                                            label_width,
-                                                           len(parameter.features))(input_scalar)
+                                                           len(parameter.data_params.features))(input_scalar)
             outputs = tf.keras.layers.Add()([linear, nonlinear])
         else:
             outputs = nonlinear
@@ -291,21 +291,21 @@ class HyperConvGRU(keras_tuner.HyperModel):
                             batch_size=hp.get("batch_size"),
                             label_columns="ShortWaveDown",
                             samples_per_day=data.samples_per_day)
-        return model.fit(w.train(parameter.sample_rate, addcloud=parameter.addAverage,
+        return model.fit(w.train(parameter.data_params.sample_rate, addcloud=parameter.data_params.addAverage,
                                  using_timestamp_data=hp.get('is_using_time_embedding'),
                                  is_shuffle=hp.get('is_shuffle')),
-                         validation_data=w.val(parameter.sample_rate, addcloud=parameter.addAverage,
+                         validation_data=w.val(parameter.data_params.sample_rate, addcloud=parameter.data_params.addAverage,
                                                using_timestamp_data=hp.get('is_using_time_embedding'),
                                                is_shuffle=hp.get('is_shuffle')),
-                         epochs=parameter.epochs,
+                         epochs=parameter.exp_params.epochs,
                          **kwargs)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='hyper-parameters tuning')
-    parser.add_argument('-s', '--shift', type=int, default=parameter.shifted_width,
+    parser.add_argument('-s', '--shift', type=int, default=parameter.data_params.shifted_width,
                         help='lag between input and output sequence')
-    parser.add_argument('-o', '--output', type=int, default=parameter.label_width, help='length of output sequence')
+    parser.add_argument('-o', '--output', type=int, default=parameter.data_params.label_width, help='length of output sequence')
     parser.add_argument('-t', '--trials', type=int, default=3, help='max trials when perform hp searching')
     parser.add_argument('-ft', '--finetune', default=False, action='store_true', help='fine-tuning or not')
     parser.add_argument('-at', '--arch', default=False, action='store_true', help='tuning network architecture or not')
@@ -316,9 +316,9 @@ if __name__ == '__main__':
 
     shift = args.shift
     label_width = args.output
-    is_input_continuous_with_output = (shift == 0) and (not parameter.between8_17)
+    is_input_continuous_with_output = (shift == 0) and (not parameter.data_params.between8_17)
 
-    exp_setup_str = "s{}o{}_{}".format(shift, label_width, parameter.csv_name)
+    exp_setup_str = "s{}o{}_{}".format(shift, label_width, parameter.data_params.csv_name)
     tuning_setup_str = 'ft{}_at{}_tt{}'.format(int(args.finetune), int(args.arch), int(args.training))
     tuner1 = keras_tuner.BayesianOptimization(
         HyperTransformer(fine_tune=args.finetune, tune_architecture=args.arch, tune_training=args.training),
@@ -328,7 +328,7 @@ if __name__ == '__main__':
         directory="tuning/{}".format(exp_setup_str),
         project_name="{}/transformer".format(tuning_setup_str)
     )
-    tuner1.search(callbacks=[parameter.earlystoper])
+    tuner1.search(callbacks=parameter.exp_params.callbacks)
 
     tuner2 = keras_tuner.BayesianOptimization(
         HyperConvGRU(fine_tune=args.finetune, tune_architecture=args.arch, tune_training=args.training),
@@ -338,8 +338,8 @@ if __name__ == '__main__':
         directory="tuning/{}".format(exp_setup_str),
         project_name="{}/convGRU".format(tuning_setup_str)
     )
-    tuner2.search(callbacks=[parameter.earlystoper])
+    tuner2.search(callbacks=parameter.exp_params.callbacks)
     print("\n\n#####################Transformer's Best Result#####################")
-    tuner1.results_summary(num_trials=1)
+    tuner1.results_summary(num_trials=10)
     print("\n\n#####################ConvGRU's Best Result#####################")
-    tuner2.results_summary(num_trials=1)
+    tuner2.results_summary(num_trials=10)
