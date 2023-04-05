@@ -202,10 +202,26 @@ def ModelTrainer_cloud(dataGnerator: WindowGenerator,
     return model1, val_performance, model2, val_performance_2
 
 
-def run():
+def args_parse():
+    def cast_int_if_possible(arg):
+        if arg.isdecimal():
+            return int(arg)
+        else:
+            return arg
+
     ap = argparse.ArgumentParser()
+
+    # experiment related arguments
     ap.add_argument("-n", "--experiment_label", type=str, required=True, default=parameter.exp_params.experiment_label,
                     help="experiment_label")
+    ap.add_argument("-bs", "--batch_size", type=int, required=False, default=parameter.exp_params.batch_size,
+                    help="batch size")
+    ap.add_argument('--save_plot', required=False, default=parameter.exp_params.save_plot, action='store_true',
+                    help='save plot figure as html or not')
+    ap.add_argument('--save_csv', required=False, default=parameter.exp_params.save_csv, action='store_true',
+                    help='save prediction as csv or not')
+
+    # data related arguments
     ap.add_argument("-i", "--input", type=int, required=False, default=parameter.data_params.input_width,
                     help="length of input seq.")
     ap.add_argument("-s", "--shift", type=int, required=False, default=parameter.data_params.shifted_width,
@@ -221,34 +237,63 @@ def run():
                     help="month for testing")
     ap.add_argument("-d", "--dataset", type=str, required=False, default=parameter.data_params.csv_name,
                     help="name of dataset")
-    ap.add_argument("-sm", "--split_mode", required=False, default=parameter.data_params.split_mode,
+    ap.add_argument("-sm", "--split_mode", type=cast_int_if_possible, required=False,
+                    default=parameter.data_params.split_mode,
                     help="dataset splitting mode : {}".format(datautil.split_mode_list))
-    ap.add_argument("-fn", "--feat_norm", required=False, default=parameter.data_params.norm_mode,
+    ap.add_argument("-fn", "--feat_norm", type=cast_int_if_possible, required=False,
+                    default=parameter.data_params.norm_mode,
                     help="norm mode for feature column: {}".format(datautil.norm_type_list))
-    ap.add_argument("-tn", "--target_norm", required=False, default=parameter.data_params.label_norm_mode,
+    ap.add_argument("-tn", "--target_norm", type=cast_int_if_possible, required=False,
+                    default=parameter.data_params.label_norm_mode,
                     help="norm mode for target column: {}".format(datautil.norm_type_list))
-    ap.add_argument("-bs", "--batch_size", type=int, required=False, default=parameter.exp_params.batch_size,
-                    help="batch size")
     ap.add_argument("--shuffle", required=False, default=parameter.data_params.is_using_shuffle, action='store_true',
                     help='shuffle dataset or not')
-    ap.add_argument("-by", "--bypass", type=int, required=False, default=parameter.model_params.bypass,
-                    help="bypass mode: {}".format(bypass_factory.bypass_list))
-    ap.add_argument("-te", "--time_embedding", type=int, required=False, default=parameter.model_params.time_embedding,
-                    help="time embedding mode: {}".format(time_embedding_factory.time_embedding_list))
-    ap.add_argument("-sd", '--split_day', required=False, default=parameter.model_params.split_days,
-                    action='store_true',
-                    help='using split-days module or not')
     ap.add_argument('--use_image', required=False, default=parameter.data_params.is_using_image_data,
                     action='store_true',
                     help='using image data as feature or not')
     ap.add_argument('--image_length', type=int, required=False, default=parameter.data_params.image_input_width3D,
                     help='length(on time axis) of images')
-    ap.add_argument('--save_plot', required=False, default=parameter.exp_params.save_plot, action='store_true',
-                    help='save plot figure as html or not')
-    ap.add_argument('--save_csv', required=False, default=parameter.exp_params.save_csv, action='store_true',
-                    help='save prediction as csv or not')
+
+    # model related arguments
+    ap.add_argument("-by", "--bypass", type=cast_int_if_possible, required=False, default=parameter.model_params.bypass,
+                    help="bypass mode: {}".format(bypass_factory.bypass_list))
+    ap.add_argument("-te", "--time_embedding", type=cast_int_if_possible, required=False,
+                    default=parameter.model_params.time_embedding,
+                    help="time embedding mode: {}".format(time_embedding_factory.time_embedding_list))
+    ap.add_argument("-sd", '--split_day', required=False, default=parameter.model_params.split_days,
+                    action='store_true',
+                    help='using split-days module or not')
+    # general model arguments
+    ap.add_argument("--layers", type=int, required=False, default=None, help="number of layers")
+    ap.add_argument("--kernel_size", type=int, required=False, default=None, help="kernel's size of Conv1D")
+    ap.add_argument("--dropout", type=int, required=False, default=None, help="dropout rate")
+    # transformer model arguments
+    ap.add_argument("--d_model", type=int, required=False, default=parameter.model_params.transformer_params.d_model,
+                    help="number of inner dimensions of transformer model")
+    ap.add_argument("--n_heads", type=int, required=False, default=parameter.model_params.transformer_params.n_heads,
+                    help="number of heads of transformer model")
+    ap.add_argument("--dff", type=int, required=False, default=parameter.model_params.transformer_params.dff,
+                    help="number of intermediate dimensions of feed-forward layer of transformer model")
+    # convGRU model arguments
+    ap.add_argument("--filters", type=int, required=False,
+                    default=parameter.model_params.convGRU_params.embedding_filters,
+                    help="number of filters of Conv1D for convGRU model")
+    ap.add_argument("--units", type=int, required=False, default=parameter.model_params.convGRU_params.gru_units,
+                    help="number of units of convGRU model")
+    # bypass LR arguments
+    ap.add_argument("--order", type=int, required=False, default=parameter.model_params.bypass_params.order,
+                    help="order of bypass LR")
+    # series decomposition arguments
+    ap.add_argument("--window", type=int, required=False, default=parameter.model_params.bypass_params.order,
+                    help="size of moving average window used in series decomposition block")
 
     args = vars(ap.parse_args())
+    # exp. related params assignment
+    parameter.exp_params.experiment_label = args["experiment_label"]
+    parameter.exp_params.batch_size = args["batch_size"]
+    parameter.exp_params.save_plot = args["save_plot"]
+    parameter.exp_params.save_csv = args["save_csv"]
+    # data related params assignment
     parameter.data_params.input_width = args["input"]
     parameter.data_params.shifted_width = args["shift"]
     parameter.data_params.label_width = args["output"]
@@ -259,25 +304,60 @@ def run():
     parameter.data_params.split_mode = args["split_mode"]
     parameter.data_params.norm_mode = args["feat_norm"]
     parameter.data_params.label_norm_mode = args["target_norm"]
-    parameter.exp_params.batch_size = args["batch_size"]
     parameter.data_params.is_using_shuffle = args["shuffle"]
-    parameter.exp_params.experiment_label = args["experiment_label"]
-    parameter.model_params.bypass = args["bypass"]
-    parameter.model_params.time_embedding = args["time_embedding"]
-    parameter.model_params.split_days = args["split_day"]
     parameter.data_params.is_using_image_data = args["use_image"]
     parameter.data_params.image_input_width3D = args["image_length"]
-    parameter.exp_params.save_plot = args["save_plot"]
-    parameter.exp_params.save_csv = args["save_csv"]
     parameter.data_params.set_dataset_params()
     parameter.data_params.set_start_end_time()
     parameter.data_params.set_image_params()
+    # model related params assignment
+    parameter.model_params.bypass = args["bypass"]
+    parameter.model_params.time_embedding = args["time_embedding"]
+    parameter.model_params.split_days = args["split_day"]
+    if args["layers"] is not None:
+        parameter.model_params.transformer_params.layers = args["layers"]
+        parameter.model_params.convGRU_params.layers = args["layers"]
+    if args["kernel_size"] is not None:
+        parameter.model_params.transformer_params.embedding_kernel_size = args["kernel_size"]
+        parameter.model_params.convGRU_params.embedding_kernel_size = args["kernel_size"]
+    if args["dropout"] is not None:
+        parameter.model_params.transformer_params.dropout_rate = args["dropout"]
+        parameter.model_params.convGRU_params.dropout_rate = args["dropout"]
+    parameter.model_params.transformer_params.d_model = args["d_model"]
+    parameter.model_params.transformer_params.n_heads = args["n_heads"]
+    parameter.model_params.transformer_params.dff = args["dff"]
+    parameter.model_params.convGRU_params.embedding_filters = args["filters"]
+    parameter.model_params.convGRU_params.gru_units = args["units"]
+    parameter.model_params.bypass_params.order = args["order"]
+    parameter.model_params.decompose_params.avg_window = args["window"]
 
-    parameter.exp_params.experiment_label += "_bypass-{}_TE-{}_split-{}".format(
+    # format directory name of this experiment
+    file_name, _ = os.path.splitext(parameter.data_params.csv_name)
+    parameter.exp_params.experiment_label += "_{}".format(file_name)
+    parameter.exp_params.experiment_label += "_i{}s{}o{}".format(
+        parameter.data_params.input_width,
+        parameter.data_params.shifted_width,
+        parameter.data_params.label_width)
+    parameter.exp_params.experiment_label += "_rate{}trate{}".format(
+        parameter.data_params.sample_rate,
+        parameter.data_params.test_sample_rate)
+    parameter.exp_params.experiment_label += "_norm[{}]scale[{}]".format(
+        datautil.get_mode(parameter.data_params.norm_mode, datautil.norm_type_list),
+        datautil.get_mode(parameter.data_params.label_norm_mode, datautil.norm_type_list))
+    parameter.exp_params.experiment_label += "_bypass[{}]TE[{}]split[{}]".format(
         bypass_factory.BypassFac.get_bypass_mode(parameter.model_params.bypass),
         time_embedding_factory.TEFac.get_te_mode(parameter.model_params.time_embedding),
         parameter.model_params.split_days)
-    # Initialise logging
+    if get_mode(parameter.data_params.split_mode, datautil.split_mode_list) != "all_year":
+        parameter.exp_params.experiment_label += "_datasplit[{}]_test_on_{}".format(
+            get_mode(parameter.data_params.split_mode, datautil.split_mode_list),
+            datetime.datetime.strptime(str(parameter.data_params.test_month), "%m").strftime("%b"))
+    return args
+
+
+def run():
+    args = args_parse()
+    # Initialize logging
     log = Msglog.LogInit(parameter.exp_params.experiment_label, "logs/{}".format(parameter.exp_params.experiment_label),
                          10, True, True)
 
@@ -441,7 +521,7 @@ def run():
     log = logging.getLogger(parameter.exp_params.experiment_label)
     w = w2
     is_input_continuous_with_output = (shift == 0) and (
-                not parameter.data_params.between8_17 or w.is_sampling_within_day)
+            not parameter.data_params.between8_17 or w.is_sampling_within_day)
     metrics_path = "plot/{}/{}".format(parameter.exp_params.experiment_label, "all_metric")
 
     # test baseline model
@@ -507,7 +587,7 @@ def run():
                 time_embedded = time_embedded(input_time)
 
             is_splitting_days = parameter.model_params.split_days or (
-                        not w.is_sampling_within_day and parameter.data_params.between8_17)
+                    not w.is_sampling_within_day and parameter.data_params.between8_17)
             if is_splitting_days:
                 n_days = input_width // w.samples_per_day
                 scalar_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
@@ -610,7 +690,7 @@ def run():
                 time_embedded = time_embedded(input_time)
 
             is_splitting_days = parameter.model_params.split_days or (
-                        not w.is_sampling_within_day and parameter.data_params.between8_17)
+                    not w.is_sampling_within_day and parameter.data_params.between8_17)
             if is_splitting_days:
                 n_days = input_width // w.samples_per_day
                 scalar_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
@@ -713,7 +793,7 @@ def run():
                 time_embedded = time_embedded(input_time)
 
             is_splitting_days = parameter.model_params.split_days or (
-                        not w.is_sampling_within_day and parameter.data_params.between8_17)
+                    not w.is_sampling_within_day and parameter.data_params.between8_17)
             if is_splitting_days:
                 n_days = input_width // w.samples_per_day
                 scalar_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
@@ -820,7 +900,7 @@ def run():
                 time_embedded = time_embedded(input_time)
 
             is_splitting_days = parameter.model_params.split_days or (
-                        not w.is_sampling_within_day and parameter.data_params.between8_17)
+                    not w.is_sampling_within_day and parameter.data_params.between8_17)
             if is_splitting_days:
                 n_days = input_width // w.samples_per_day
                 scalar_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
@@ -929,7 +1009,7 @@ def run():
                 time_embedded = time_embedded(input_time)
 
             is_splitting_days = parameter.model_params.split_days or (
-                        not w.is_sampling_within_day and parameter.data_params.between8_17)
+                    not w.is_sampling_within_day and parameter.data_params.between8_17)
             if is_splitting_days:
                 n_days = input_width // w.samples_per_day
                 scalar_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
@@ -1036,7 +1116,7 @@ def run():
                 time_embedded = time_embedded(input_time)
 
             is_splitting_days = parameter.model_params.split_days or (
-                        not w.is_sampling_within_day and parameter.data_params.between8_17)
+                    not w.is_sampling_within_day and parameter.data_params.between8_17)
             if is_splitting_days:
                 n_days = input_width // w.samples_per_day
                 scalar_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
