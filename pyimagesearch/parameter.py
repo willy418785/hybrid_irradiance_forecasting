@@ -5,7 +5,7 @@ from sklearn.preprocessing import MinMaxScaler
 class _DataParams:
     def __init__(self):
         # miscellaneous parameters
-        self.addAverage = False # True for one model:add cloud and average
+        self.addAverage = False  # True for one model:add cloud and average
         self.is_using_shuffle = False
 
         # normalization related parameters
@@ -48,7 +48,7 @@ class _DataParams:
         self.is_using_cloud_location = False
         self.image_depth = 3  # default RGB image
         self.timezone = 'Asia/Taipei'
-        self.squeeze = False # windowgenerator裡面image要不要降成2維，用於某些model
+        self.squeeze = False  # windowgenerator裡面image要不要降成2維，用於某些model
 
         # update dynamic parameters
         self.set_dataset_params()
@@ -112,6 +112,41 @@ class _ModelParams:
         self.split_days = False
         self.bypass = 1
         self.time_embedding = 2
+        self.transformer_params = self._TransformerParams()
+        self.convGRU_params = self._ConvGRUParams()
+        self.bypass_params = self._BypassParams()
+        self.decompose_params = self._DecomposeParams()
+        self.split_day_params = self._SplitDayModuleParams()
+
+    class _TransformerParams:
+        def __init__(self):
+            self.layers = 1
+            self.d_model = 32
+            self.n_heads = 1
+            self.dff = 128
+            self.embedding_kernel_size = 3
+            self.dropout_rate = 0.1
+
+    class _ConvGRUParams:
+        def __init__(self):
+            self.layers = 1
+            self.embedding_filters = 32
+            self.gru_units = 32
+            self.embedding_kernel_size = 3
+            self.dropout_rate = 0.1
+
+    class _BypassParams:
+        def __init__(self):
+            self.order = 24
+
+    class _DecomposeParams:
+        def __init__(self):
+            self.avg_window = 17
+
+    class _SplitDayModuleParams:
+        def __init__(self):
+            self.filters = 32
+            self.kernel_size = 3
 
 
 data_params = _DataParams()
@@ -144,6 +179,5 @@ csvLogMetrics = ["MSE", "RMSE", "RMSPE", "MAE", "MAPE", "WMAPE", "VWMAPE", "corr
                  "VWMAPE 1min", "VWMAPE 2min", "VWMAPE 3min", "VWMAPE 4min", "VWMAPE 5min",
                  "corr 1min", "corr 2min", "corr 3min", "corr 4min", "corr 5min",
                  "MSE avg", "RMSE avg", "RMSPE avg", "MAE avg", "MAPE avg", "WMAPE avg", "VWMAPE avg", "corr avg"]
-
 
 normalization = "MinMax"  # "MinMax","Mean","Standard","Max","No"

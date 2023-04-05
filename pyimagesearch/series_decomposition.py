@@ -1,10 +1,6 @@
 import tensorflow as tf
 
 
-class Config():
-    window_size = 17
-
-
 class SeriesDecompose(tf.keras.layers.Layer):
     def __init__(self, window_size):
         super().__init__()
@@ -35,7 +31,7 @@ class MovingZScoreNorm(tf.keras.layers.Layer):
         # Compute the moving std
         kernel = tf.ones([self.window_size, num_channels, num_channels])
         moving_variance = tf.nn.conv1d(tf.square(inputs - moving_mean), kernel, stride=1, padding='SAME') / (
-                    self.window_size - 1)
+                self.window_size - 1)
         moving_std = tf.sqrt(moving_variance)
 
         # Compute z-score norm

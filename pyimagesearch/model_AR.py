@@ -7,10 +7,8 @@ from tensorflow.keras.layers import Dense, Input
 from pyimagesearch import parameter
 from pyimagesearch.datautil import DataUtil
 from pyimagesearch.windowsGenerator import WindowGenerator
-gen_modes = ['unistep', 'auto', "mlp"]
 
-class Config():
-    order = 24
+gen_modes = ['unistep', 'auto', "mlp"]
 
 
 class AR(tf.keras.layers.Layer):
@@ -23,6 +21,7 @@ class AR(tf.keras.layers.Layer):
 
     def call(self, inputs, training):
         temporal_last = tf.transpose(inputs, perm=[0, 2, 1])
+
         @tf.function(input_signature=[tf.TensorSpec(shape=(None, self.src_dims, self.order), dtype=tf.float32)],
                      experimental_relax_shapes=True)
         def autoregress(tar):
@@ -35,9 +34,11 @@ class AR(tf.keras.layers.Layer):
                 tar = tf.concat([tar[:, :, 1:], y], axis=-1)
                 out = tf.concat([out, y], axis=-1)
             return out
+
         output = autoregress(temporal_last[:, :, -self.order:])
         output = tf.transpose(output, perm=[0, 2, 1])
         return output
+
 
 class ChannelIndependentAR(tf.keras.layers.Layer):
     def __init__(self, order, tar_seq_len, src_dims):
@@ -49,6 +50,7 @@ class ChannelIndependentAR(tf.keras.layers.Layer):
 
     def call(self, inputs, training):
         temporal_last = tf.transpose(inputs, perm=[0, 2, 1])
+
         @tf.function(input_signature=[tf.TensorSpec(shape=(None, self.src_dims, self.order), dtype=tf.float32)],
                      experimental_relax_shapes=True)
         def autoregress(tar):
@@ -62,9 +64,11 @@ class ChannelIndependentAR(tf.keras.layers.Layer):
                 tar = tf.concat([tar[:, :, 1:], y], axis=-1)
                 out = tf.concat([out, y], axis=-1)
             return out
+
         output = autoregress(temporal_last[:, :, -self.order:])
         output = tf.transpose(output, perm=[0, 2, 1])
         return output
+
 
 class TemporalChannelIndependentLR(tf.keras.layers.Layer):
     def __init__(self, order, tar_seq_len, src_dims):
@@ -80,6 +84,7 @@ class TemporalChannelIndependentLR(tf.keras.layers.Layer):
         output = tf.stack(y, axis=1)
         output = tf.transpose(output, perm=[0, 2, 1])
         return output
+
 
 if __name__ == '__main__':
     train_path_with_weather_info = os.path.sep.join(["../{}".format(parameter.data_params.csv_name)])
@@ -121,7 +126,8 @@ if __name__ == '__main__':
                          batch_size=1,
                          label_columns="ShortWaveDown",
                          samples_per_day=dataUtil.samples_per_day)
-    model = Sequential([Input(shape=(src_len, len(parameter.data_params.features))), TemporalChannelIndependentLR(5, 10, len(parameter.data_params.features))])
+    model = Sequential([Input(shape=(src_len, len(parameter.data_params.features))),
+                        TemporalChannelIndependentLR(5, 10, len(parameter.data_params.features))])
     model.compile(loss=tf.losses.MeanSquaredError(), optimizer="Adam"
                   , metrics=[tf.metrics.MeanAbsoluteError()
             , tf.metrics.MeanAbsolutePercentageError()])

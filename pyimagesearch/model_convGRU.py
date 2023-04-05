@@ -14,14 +14,6 @@ from pyimagesearch.model_transformer import positional_encoding
 gen_modes = ['unistep', 'auto', "mlp"]
 
 
-class Config():
-    layers = 1
-    embedding_filters = 32
-    gru_units = 32
-    embedding_kernel_size = 3
-    dropout_rate = 0.1
-
-
 class Encoder(tf.keras.layers.Layer):
     def __init__(self, layers, units, seq_len=None, filters=None, kernel_size=3, rate=0.1):
         super().__init__()
@@ -373,11 +365,15 @@ if __name__ == '__main__':
                          samples_per_day=dataUtil.samples_per_day)
     input_scalar = Input(shape=(src_len, len(parameter.data_params.features)))
     input_time = Input(shape=(src_len + shift + tar_len, len(time_embedding.vocab_size)))
-    embedding = time_embedding.TimeEmbedding(output_dims=Config.embedding_filters, input_len=src_len, shift_len=shift,
+    embedding = time_embedding.TimeEmbedding(output_dims=parameter.model_params.convGRU_params.embedding_filters,
+                                             input_len=src_len, shift_len=shift,
                                              label_len=tar_len)(input_time)
-    LR = StationaryConvGRU(num_layers=Config.layers, in_seq_len=src_len, in_dim=len(parameter.data_params.features),
+    LR = StationaryConvGRU(num_layers=parameter.model_params.convGRU_params.layers, in_seq_len=src_len,
+                           in_dim=len(parameter.data_params.features),
                            out_seq_len=tar_len,
-                           out_dim=len(parameter.data_params.target), units=Config.gru_units, filters=Config.embedding_filters,
+                           out_dim=len(parameter.data_params.target),
+                           units=parameter.model_params.convGRU_params.gru_units,
+                           filters=parameter.model_params.convGRU_params.embedding_filters,
                            gen_mode='unistep',
                            is_seq_continuous=True)(input_scalar, time_embedding_tuple=embedding)
     model = Model(inputs=[input_scalar, input_time], outputs=LR)

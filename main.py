@@ -77,7 +77,8 @@ def ModelTrainer(dataGnerator: WindowGenerator,
             dataGnerator.train(parameter.data_params.sample_rate, addcloud=parameter.data_params.addAverage,
                                using_timestamp_data=using_timestamp_data,
                                is_shuffle=parameter.data_params.is_using_shuffle),
-            validation_data=dataGnerator.val(parameter.data_params.sample_rate, addcloud=parameter.data_params.addAverage,
+            validation_data=dataGnerator.val(parameter.data_params.sample_rate,
+                                             addcloud=parameter.data_params.addAverage,
                                              using_timestamp_data=using_timestamp_data,
                                              is_shuffle=parameter.data_params.is_using_shuffle),
             epochs=testEpoch, batch_size=parameter.exp_params.batch_size, callbacks=parameter.exp_params.callbacks)
@@ -89,7 +90,8 @@ def ModelTrainer(dataGnerator: WindowGenerator,
 
     elif generatorMode == "image":
         history = model.fit(dataGnerator.trainWithArg, validation_data=dataGnerator.valWithArg,
-                            epochs=testEpoch, batch_size=parameter.exp_params.batch_size, callbacks=parameter.exp_params.callbacks)
+                            epochs=testEpoch, batch_size=parameter.exp_params.batch_size,
+                            callbacks=parameter.exp_params.callbacks)
         all_pred, all_y = dataGnerator.plotPredictUnit(model, dataGnerator.valWithArg, datamode=generatorMode)
 
     # test_performance = model.evaluate(dataGnerator.test)
@@ -141,11 +143,13 @@ def ModelTrainer_cloud(dataGnerator: WindowGenerator,
         C_pred, C_y = dataGnerator.plotPredictUnit(model2, sep_valC, name=name)
         tf.compat.v1.get_default_graph().finalize()'''
         model1.fit(dataGnerator.trainAC(sepMode="cloudA"), validation_data=dataGnerator.valAC(sepMode="cloudA"),
-                   epochs=testEpoch, batch_size=parameter.exp_params.batch_size, callbacks=parameter.exp_params.callbacks)
+                   epochs=testEpoch, batch_size=parameter.exp_params.batch_size,
+                   callbacks=parameter.exp_params.callbacks)
         A_pred, A_y = dataGnerator.plotPredictUnit(model1, dataGnerator.valAC(sepMode="cloudA"), datamode=generatorMode)
 
         model2.fit(dataGnerator.trainAC(sepMode="cloudC"), validation_data=dataGnerator.valAC(sepMode="cloudC"),
-                   epochs=testEpoch, batch_size=parameter.exp_params.batch_size, callbacks=parameter.exp_params.callbacks)
+                   epochs=testEpoch, batch_size=parameter.exp_params.batch_size,
+                   callbacks=parameter.exp_params.callbacks)
         C_pred, C_y = dataGnerator.plotPredictUnit(model2, dataGnerator.valAC(sepMode="cloudC"), datamode=generatorMode)
     # objgraph.show_growth()
     elif generatorMode == "data":
@@ -167,13 +171,15 @@ def ModelTrainer_cloud(dataGnerator: WindowGenerator,
         C_pred, C_y = dataGnerator.plotPredictUnit(model2, sep_valC, name=name)
         # print(C_pred, C_y)'''
         model1.fit(dataGnerator.trainDataAC(sepMode="cloudA"), validation_data=dataGnerator.valDataAC(sepMode="cloudA"),
-                   epochs=testEpoch, batch_size=parameter.exp_params.batch_size, callbacks=parameter.exp_params.callbacks)
+                   epochs=testEpoch, batch_size=parameter.exp_params.batch_size,
+                   callbacks=parameter.exp_params.callbacks)
         A_pred, A_y = dataGnerator.plotPredictUnit(model1, dataGnerator.valDataAC(sepMode="cloudA"),
                                                    datamode=generatorMode)
         # print(A_pred, A_y)
 
         model2.fit(dataGnerator.trainDataAC(sepMode="cloudC"), validation_data=dataGnerator.valDataAC(sepMode="cloudC"),
-                   epochs=testEpoch, batch_size=parameter.exp_params.batch_size, callbacks=parameter.exp_params.callbacks)
+                   epochs=testEpoch, batch_size=parameter.exp_params.batch_size,
+                   callbacks=parameter.exp_params.callbacks)
         C_pred, C_y = dataGnerator.plotPredictUnit(model2, dataGnerator.valDataAC(sepMode="cloudC"),
                                                    datamode=generatorMode)
     # print(C_pred, C_y)
@@ -208,7 +214,8 @@ def run():
                     help="length of output seq.")
     ap.add_argument("-r", "--sample_rate", type=int, required=False, default=parameter.data_params.sample_rate,
                     help="sample rate when generating training sequence")
-    ap.add_argument("-tr", "--test_sample_rate", type=int, required=False, default=parameter.data_params.test_sample_rate,
+    ap.add_argument("-tr", "--test_sample_rate", type=int, required=False,
+                    default=parameter.data_params.test_sample_rate,
                     help="sample rate when generating testing sequence")
     ap.add_argument("-m", "--test_month", type=int, required=False, default=parameter.data_params.test_month,
                     help="month for testing")
@@ -228,9 +235,11 @@ def run():
                     help="bypass mode: {}".format(bypass_factory.bypass_list))
     ap.add_argument("-te", "--time_embedding", type=int, required=False, default=parameter.model_params.time_embedding,
                     help="time embedding mode: {}".format(time_embedding_factory.time_embedding_list))
-    ap.add_argument("-sd", '--split_day', required=False, default=parameter.model_params.split_days, action='store_true',
+    ap.add_argument("-sd", '--split_day', required=False, default=parameter.model_params.split_days,
+                    action='store_true',
                     help='using split-days module or not')
-    ap.add_argument('--use_image', required=False, default=parameter.data_params.is_using_image_data, action='store_true',
+    ap.add_argument('--use_image', required=False, default=parameter.data_params.is_using_image_data,
+                    action='store_true',
                     help='using image data as feature or not')
     ap.add_argument('--image_length', type=int, required=False, default=parameter.data_params.image_input_width3D,
                     help='length(on time axis) of images')
@@ -269,7 +278,8 @@ def run():
         time_embedding_factory.TEFac.get_te_mode(parameter.model_params.time_embedding),
         parameter.model_params.split_days)
     # Initialise logging
-    log = Msglog.LogInit(parameter.exp_params.experiment_label, "logs/{}".format(parameter.exp_params.experiment_label), 10, True, True)
+    log = Msglog.LogInit(parameter.exp_params.experiment_label, "logs/{}".format(parameter.exp_params.experiment_label),
+                         10, True, True)
 
     log.info("Python version: %s", sys.version)
     log.info("Tensorflow version: %s", tf.__version__)
@@ -430,7 +440,8 @@ def run():
     #############################################################
     log = logging.getLogger(parameter.exp_params.experiment_label)
     w = w2
-    is_input_continuous_with_output = (shift == 0) and (not parameter.data_params.between8_17 or w.is_sampling_within_day)
+    is_input_continuous_with_output = (shift == 0) and (
+                not parameter.data_params.between8_17 or w.is_sampling_within_day)
     metrics_path = "plot/{}/{}".format(parameter.exp_params.experiment_label, "all_metric")
 
     # test baseline model
@@ -489,56 +500,60 @@ def run():
             input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
 
             time_embedded = time_embedding_factory.TEFac.new_te_module(command=parameter.model_params.time_embedding,
-                                                                       tar_dim=model_convGRU.Config.embedding_filters,
+                                                                       tar_dim=parameter.model_params.convGRU_params.embedding_filters,
                                                                        seq_structure=(input_width, shift, label_width))
             if time_embedded is not None:
                 input_time = Input(shape=(input_width + shift + label_width, len(time_embedding.vocab_size)))
                 time_embedded = time_embedded(input_time)
 
-            is_splitting_days = parameter.model_params.split_days or (not w.is_sampling_within_day and parameter.data_params.between8_17)
+            is_splitting_days = parameter.model_params.split_days or (
+                        not w.is_sampling_within_day and parameter.data_params.between8_17)
             if is_splitting_days:
                 n_days = input_width // w.samples_per_day
                 scalar_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
                     input_scalar)
-                scalar_embedded = MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
-                                                        filter_size=preprocess_utils.Config.kernel_size,
+                scalar_embedded = MultipleDaysConvEmbed(filters=parameter.model_params.split_day_params.filters,
+                                                        filter_size=parameter.model_params.split_day_params.kernel_size,
                                                         n_days=n_days,
                                                         n_samples=w.samples_per_day)(scalar_embedded)
-                model = model_convGRU.ConvGRU(num_layers=model_convGRU.Config.layers, in_seq_len=w.samples_per_day,
+                model = model_convGRU.ConvGRU(num_layers=parameter.model_params.convGRU_params.layers,
+                                              in_seq_len=w.samples_per_day,
                                               in_dim=len(parameter.data_params.features),
                                               out_seq_len=label_width, out_dim=len(parameter.data_params.target),
-                                              units=model_convGRU.Config.gru_units,
-                                              filters=model_convGRU.Config.embedding_filters,
-                                              kernel_size=model_convGRU.Config.embedding_kernel_size,
+                                              units=parameter.model_params.convGRU_params.gru_units,
+                                              filters=parameter.model_params.convGRU_params.embedding_filters,
+                                              kernel_size=parameter.model_params.convGRU_params.embedding_kernel_size,
                                               gen_mode='unistep',
                                               is_seq_continuous=is_input_continuous_with_output,
-                                              rate=model_convGRU.Config.dropout_rate)
+                                              rate=parameter.model_params.convGRU_params.dropout_rate)
                 if time_embedded is not None:
                     input_time_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
                         time_embedded[0])
-                    input_time_embedded = MultipleDaysConvEmbed(filters=model_convGRU.Config.embedding_filters,
-                                                                filter_size=preprocess_utils.Config.kernel_size,
-                                                                n_days=n_days,
-                                                                n_samples=w.samples_per_day)(input_time_embedded)
+                    input_time_embedded = MultipleDaysConvEmbed(
+                        filters=parameter.model_params.convGRU_params.embedding_filters,
+                        filter_size=parameter.model_params.split_day_params.kernel_size,
+                        n_days=n_days,
+                        n_samples=w.samples_per_day)(input_time_embedded)
                     nonlinear = model(scalar_embedded,
                                       time_embedding_tuple=(input_time_embedded, time_embedded[1], time_embedded[2]))
                 else:
                     nonlinear = model(scalar_embedded)
             else:
-                model = model_convGRU.ConvGRU(num_layers=model_convGRU.Config.layers, in_seq_len=input_width,
+                model = model_convGRU.ConvGRU(num_layers=parameter.model_params.convGRU_params.layers,
+                                              in_seq_len=input_width,
                                               in_dim=len(parameter.data_params.features),
                                               out_seq_len=label_width, out_dim=len(parameter.data_params.target),
-                                              units=model_convGRU.Config.gru_units,
-                                              filters=model_convGRU.Config.embedding_filters,
-                                              kernel_size=model_convGRU.Config.embedding_kernel_size,
+                                              units=parameter.model_params.convGRU_params.gru_units,
+                                              filters=parameter.model_params.convGRU_params.embedding_filters,
+                                              kernel_size=parameter.model_params.convGRU_params.embedding_kernel_size,
                                               gen_mode='unistep',
                                               is_seq_continuous=is_input_continuous_with_output,
-                                              rate=model_convGRU.Config.dropout_rate)
+                                              rate=parameter.model_params.convGRU_params.dropout_rate)
                 nonlinear = model(input_scalar, time_embedding_tuple=time_embedded)
 
             linear = bypass_factory.BypassFac.new_bypass_module(command=parameter.model_params.bypass,
                                                                 out_width=label_width,
-                                                                order=model_AR.Config.order,
+                                                                order=parameter.model_params.bypass_params.order,
                                                                 in_dim=len(parameter.data_params.features),
                                                                 window_len=input_width,
                                                                 is_within_day=w.is_sampling_within_day,
@@ -588,62 +603,65 @@ def run():
                 token_len = (min(input_width, label_width) // w.samples_per_day // 2 + 1) * w.samples_per_day
             input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
             time_embedded = time_embedding_factory.TEFac.new_te_module(command=parameter.model_params.time_embedding,
-                                                                       tar_dim=model_convGRU.Config.embedding_filters,
+                                                                       tar_dim=parameter.model_params.convGRU_params.embedding_filters,
                                                                        seq_structure=(input_width, shift, label_width))
             if time_embedded is not None:
                 input_time = Input(shape=(input_width + shift + label_width, len(time_embedding.vocab_size)))
                 time_embedded = time_embedded(input_time)
 
-            is_splitting_days = parameter.model_params.split_days or (not w.is_sampling_within_day and parameter.data_params.between8_17)
+            is_splitting_days = parameter.model_params.split_days or (
+                        not w.is_sampling_within_day and parameter.data_params.between8_17)
             if is_splitting_days:
                 n_days = input_width // w.samples_per_day
                 scalar_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
                     input_scalar)
-                scalar_embedded = MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
-                                                        filter_size=preprocess_utils.Config.kernel_size,
+                scalar_embedded = MultipleDaysConvEmbed(filters=parameter.model_params.split_day_params.filters,
+                                                        filter_size=parameter.model_params.split_day_params.kernel_size,
                                                         n_days=n_days,
                                                         n_samples=w.samples_per_day)(scalar_embedded)
-                model = model_transformer.Transformer(num_layers=model_transformer.Config.layers,
-                                                      d_model=model_transformer.Config.d_model,
-                                                      num_heads=model_transformer.Config.n_heads,
-                                                      dff=model_transformer.Config.dff,
+                model = model_transformer.Transformer(num_layers=parameter.model_params.transformer_params.layers,
+                                                      d_model=parameter.model_params.transformer_params.d_model,
+                                                      num_heads=parameter.model_params.transformer_params.n_heads,
+                                                      dff=parameter.model_params.transformer_params.dff,
                                                       src_seq_len=w.samples_per_day,
                                                       tar_seq_len=label_width,
-                                                      src_dim=preprocess_utils.Config.filters,
+                                                      src_dim=parameter.model_params.split_day_params.filters,
                                                       tar_dim=len(parameter.data_params.target),
-                                                      kernel_size=model_transformer.Config.embedding_kernel_size,
-                                                      rate=model_transformer.Config.dropout_rate,
+                                                      kernel_size=parameter.model_params.transformer_params.embedding_kernel_size,
+                                                      rate=parameter.model_params.transformer_params.dropout_rate,
                                                       gen_mode="unistep",
                                                       is_seq_continuous=is_input_continuous_with_output,
                                                       is_pooling=False, token_len=0)
                 if time_embedded is not None:
                     input_time_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
                         time_embedded[0])
-                    input_time_embedded = MultipleDaysConvEmbed(filters=model_convGRU.Config.embedding_filters,
-                                                                filter_size=preprocess_utils.Config.kernel_size,
-                                                                n_days=n_days,
-                                                                n_samples=w.samples_per_day)(input_time_embedded)
+                    input_time_embedded = MultipleDaysConvEmbed(
+                        filters=parameter.model_params.convGRU_params.embedding_filters,
+                        filter_size=parameter.model_params.split_day_params.kernel_size,
+                        n_days=n_days,
+                        n_samples=w.samples_per_day)(input_time_embedded)
                     nonlinear = model(scalar_embedded,
                                       time_embedding_tuple=(input_time_embedded, time_embedded[1], time_embedded[2]))
                 else:
                     nonlinear = model(scalar_embedded)
             else:
-                model = model_transformer.Transformer(num_layers=model_transformer.Config.layers,
-                                                      d_model=model_transformer.Config.d_model,
-                                                      num_heads=model_transformer.Config.n_heads,
-                                                      dff=model_transformer.Config.dff,
+                model = model_transformer.Transformer(num_layers=parameter.model_params.transformer_params.layers,
+                                                      d_model=parameter.model_params.transformer_params.d_model,
+                                                      num_heads=parameter.model_params.transformer_params.n_heads,
+                                                      dff=parameter.model_params.transformer_params.dff,
                                                       src_seq_len=input_width,
-                                                      tar_seq_len=label_width, src_dim=len(parameter.data_params.features),
+                                                      tar_seq_len=label_width,
+                                                      src_dim=len(parameter.data_params.features),
                                                       tar_dim=len(parameter.data_params.target),
-                                                      kernel_size=model_transformer.Config.embedding_kernel_size,
-                                                      rate=model_transformer.Config.dropout_rate,
+                                                      kernel_size=parameter.model_params.transformer_params.embedding_kernel_size,
+                                                      rate=parameter.model_params.transformer_params.dropout_rate,
                                                       gen_mode="unistep",
                                                       is_seq_continuous=is_input_continuous_with_output,
                                                       is_pooling=False, token_len=token_len)
                 nonlinear = model(input_scalar, time_embedding_tuple=time_embedded)
             linear = bypass_factory.BypassFac.new_bypass_module(command=parameter.model_params.bypass,
                                                                 out_width=label_width,
-                                                                order=model_AR.Config.order,
+                                                                order=parameter.model_params.bypass_params.order,
                                                                 in_dim=len(parameter.data_params.features),
                                                                 window_len=input_width,
                                                                 is_within_day=w.is_sampling_within_day,
@@ -688,59 +706,64 @@ def run():
         for testEpoch in parameter.exp_params.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
             input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
             time_embedded = time_embedding_factory.TEFac.new_te_module(command=parameter.model_params.time_embedding,
-                                                                       tar_dim=model_convGRU.Config.embedding_filters,
+                                                                       tar_dim=parameter.model_params.convGRU_params.embedding_filters,
                                                                        seq_structure=(input_width, shift, label_width))
             if time_embedded is not None:
                 input_time = Input(shape=(input_width + shift + label_width, len(time_embedding.vocab_size)))
                 time_embedded = time_embedded(input_time)
 
-            is_splitting_days = parameter.model_params.split_days or (not w.is_sampling_within_day and parameter.data_params.between8_17)
+            is_splitting_days = parameter.model_params.split_days or (
+                        not w.is_sampling_within_day and parameter.data_params.between8_17)
             if is_splitting_days:
                 n_days = input_width // w.samples_per_day
                 scalar_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
                     input_scalar)
-                scalar_embedded = MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
-                                                        filter_size=preprocess_utils.Config.kernel_size,
+                scalar_embedded = MultipleDaysConvEmbed(filters=parameter.model_params.split_day_params.filters,
+                                                        filter_size=parameter.model_params.split_day_params.kernel_size,
                                                         n_days=n_days,
                                                         n_samples=w.samples_per_day)(scalar_embedded)
-                model = model_convGRU.StationaryConvGRU(num_layers=model_convGRU.Config.layers,
+                model = model_convGRU.StationaryConvGRU(num_layers=parameter.model_params.convGRU_params.layers,
                                                         in_seq_len=w.samples_per_day,
                                                         in_dim=len(parameter.data_params.features),
-                                                        out_seq_len=label_width, out_dim=len(parameter.data_params.target),
-                                                        units=model_convGRU.Config.gru_units,
-                                                        filters=model_convGRU.Config.embedding_filters,
-                                                        kernel_size=model_convGRU.Config.embedding_kernel_size,
+                                                        out_seq_len=label_width,
+                                                        out_dim=len(parameter.data_params.target),
+                                                        units=parameter.model_params.convGRU_params.gru_units,
+                                                        filters=parameter.model_params.convGRU_params.embedding_filters,
+                                                        kernel_size=parameter.model_params.convGRU_params.embedding_kernel_size,
                                                         gen_mode='unistep',
                                                         is_seq_continuous=is_input_continuous_with_output,
-                                                        rate=model_convGRU.Config.dropout_rate,
-                                                        avg_window=series_decomposition.Config.window_size)
+                                                        rate=parameter.model_params.convGRU_params.dropout_rate,
+                                                        avg_window=parameter.model_params.decompose_params.avg_window)
                 if time_embedded is not None:
                     input_time_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
                         time_embedded[0])
-                    input_time_embedded = MultipleDaysConvEmbed(filters=model_convGRU.Config.embedding_filters,
-                                                                filter_size=preprocess_utils.Config.kernel_size,
-                                                                n_days=n_days,
-                                                                n_samples=w.samples_per_day)(input_time_embedded)
+                    input_time_embedded = MultipleDaysConvEmbed(
+                        filters=parameter.model_params.convGRU_params.embedding_filters,
+                        filter_size=parameter.model_params.split_day_params.kernel_size,
+                        n_days=n_days,
+                        n_samples=w.samples_per_day)(input_time_embedded)
                     nonlinear = model(scalar_embedded,
                                       time_embedding_tuple=(input_time_embedded, time_embedded[1], time_embedded[2]))
                 else:
                     nonlinear = model(scalar_embedded)
             else:
-                model = model_convGRU.StationaryConvGRU(num_layers=model_convGRU.Config.layers, in_seq_len=input_width,
+                model = model_convGRU.StationaryConvGRU(num_layers=parameter.model_params.convGRU_params.layers,
+                                                        in_seq_len=input_width,
                                                         in_dim=len(parameter.data_params.features),
-                                                        out_seq_len=label_width, out_dim=len(parameter.data_params.target),
-                                                        units=model_convGRU.Config.gru_units,
-                                                        filters=model_convGRU.Config.embedding_filters,
-                                                        kernel_size=model_convGRU.Config.embedding_kernel_size,
+                                                        out_seq_len=label_width,
+                                                        out_dim=len(parameter.data_params.target),
+                                                        units=parameter.model_params.convGRU_params.gru_units,
+                                                        filters=parameter.model_params.convGRU_params.embedding_filters,
+                                                        kernel_size=parameter.model_params.convGRU_params.embedding_kernel_size,
                                                         gen_mode='unistep',
                                                         is_seq_continuous=is_input_continuous_with_output,
-                                                        rate=model_convGRU.Config.dropout_rate,
-                                                        avg_window=series_decomposition.Config.window_size)
+                                                        rate=parameter.model_params.convGRU_params.dropout_rate,
+                                                        avg_window=parameter.model_params.decompose_params.avg_window)
                 nonlinear = model(input_scalar, time_embedding_tuple=time_embedded)
 
             linear = bypass_factory.BypassFac.new_bypass_module(command=parameter.model_params.bypass,
                                                                 out_width=label_width,
-                                                                order=model_AR.Config.order,
+                                                                order=parameter.model_params.bypass_params.order,
                                                                 in_dim=len(parameter.data_params.features),
                                                                 window_len=input_width,
                                                                 is_within_day=w.is_sampling_within_day,
@@ -790,66 +813,70 @@ def run():
 
             input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
             time_embedded = time_embedding_factory.TEFac.new_te_module(command=parameter.model_params.time_embedding,
-                                                                       tar_dim=model_convGRU.Config.embedding_filters,
+                                                                       tar_dim=parameter.model_params.convGRU_params.embedding_filters,
                                                                        seq_structure=(input_width, shift, label_width))
             if time_embedded is not None:
                 input_time = Input(shape=(input_width + shift + label_width, len(time_embedding.vocab_size)))
                 time_embedded = time_embedded(input_time)
 
-            is_splitting_days = parameter.model_params.split_days or (not w.is_sampling_within_day and parameter.data_params.between8_17)
+            is_splitting_days = parameter.model_params.split_days or (
+                        not w.is_sampling_within_day and parameter.data_params.between8_17)
             if is_splitting_days:
                 n_days = input_width // w.samples_per_day
                 scalar_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
                     input_scalar)
-                scalar_embedded = MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
-                                                        filter_size=preprocess_utils.Config.kernel_size,
+                scalar_embedded = MultipleDaysConvEmbed(filters=parameter.model_params.split_day_params.filters,
+                                                        filter_size=parameter.model_params.split_day_params.kernel_size,
                                                         n_days=n_days,
                                                         n_samples=w.samples_per_day)(scalar_embedded)
-                model = model_transformer.StationaryTransformer(num_layers=model_transformer.Config.layers,
-                                                                d_model=model_transformer.Config.d_model,
-                                                                num_heads=model_transformer.Config.n_heads,
-                                                                dff=model_transformer.Config.dff,
-                                                                src_seq_len=w.samples_per_day,
-                                                                tar_seq_len=label_width,
-                                                                src_dim=preprocess_utils.Config.filters,
-                                                                tar_dim=len(parameter.data_params.target),
-                                                                kernel_size=model_transformer.Config.embedding_kernel_size,
-                                                                rate=model_transformer.Config.dropout_rate,
-                                                                gen_mode="unistep",
-                                                                is_seq_continuous=is_input_continuous_with_output,
-                                                                is_pooling=False, token_len=0,
-                                                                avg_window=series_decomposition.Config.window_size)
+                model = model_transformer.StationaryTransformer(
+                    num_layers=parameter.model_params.transformer_params.layers,
+                    d_model=parameter.model_params.transformer_params.d_model,
+                    num_heads=parameter.model_params.transformer_params.n_heads,
+                    dff=parameter.model_params.transformer_params.dff,
+                    src_seq_len=w.samples_per_day,
+                    tar_seq_len=label_width,
+                    src_dim=parameter.model_params.split_day_params.filters,
+                    tar_dim=len(parameter.data_params.target),
+                    kernel_size=parameter.model_params.transformer_params.embedding_kernel_size,
+                    rate=parameter.model_params.transformer_params.dropout_rate,
+                    gen_mode="unistep",
+                    is_seq_continuous=is_input_continuous_with_output,
+                    is_pooling=False, token_len=0,
+                    avg_window=parameter.model_params.decompose_params.avg_window)
                 if time_embedded is not None:
                     input_time_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
                         time_embedded[0])
-                    input_time_embedded = MultipleDaysConvEmbed(filters=model_convGRU.Config.embedding_filters,
-                                                                filter_size=preprocess_utils.Config.kernel_size,
-                                                                n_days=n_days,
-                                                                n_samples=w.samples_per_day)(input_time_embedded)
+                    input_time_embedded = MultipleDaysConvEmbed(
+                        filters=parameter.model_params.convGRU_params.embedding_filters,
+                        filter_size=parameter.model_params.split_day_params.kernel_size,
+                        n_days=n_days,
+                        n_samples=w.samples_per_day)(input_time_embedded)
                     nonlinear = model(scalar_embedded,
                                       time_embedding_tuple=(input_time_embedded, time_embedded[1], time_embedded[2]))
                 else:
                     nonlinear = model(scalar_embedded)
             else:
-                model = model_transformer.StationaryTransformer(num_layers=model_transformer.Config.layers,
-                                                                d_model=model_transformer.Config.d_model,
-                                                                num_heads=model_transformer.Config.n_heads,
-                                                                dff=model_transformer.Config.dff,
-                                                                src_seq_len=input_width,
-                                                                tar_seq_len=label_width,
-                                                                src_dim=len(parameter.data_params.features),
-                                                                tar_dim=len(parameter.data_params.target),
-                                                                kernel_size=model_transformer.Config.embedding_kernel_size,
-                                                                rate=model_transformer.Config.dropout_rate,
-                                                                gen_mode="unistep",
-                                                                is_seq_continuous=is_input_continuous_with_output,
-                                                                is_pooling=False, token_len=token_len,
-                                                                avg_window=series_decomposition.Config.window_size)
+                model = model_transformer.StationaryTransformer(
+                    num_layers=parameter.model_params.transformer_params.layers,
+                    d_model=parameter.model_params.transformer_params.d_model,
+                    num_heads=parameter.model_params.transformer_params.n_heads,
+                    dff=parameter.model_params.transformer_params.dff,
+                    src_seq_len=input_width,
+                    tar_seq_len=label_width,
+                    src_dim=len(parameter.data_params.features),
+                    tar_dim=len(parameter.data_params.target),
+                    kernel_size=parameter.model_params.transformer_params.embedding_kernel_size,
+                    rate=parameter.model_params.transformer_params.dropout_rate,
+                    gen_mode="unistep",
+                    is_seq_continuous=is_input_continuous_with_output,
+                    is_pooling=False, token_len=token_len,
+                    avg_window=parameter.model_params.decompose_params.avg_window)
                 nonlinear = model(input_scalar, time_embedding_tuple=time_embedded)
 
             linear = bypass_factory.BypassFac.new_bypass_module(command=parameter.model_params.bypass,
                                                                 out_width=label_width,
-                                                                order=model_AR.Config.order,
+                                                                order=parameter.model_params.bypass_params.order,
                                                                 in_dim=len(parameter.data_params.features),
                                                                 window_len=input_width,
                                                                 is_within_day=w.is_sampling_within_day,
@@ -895,59 +922,64 @@ def run():
             input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
 
             time_embedded = time_embedding_factory.TEFac.new_te_module(command=parameter.model_params.time_embedding,
-                                                                       tar_dim=model_convGRU.Config.embedding_filters,
+                                                                       tar_dim=parameter.model_params.convGRU_params.embedding_filters,
                                                                        seq_structure=(input_width, shift, label_width))
             if time_embedded is not None:
                 input_time = Input(shape=(input_width + shift + label_width, len(time_embedding.vocab_size)))
                 time_embedded = time_embedded(input_time)
 
-            is_splitting_days = parameter.model_params.split_days or (not w.is_sampling_within_day and parameter.data_params.between8_17)
+            is_splitting_days = parameter.model_params.split_days or (
+                        not w.is_sampling_within_day and parameter.data_params.between8_17)
             if is_splitting_days:
                 n_days = input_width // w.samples_per_day
                 scalar_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
                     input_scalar)
-                scalar_embedded = MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
-                                                        filter_size=preprocess_utils.Config.kernel_size,
+                scalar_embedded = MultipleDaysConvEmbed(filters=parameter.model_params.split_day_params.filters,
+                                                        filter_size=parameter.model_params.split_day_params.kernel_size,
                                                         n_days=n_days,
                                                         n_samples=w.samples_per_day)(scalar_embedded)
-                model = model_convGRU.MovingZNormConvGRU(num_layers=model_convGRU.Config.layers,
+                model = model_convGRU.MovingZNormConvGRU(num_layers=parameter.model_params.convGRU_params.layers,
                                                          in_seq_len=w.samples_per_day,
                                                          in_dim=len(parameter.data_params.features),
-                                                         out_seq_len=label_width, out_dim=len(parameter.data_params.target),
-                                                         units=model_convGRU.Config.gru_units,
-                                                         filters=model_convGRU.Config.embedding_filters,
-                                                         kernel_size=model_convGRU.Config.embedding_kernel_size,
+                                                         out_seq_len=label_width,
+                                                         out_dim=len(parameter.data_params.target),
+                                                         units=parameter.model_params.convGRU_params.gru_units,
+                                                         filters=parameter.model_params.convGRU_params.embedding_filters,
+                                                         kernel_size=parameter.model_params.convGRU_params.embedding_kernel_size,
                                                          gen_mode='unistep',
                                                          is_seq_continuous=is_input_continuous_with_output,
-                                                         rate=model_convGRU.Config.dropout_rate,
-                                                         avg_window=series_decomposition.Config.window_size)
+                                                         rate=parameter.model_params.convGRU_params.dropout_rate,
+                                                         avg_window=parameter.model_params.decompose_params.avg_window)
                 if time_embedded is not None:
                     input_time_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
                         time_embedded[0])
-                    input_time_embedded = MultipleDaysConvEmbed(filters=model_convGRU.Config.embedding_filters,
-                                                                filter_size=preprocess_utils.Config.kernel_size,
-                                                                n_days=n_days,
-                                                                n_samples=w.samples_per_day)(input_time_embedded)
+                    input_time_embedded = MultipleDaysConvEmbed(
+                        filters=parameter.model_params.convGRU_params.embedding_filters,
+                        filter_size=parameter.model_params.split_day_params.kernel_size,
+                        n_days=n_days,
+                        n_samples=w.samples_per_day)(input_time_embedded)
                     nonlinear = model(scalar_embedded,
                                       time_embedding_tuple=(input_time_embedded, time_embedded[1], time_embedded[2]))
                 else:
                     nonlinear = model(scalar_embedded)
             else:
-                model = model_convGRU.MovingZNormConvGRU(num_layers=model_convGRU.Config.layers, in_seq_len=input_width,
+                model = model_convGRU.MovingZNormConvGRU(num_layers=parameter.model_params.convGRU_params.layers,
+                                                         in_seq_len=input_width,
                                                          in_dim=len(parameter.data_params.features),
-                                                         out_seq_len=label_width, out_dim=len(parameter.data_params.target),
-                                                         units=model_convGRU.Config.gru_units,
-                                                         filters=model_convGRU.Config.embedding_filters,
-                                                         kernel_size=model_convGRU.Config.embedding_kernel_size,
+                                                         out_seq_len=label_width,
+                                                         out_dim=len(parameter.data_params.target),
+                                                         units=parameter.model_params.convGRU_params.gru_units,
+                                                         filters=parameter.model_params.convGRU_params.embedding_filters,
+                                                         kernel_size=parameter.model_params.convGRU_params.embedding_kernel_size,
                                                          gen_mode='unistep',
                                                          is_seq_continuous=is_input_continuous_with_output,
-                                                         rate=model_convGRU.Config.dropout_rate,
-                                                         avg_window=series_decomposition.Config.window_size)
+                                                         rate=parameter.model_params.convGRU_params.dropout_rate,
+                                                         avg_window=parameter.model_params.decompose_params.avg_window)
                 nonlinear = model(input_scalar, time_embedding_tuple=time_embedded)
 
             linear = bypass_factory.BypassFac.new_bypass_module(command=parameter.model_params.bypass,
                                                                 out_width=label_width,
-                                                                order=model_AR.Config.order,
+                                                                order=parameter.model_params.bypass_params.order,
                                                                 in_dim=len(parameter.data_params.features),
                                                                 window_len=input_width,
                                                                 is_within_day=w.is_sampling_within_day,
@@ -997,66 +1029,70 @@ def run():
 
             input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
             time_embedded = time_embedding_factory.TEFac.new_te_module(command=parameter.model_params.time_embedding,
-                                                                       tar_dim=model_convGRU.Config.embedding_filters,
+                                                                       tar_dim=parameter.model_params.convGRU_params.embedding_filters,
                                                                        seq_structure=(input_width, shift, label_width))
             if time_embedded is not None:
                 input_time = Input(shape=(input_width + shift + label_width, len(time_embedding.vocab_size)))
                 time_embedded = time_embedded(input_time)
 
-            is_splitting_days = parameter.model_params.split_days or (not w.is_sampling_within_day and parameter.data_params.between8_17)
+            is_splitting_days = parameter.model_params.split_days or (
+                        not w.is_sampling_within_day and parameter.data_params.between8_17)
             if is_splitting_days:
                 n_days = input_width // w.samples_per_day
                 scalar_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
                     input_scalar)
-                scalar_embedded = MultipleDaysConvEmbed(filters=preprocess_utils.Config.filters,
-                                                        filter_size=preprocess_utils.Config.kernel_size,
+                scalar_embedded = MultipleDaysConvEmbed(filters=parameter.model_params.split_day_params.filters,
+                                                        filter_size=parameter.model_params.split_day_params.kernel_size,
                                                         n_days=n_days,
                                                         n_samples=w.samples_per_day)(scalar_embedded)
-                model = model_transformer.MovingZScoreNormTransformer(num_layers=model_transformer.Config.layers,
-                                                                      d_model=model_transformer.Config.d_model,
-                                                                      num_heads=model_transformer.Config.n_heads,
-                                                                      dff=model_transformer.Config.dff,
-                                                                      src_seq_len=w.samples_per_day,
-                                                                      tar_seq_len=label_width,
-                                                                      src_dim=preprocess_utils.Config.filters,
-                                                                      tar_dim=len(parameter.data_params.target),
-                                                                      kernel_size=model_transformer.Config.embedding_kernel_size,
-                                                                      rate=model_transformer.Config.dropout_rate,
-                                                                      gen_mode="unistep",
-                                                                      is_seq_continuous=is_input_continuous_with_output,
-                                                                      is_pooling=False, token_len=0,
-                                                                      avg_window=series_decomposition.Config.window_size)
+                model = model_transformer.MovingZScoreNormTransformer(
+                    num_layers=parameter.model_params.transformer_params.layers,
+                    d_model=parameter.model_params.transformer_params.d_model,
+                    num_heads=parameter.model_params.transformer_params.n_heads,
+                    dff=parameter.model_params.transformer_params.dff,
+                    src_seq_len=w.samples_per_day,
+                    tar_seq_len=label_width,
+                    src_dim=parameter.model_params.split_day_params.filters,
+                    tar_dim=len(parameter.data_params.target),
+                    kernel_size=parameter.model_params.transformer_params.embedding_kernel_size,
+                    rate=parameter.model_params.transformer_params.dropout_rate,
+                    gen_mode="unistep",
+                    is_seq_continuous=is_input_continuous_with_output,
+                    is_pooling=False, token_len=0,
+                    avg_window=parameter.model_params.decompose_params.avg_window)
                 if time_embedded is not None:
                     input_time_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
                         time_embedded[0])
-                    input_time_embedded = MultipleDaysConvEmbed(filters=model_convGRU.Config.embedding_filters,
-                                                                filter_size=preprocess_utils.Config.kernel_size,
-                                                                n_days=n_days,
-                                                                n_samples=w.samples_per_day)(input_time_embedded)
+                    input_time_embedded = MultipleDaysConvEmbed(
+                        filters=parameter.model_params.convGRU_params.embedding_filters,
+                        filter_size=parameter.model_params.split_day_params.kernel_size,
+                        n_days=n_days,
+                        n_samples=w.samples_per_day)(input_time_embedded)
                     nonlinear = model(scalar_embedded,
                                       time_embedding_tuple=(input_time_embedded, time_embedded[1], time_embedded[2]))
                 else:
                     nonlinear = model(scalar_embedded)
             else:
-                model = model_transformer.MovingZScoreNormTransformer(num_layers=model_transformer.Config.layers,
-                                                                      d_model=model_transformer.Config.d_model,
-                                                                      num_heads=model_transformer.Config.n_heads,
-                                                                      dff=model_transformer.Config.dff,
-                                                                      src_seq_len=input_width,
-                                                                      tar_seq_len=label_width,
-                                                                      src_dim=len(parameter.data_params.features),
-                                                                      tar_dim=len(parameter.data_params.target),
-                                                                      kernel_size=model_transformer.Config.embedding_kernel_size,
-                                                                      rate=model_transformer.Config.dropout_rate,
-                                                                      gen_mode="unistep",
-                                                                      is_seq_continuous=is_input_continuous_with_output,
-                                                                      is_pooling=False, token_len=token_len,
-                                                                      avg_window=series_decomposition.Config.window_size)
+                model = model_transformer.MovingZScoreNormTransformer(
+                    num_layers=parameter.model_params.transformer_params.layers,
+                    d_model=parameter.model_params.transformer_params.d_model,
+                    num_heads=parameter.model_params.transformer_params.n_heads,
+                    dff=parameter.model_params.transformer_params.dff,
+                    src_seq_len=input_width,
+                    tar_seq_len=label_width,
+                    src_dim=len(parameter.data_params.features),
+                    tar_dim=len(parameter.data_params.target),
+                    kernel_size=parameter.model_params.transformer_params.embedding_kernel_size,
+                    rate=parameter.model_params.transformer_params.dropout_rate,
+                    gen_mode="unistep",
+                    is_seq_continuous=is_input_continuous_with_output,
+                    is_pooling=False, token_len=token_len,
+                    avg_window=parameter.model_params.decompose_params.avg_window)
                 nonlinear = model(input_scalar, time_embedding_tuple=time_embedded)
 
             linear = bypass_factory.BypassFac.new_bypass_module(command=parameter.model_params.bypass,
                                                                 out_width=label_width,
-                                                                order=model_AR.Config.order,
+                                                                order=parameter.model_params.bypass_params.order,
                                                                 in_dim=len(parameter.data_params.features),
                                                                 window_len=input_width,
                                                                 is_within_day=w.is_sampling_within_day,

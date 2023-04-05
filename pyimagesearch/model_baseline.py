@@ -68,7 +68,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='hyper-parameters tuning')
     parser.add_argument('-s', '--shift', type=int, default=parameter.data_params.shifted_width,
                         help='lag between input and output sequence')
-    parser.add_argument('-o', '--output', type=int, default=parameter.data_params.label_width, help='length of output sequence')
+    parser.add_argument('-o', '--output', type=int, default=parameter.data_params.label_width,
+                        help='length of output sequence')
     args = parser.parse_args()
     WMAPE_dict = {}
     corr_dict = {}
@@ -205,7 +206,6 @@ if __name__ == '__main__':
 # Persistence  CORR: 0.8334034085273743
 
 
-
 # #####################################################
 #           Dataset: ../\dataset_renheo_[2019].csv
 #         Shift len: 0
@@ -238,7 +238,6 @@ if __name__ == '__main__':
 #        Best  CORR: 0.8487817049026489 with MA width of 696
 # Persistence WMAPE: 0.5532902479171753
 # Persistence  CORR: 0.7455820441246033
-
 
 
 # #####################################################

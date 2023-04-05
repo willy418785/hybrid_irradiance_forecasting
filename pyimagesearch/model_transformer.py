@@ -17,15 +17,6 @@ from pyimagesearch.windowsGenerator import WindowGenerator
 gen_modes = ['unistep', 'auto', "mlp"]
 
 
-class Config():
-    layers = 1
-    d_model = 32
-    n_heads = 1
-    dff = d_model * 4
-    embedding_kernel_size = 3
-    dropout_rate = 0.1
-
-
 def feed_forward(d_model, dff, dropout):
     return tf.keras.Sequential([
         Dense(dff, activation='elu'),  # (batch_size, seq_len, dff)
@@ -327,6 +318,7 @@ class StationaryTransformer(Transformer):
                 StationaryDecoderLayer(d_model=d_model, num_heads=num_heads, key_dim=self.decoder.k_dim,
                                        value_dim=self.decoder.v_dim,
                                        dff=dff, rate=rate, avg_window=avg_window) for _ in range(num_layers)]
+
     def call(self, inputs, training, time_embedding_tuple=None):
         seasonality, _ = self.decompose(inputs)
         out = super().call(seasonality, training, time_embedding_tuple=time_embedding_tuple)
@@ -447,14 +439,18 @@ if __name__ == '__main__':
                          samples_per_day=dataUtil.samples_per_day)
     input_scalar = Input(shape=(src_len, len(parameter.data_params.features)))
     input_time = Input(shape=(src_len + shift + tar_len, len(time_embedding.vocab_size)))
-    embedding = time_embedding.TimeEmbedding(output_dims=Config.d_model, input_len=src_len, shift_len=shift,
+    embedding = time_embedding.TimeEmbedding(output_dims=parameter.model_params.transformer_params.d_model,
+                                             input_len=src_len, shift_len=shift,
                                              label_len=tar_len)(input_time)
-    LR = MovingZScoreNormTransformer(num_layers=Config.layers, d_model=Config.d_model, num_heads=Config.n_heads,
-                               dff=Config.dff,
-                               src_seq_len=src_len, tar_seq_len=tar_len,
-                               src_dim=len(parameter.data_params.features),
-                               tar_dim=len(parameter.data_params.target), rate=0.1, gen_mode="unistep", is_seq_continuous=True,
-                               is_pooling=True, token_len=5)(input_scalar, time_embedding_tuple=embedding)
+    LR = MovingZScoreNormTransformer(num_layers=parameter.model_params.transformer_params.layers,
+                                     d_model=parameter.model_params.transformer_params.d_model,
+                                     num_heads=parameter.model_params.transformer_params.n_heads,
+                                     dff=parameter.model_params.transformer_params.dff,
+                                     src_seq_len=src_len, tar_seq_len=tar_len,
+                                     src_dim=len(parameter.data_params.features),
+                                     tar_dim=len(parameter.data_params.target), rate=0.1, gen_mode="unistep",
+                                     is_seq_continuous=True,
+                                     is_pooling=True, token_len=5)(input_scalar, time_embedding_tuple=embedding)
 
     model = Model(inputs=[input_scalar, input_time], outputs=LR)
     model.compile(loss=tf.losses.MeanSquaredError(), optimizer="Adam"
@@ -463,7 +459,8 @@ if __name__ == '__main__':
     model.summary()
     tf.keras.backend.clear_session()
     history = model.fit(w2.train(w2.samples_per_day, addcloud=False, using_timestamp_data=True, is_shuffle=False),
-                        validation_data=w2.val(w2.samples_per_day, addcloud=False, using_timestamp_data=True, is_shuffle=False),
+                        validation_data=w2.val(w2.samples_per_day, addcloud=False, using_timestamp_data=True,
+                                               is_shuffle=False),
                         epochs=100, batch_size=5, callbacks=parameter.exp_params.callbacks)
     for x, y in w2.train(w2.samples_per_day, addcloud=False, using_timestamp_data=True, is_shuffle=False):
         c = model(x)

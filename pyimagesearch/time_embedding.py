@@ -86,17 +86,19 @@ class SinCosTimeEncoding(tf.keras.layers.Layer):
     def call(self, inputs):
         output = []
         for i, key in enumerate(list(vocab_size)):
-            sin_transformed = tf.math.sin(2*np.pi*inputs[:, :, i] / vocab_size[key])
-            cos_transformed = tf.math.cos(2*np.pi*inputs[:, :, i] / vocab_size[key])
+            sin_transformed = tf.math.sin(2 * np.pi * inputs[:, :, i] / vocab_size[key])
+            cos_transformed = tf.math.cos(2 * np.pi * inputs[:, :, i] / vocab_size[key])
             transformed = tf.stack([sin_transformed, cos_transformed], -1)
             output.append(transformed)
         output = tf.concat(output, -1)
         output = self.linear(output)
         return output[:, self.input_slice, :], output[:, self.shift_slice, :], output[:, self.label_slice, :]
 
+
 if __name__ == '__main__':
 
     from pyimagesearch.windowsGenerator import WindowGenerator
+
     train_path_with_weather_info = os.path.sep.join(["../{}".format(parameter.data_params.csv_name)])
     data_with_weather_info = DataUtil(train_path=train_path_with_weather_info,
                                       val_path=None,
@@ -138,7 +140,7 @@ if __name__ == '__main__':
                          samples_per_day=dataUtil.samples_per_day)
     input_scalar = Input(shape=(src_len, len(parameter.data_params.features)))
     input_time = Input(shape=(src_len + shift + tar_len, len(vocab_size)))
-    LR = model_AR.TemporalChannelIndependentLR(model_AR.Config.order, tar_seq_len=tar_len,
+    LR = model_AR.TemporalChannelIndependentLR(parameter.model_params.bypass_params.order, tar_seq_len=tar_len,
                                                src_dims=len(parameter.data_params.features))(input_scalar)
     embedding = TimeEmbedding(output_dims=32, input_len=src_len, shift_len=shift, label_len=tar_len)(input_time)
     model = Model(inputs=[input_scalar, input_time], outputs=[LR, embedding])

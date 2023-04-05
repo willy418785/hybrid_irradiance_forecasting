@@ -1,11 +1,6 @@
 import tensorflow as tf
 
 
-class Config():
-    filters = 32
-    kernel_size = 3
-
-
 class SplitInputByDay(tf.keras.layers.Layer):
     def __init__(self, n_days, n_samples):
         super().__init__()
