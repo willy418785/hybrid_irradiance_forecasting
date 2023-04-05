@@ -3,14 +3,15 @@ from sklearn.preprocessing import MinMaxScaler
 
 
 class _DataParams:
+    DEFAULT_IMAGE_DEPTH = 3  # RGB image
     def __init__(self):
         # miscellaneous parameters
         self.addAverage = False  # True for one model:add cloud and average
         self.is_using_shuffle = False
 
         # normalization related parameters
-        self.norm_mode = 1
-        self.label_norm_mode = 0
+        self.norm_mode = 'std'
+        self.label_norm_mode = None
 
         # parameters that used to specify different dataset
         self.csv_name = 'EC.csv'
@@ -46,7 +47,7 @@ class _DataParams:
         self.image_input_width3D = 10
         self.is_using_sun_location = False
         self.is_using_cloud_location = False
-        self.image_depth = 3  # default RGB image
+        self.image_depth = self.DEFAULT_IMAGE_DEPTH
         self.timezone = 'Asia/Taipei'
         self.squeeze = False  # windowgenerator裡面image要不要降成2維，用於某些model
 
@@ -80,7 +81,7 @@ class _DataParams:
             self.end = '17:00:00'
 
     def set_image_params(self):
-        self.image_depth = 3
+        self.image_depth = self.DEFAULT_IMAGE_DEPTH
         if self.is_using_sun_location:
             self.image_depth += 1
         if self.is_using_cloud_location:
@@ -110,8 +111,8 @@ class _ExpParams:
 class _ModelParams:
     def __init__(self):
         self.split_days = False
-        self.bypass = 1
-        self.time_embedding = 2
+        self.bypass = "LR"
+        self.time_embedding = "learnable"
         self.transformer_params = self._TransformerParams()
         self.convGRU_params = self._ConvGRUParams()
         self.bypass_params = self._BypassParams()

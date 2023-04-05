@@ -15,9 +15,22 @@ import os
 import glob
 import cv2
 
-norm_type_list = ['None', 'std', 'minmax']
+norm_type_list = [None, 'std', 'minmax']
 split_mode_list = ["all_year", "month", 'cross_month_validate']
 smoothing_mode_list = [None, 'MA', 'EMA']
+
+
+def get_mode(command, mode_list):
+    if type(command) is int:
+        if command < 0 or command > len(mode_list):
+            return mode_list[0]
+        else:
+            return mode_list[command]
+    else:
+        if command in mode_list:
+            return command
+        else:
+            return mode_list[0]
 
 
 class DataUtil(object):
@@ -45,17 +58,17 @@ class DataUtil(object):
         keep_date:
         """
         self.using_images = using_images
-        self.normalise_mode = normalise
-        self.label_norm_mode = label_norm_mode
+        self.normalise_mode = get_mode(normalise, norm_type_list)
+        self.label_norm_mode = get_mode(label_norm_mode, norm_type_list)
         self.train_df_cloud = None
         self.val_df_cloud = None
         self.test_df_cloud = None
         self.train_df_average = None
         self.val_df_average = None
         self.test_df_average = None
-        if self.label_norm_mode == 1:
+        if self.label_norm_mode == 'std':
             self.labelScaler = StandardScaler()
-        elif self.label_norm_mode == 2:
+        elif self.label_norm_mode == 'minmax':
             self.labelScaler = MinMaxScaler()
         else:
             self.labelScaler = None
@@ -90,21 +103,14 @@ class DataUtil(object):
             # log.error("Error opening data file ... %s", err)
         ######################資料集切分
         ## split 照比例分
-        if type(split_mode) is int:
-            if split_mode < 0 or split_mode >= len(split_mode_list):
-                split_mode = split_mode_list[0]
-            else:
-                split_mode = split_mode_list[split_mode]
-        else:
-            if split_mode not in split_mode_list:
-                split_mode = split_mode_list[0]
-        if (split_mode == "all_year"):
+        self.split_mode = get_mode(split_mode, split_mode_list)
+        if self.split_mode == "all_year":
             self.train_df, self.val_df = train_test_split(self.train_df, test_size=val_split + test_split,
                                                           shuffle=False)
             self.val_df, self.test_df = train_test_split(self.val_df,
                                                          test_size=test_split / (val_split + test_split),
                                                          shuffle=False)
-        elif (split_mode == "month"):
+        elif self.split_mode == "month":
             last_month = np.max(np.unique(self.train_df.index.month))
             assert month_sep is not None
             assert type(month_sep) is int
@@ -119,7 +125,7 @@ class DataUtil(object):
             self.val_df = self.train_df[self.train_df.index.month == vmonth]
             # self.val_df = self.test_df
             self.train_df = self.train_df[self.train_df.index.month == train_month]
-        elif (split_mode == "cross_month_validate"):
+        elif self.split_mode == "cross_month_validate":
             assert month_sep is not None and type(month_sep) is int
             val_month = month_sep - 1 if (month_sep - 1) > 0 else month_sep + 1
             self.test_df = self.train_df[self.train_df.index.month == month_sep]
@@ -151,14 +157,7 @@ class DataUtil(object):
             self.test_df = self.timeFeatureProcess(self.test_df)
             self.val_df = self.timeFeatureProcess(self.val_df)'''
         # smoothing target data
-        if type(smoothing_mode) is int:
-            if smoothing_mode < 0 or smoothing_mode >= len(smoothing_mode_list):
-                smoothing_mode = smoothing_mode_list[0]
-            else:
-                smoothing_mode = smoothing_mode_list[smoothing_mode]
-        else:
-            if smoothing_mode not in smoothing_mode_list:
-                smoothing_mode = smoothing_mode_list[0]
+        self.smoothing_mode = get_mode(smoothing_mode, smoothing_mode_list)
         for target in parameter.data_params.target:
             self.train_df[target] = self.smoothing(self.train_df[target], smoothing_mode, smoothing_parameter)
             self.val_df[target] = self.smoothing(self.val_df[target], smoothing_mode, smoothing_parameter)
@@ -279,13 +278,13 @@ class DataUtil(object):
                 self.test_df[self.label_col] = self.labelScaler.transform(self.test_df[self.label_col])
             # log.debug("Normalise: %s", self.norm_type_list[self.normalise_mode])
         # assign different feature scaler corresponding to user input
-        if self.normalise_mode == 0:  # do not normalise
+        if self.normalise_mode == 'std':
+            self.scaler = StandardScaler()
+        elif self.normalise_mode == 'minmax':
+            self.scaler = MinMaxScaler()
+        else:
             self.scaler = None
             return
-        if self.normalise_mode == 1:  # stand scaler
-            self.scaler = StandardScaler()
-        if self.normalise_mode == 2:  # minmax scaler
-            self.scaler = MinMaxScaler()
         # feature_scale_col = self.label_col.copy()
         '''if parameter.dataUtilParam.time_features:
             feature_scale_col = feature_scale_col + parameter.dataUtilParam.time_features_col'''
