@@ -185,9 +185,10 @@ class WindowGenerator():
                 ds_t = images_dataset if ds_t is None else ds_t.concatenate(images_dataset)
             if is_timestamp_as_data:
                 timestamps = pd.DataFrame(data_on_date.index.values, index=data_on_date.index, columns=['timestamp']) \
-                    if parameter.data_params.between8_17 and self.is_sampling_within_day else pd.DataFrame(data.index.values,
-                                                                                               index=data.index,
-                                                                                               columns=['timestamp'])
+                    if parameter.data_params.between8_17 and self.is_sampling_within_day else pd.DataFrame(
+                    data.index.values,
+                    index=data.index,
+                    columns=['timestamp'])
                 timestamps['month'] = timestamps['timestamp'].apply(lambda x: x.month - 1)
                 timestamps['day'] = timestamps['timestamp'].apply(lambda x: x.day - 1)
                 timestamps['hour'] = timestamps['timestamp'].apply(lambda x: x.hour)
@@ -685,7 +686,8 @@ class WindowGenerator():
                                                                  using_timestamp_data=using_timestamp_data),
                                                        datamode=datamode)
                 _, all_y_index = self.getTimeIndex(
-                    self.test(parameter.data_params.test_sample_rate, ganIndex=True, addcloud=False, using_timestamp_data=False), name)
+                    self.test(parameter.data_params.test_sample_rate, ganIndex=True, addcloud=False,
+                              using_timestamp_data=False), name)
         elif len(model) == 2:
             if datamode == "data":  # cnnlstm
                 cloudA_pred, cloudA_y = self.plotPredictUnit(model[0],
@@ -803,7 +805,11 @@ class WindowGenerator():
         pred_recovered = all_pred.reshape((-1, l, c))
         gt_recovered = all_y.reshape((-1, l, c))
 
-        output_days = None if self.label_width % self.samples_per_day != 0 else self.label_width // self.samples_per_day
+        if self.label_width % self.samples_per_day != 0 or \
+                parameter.data_params.test_sample_rate % self.samples_per_day != 0:
+            output_days = None
+        else:
+            output_days = self.label_width // self.samples_per_day
         metircs_dist = my_metrics.log_metrics(tdf, name)
         sep_metircs_dist = my_metrics.seperate_log_metrics([gt_recovered, pred_recovered], name, self.label_width)
         metircs_dist_by_day = my_metrics.log_metrics_day_by_day([gt_recovered, pred_recovered], name, output_days)
