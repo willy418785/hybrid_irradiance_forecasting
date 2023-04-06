@@ -1,10 +1,27 @@
 from tensorflow.keras.callbacks import EarlyStopping
-from sklearn.preprocessing import MinMaxScaler
 
 
-class _DataParams:
+class _Params:
+    def __init__(self, name=None):
+        self.name = name
+
+    def __str__(self):
+        members_dict = vars(self)
+        context = ""
+        for k, v in members_dict.items():
+            if k == 'name' or v == self.name:
+                context += "{}'s parameters\n".format(str(v))
+            elif issubclass(type(v), __class__):
+                context += v.__str__()
+            else:
+                context += "\t{}: {}\n".format(str(k), str(v))
+        return context
+
+
+class _DataParams(_Params):
     DEFAULT_IMAGE_DEPTH = 3  # RGB image
-    def __init__(self):
+    def __init__(self, name="Data"):
+        super().__init__(name)
         # miscellaneous parameters
         self.addAverage = False  # True for one model:add cloud and average
         self.is_using_shuffle = False
@@ -88,8 +105,9 @@ class _DataParams:
             self.image_depth += 1
 
 
-class _ExpParams:
-    def __init__(self):
+class _ExpParams(_Params):
+    def __init__(self, name="Experiment"):
+        super().__init__(name)
         self.epochs = 300
         # self.epoch_list = [100, 200, 250, 300, 400, 500]     if no early stop
         self.epoch_list = [1]
@@ -108,8 +126,9 @@ class _ExpParams:
         self.save_csv = False
 
 
-class _ModelParams:
-    def __init__(self):
+class _ModelParams(_Params):
+    def __init__(self, name="Model"):
+        super().__init__(name)
         self.split_days = False
         self.bypass = "LR"
         self.time_embedding = "learnable"
@@ -119,8 +138,9 @@ class _ModelParams:
         self.decompose_params = self._DecomposeParams()
         self.split_day_params = self._SplitDayModuleParams()
 
-    class _TransformerParams:
-        def __init__(self):
+    class _TransformerParams(_Params):
+        def __init__(self, name="Transformer"):
+            super().__init__(name)
             self.layers = 1
             self.d_model = 32
             self.n_heads = 1
@@ -128,24 +148,28 @@ class _ModelParams:
             self.embedding_kernel_size = 3
             self.dropout_rate = 0.1
 
-    class _ConvGRUParams:
-        def __init__(self):
+    class _ConvGRUParams(_Params):
+        def __init__(self, name="ConvGRU"):
+            super().__init__(name)
             self.layers = 1
             self.embedding_filters = 32
             self.gru_units = 32
             self.embedding_kernel_size = 3
             self.dropout_rate = 0.1
 
-    class _BypassParams:
-        def __init__(self):
+    class _BypassParams(_Params):
+        def __init__(self, name="Bypass"):
+            super().__init__(name)
             self.order = 24
 
-    class _DecomposeParams:
-        def __init__(self):
+    class _DecomposeParams(_Params):
+        def __init__(self, name="Series Decomposition"):
+            super().__init__(name)
             self.avg_window = 17
 
-    class _SplitDayModuleParams:
-        def __init__(self):
+    class _SplitDayModuleParams(_Params):
+        def __init__(self, name="Split-day Module"):
+            super().__init__(name)
             self.filters = 32
             self.kernel_size = 3
 
@@ -182,3 +206,9 @@ csvLogMetrics = ["MSE", "RMSE", "RMSPE", "MAE", "MAPE", "WMAPE", "VWMAPE", "corr
                  "MSE avg", "RMSE avg", "RMSPE avg", "MAE avg", "MAPE avg", "WMAPE avg", "VWMAPE avg", "corr avg"]
 
 normalization = "MinMax"  # "MinMax","Mean","Standard","Max","No"
+
+if __name__ == "__main__":
+    print("######Default Configuration######")
+    print(data_params)
+    print(exp_params)
+    print(model_params)
