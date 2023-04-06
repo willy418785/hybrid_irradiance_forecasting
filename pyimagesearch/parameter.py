@@ -110,9 +110,9 @@ class _ExpParams(_Params):
         super().__init__(name)
         self.epochs = 300
         # self.epoch_list = [100, 200, 250, 300, 400, 500]     if no early stop
-        self.epoch_list = [1]
+        # self.epoch_list = [1]
         # self.epoch_list = [0]
-        # self.epoch_list = [500, 500, 500, 500, 500]
+        self.epoch_list = [500, 500, 500, 500, 500]
         self.batch_size = 32
         self.experiment_label = "test"
         self.callbacks = [EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=10, min_delta=0.0001,
