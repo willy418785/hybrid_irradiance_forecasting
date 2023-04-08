@@ -357,9 +357,11 @@ def args_parse():
 
 def run():
     args = args_parse()
+
     # Initialize logging
     log = Msglog.LogInit(parameter.exp_params.experiment_label, "logs/{}".format(parameter.exp_params.experiment_label),
                          10, True, True)
+    parameter.log_params()
 
     log.info("Python version: %s", sys.version)
     log.info("Tensorflow version: %s", tf.__version__)
