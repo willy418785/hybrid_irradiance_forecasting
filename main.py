@@ -266,7 +266,7 @@ def args_parse():
     # general model arguments
     ap.add_argument("--layers", type=int, required=False, default=None, help="number of layers")
     ap.add_argument("--kernel_size", type=int, required=False, default=None, help="kernel's size of Conv1D")
-    ap.add_argument("--dropout", type=int, required=False, default=None, help="dropout rate")
+    ap.add_argument("--dropout", type=float, required=False, default=None, help="dropout rate")
     # transformer model arguments
     ap.add_argument("--d_model", type=int, required=False, default=parameter.model_params.transformer_params.d_model,
                     help="number of inner dimensions of transformer model")
