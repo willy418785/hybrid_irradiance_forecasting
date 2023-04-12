@@ -1,6 +1,7 @@
 # python main.py -d  ../skyImage
 # import the necessary packages
 import datetime
+import json
 
 import tensorflow as tf
 from pyimagesearch import datasets, model_AR, time_embedding, time_embedding_factory, bypass_factory, datautil
@@ -82,27 +83,13 @@ def ModelTrainer(dataGnerator: WindowGenerator,
                                              using_timestamp_data=using_timestamp_data,
                                              is_shuffle=parameter.data_params.is_using_shuffle),
             epochs=testEpoch, batch_size=parameter.exp_params.batch_size, callbacks=parameter.exp_params.callbacks)
-        all_pred, all_y = dataGnerator.plotPredictUnit(model, dataGnerator.val(parameter.data_params.sample_rate,
-                                                                               addcloud=parameter.data_params.addAverage,
-                                                                               using_timestamp_data=using_timestamp_data,
-                                                                               is_shuffle=parameter.data_params.is_using_shuffle),
-                                                       datamode=generatorMode)
 
     elif generatorMode == "image":
         history = model.fit(dataGnerator.trainWithArg, validation_data=dataGnerator.valWithArg,
                             epochs=testEpoch, batch_size=parameter.exp_params.batch_size,
                             callbacks=parameter.exp_params.callbacks)
-        all_pred, all_y = dataGnerator.plotPredictUnit(model, dataGnerator.valWithArg, datamode=generatorMode)
 
-    # test_performance = model.evaluate(dataGnerator.test)
-    # print(test_performance)
-    val_performance = []
-    val_performance.append(mean_squared_error(all_y, all_pred))  # mse
-    val_performance.append(mean_absolute_error(all_y, all_pred))  # mae
-    val_performance.append(my_metrics.mean_absolute_percentage_error(all_y, all_pred))  # MAPE
-    val_performance.append(my_metrics.weighted_mean_absolute_percentage_error(all_y, all_pred))  # WMAPE
-    # val_performance.append(corr(gt, pred).numpy())  # CORR
-    return model, val_performance
+    return model, history
 
 
 def ModelTrainer_cloud(dataGnerator: WindowGenerator,
@@ -575,9 +562,10 @@ def run():
 
     # pure numerical models
     if "convGRU" in parameter.exp_params.model_list:
-        best_perform, best_perform2 = None, None
+        model_name = "convGRU"
+        best_perform, best_perform2 = float('inf'), float('inf')
         best_model, best_model2 = None, None
-        log.info("convGRU")
+        log.info(model_name)
         for testEpoch in parameter.exp_params.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
             input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
 
@@ -647,37 +635,41 @@ def run():
                 outputs = nonlinear
 
             if time_embedded is not None:
-                model = tf.keras.Model(inputs=[input_scalar, input_time], outputs=outputs, name="convGRU")
+                model = tf.keras.Model(inputs=[input_scalar, input_time], outputs=outputs, name=model_name)
             else:
-                model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name="convGRU")
+                model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name=model_name)
 
-            datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
-                                                                  generatorMode="data", testEpoch=testEpoch,
-                                                                  name="convGRU")
-            print(datamodel_CL_performance)
-            if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
+            datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
+                                                 generatorMode="data", testEpoch=testEpoch,
+                                                 name=model_name)
+
+            if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
-                best_perform = datamodel_CL_performance
+                best_perform = min(history.history["val_loss"])
+                with open('./plot/{}/history-{}.json'.format(parameter.exp_params.experiment_label, model_name),
+                          'w') as f:
+                    json.dump(history.history, f, indent='\t')
             print(best_perform)
             log.info("a model ok")
 
-        log.info("predicting SolarIrradiation by convGRU...")
-
+        log.info("predicting SolarIrradiation by {}...".format(model_name))
+        best_model = datamodel_CL if best_model is None else best_model
         metricsDict = w.allPlot(model=[best_model],
-                                name="convGRU",
+                                name=model_name,
                                 scaler=dataUtil.labelScaler,
                                 datamode="data")
 
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
                 modelMetricsRecorder[logM] = {}
-            modelMetricsRecorder[logM]["convGRU"] = metricsDict[logM]
+            modelMetricsRecorder[logM][model_name] = metricsDict[logM]
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
     if "transformer" in parameter.exp_params.model_list:
-        best_perform, best_perform2 = None, None
+        model_name = "transformer"
+        best_perform, best_perform2 = float('inf'), float('inf')
         best_model, best_model2 = None, None
-        log.info("training transformer model...")
+        log.info("training {} model...".format(model_name))
         for testEpoch in parameter.exp_params.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
             if w.is_sampling_within_day:
                 token_len = input_width
@@ -756,35 +748,38 @@ def run():
                 outputs = nonlinear
 
             if time_embedded is not None:
-                model = tf.keras.Model(inputs=[input_scalar, input_time], outputs=outputs, name="transformer")
+                model = tf.keras.Model(inputs=[input_scalar, input_time], outputs=outputs, name=model_name)
             else:
-                model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name="transformer")
-            datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
-                                                                  generatorMode="data", testEpoch=testEpoch,
-                                                                  name="transformer")
-            print(datamodel_CL_performance)
-            if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
+                model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name=model_name)
+            datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
+                                                 generatorMode="data", testEpoch=testEpoch,
+                                                 name=model_name)
+            if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
-                best_perform = datamodel_CL_performance
+                best_perform = min(history.history["val_loss"])
+                with open('./plot/{}/history-{}.json'.format(parameter.exp_params.experiment_label, model_name),
+                          'w') as f:
+                    json.dump(history.history, f, indent='\t')
             print(best_perform)
             log.info("a model ok")
 
-        log.info("predicting SolarIrradiation by transformer...")
-
+        log.info("predicting SolarIrradiation by {}...".format(model_name))
+        best_model = datamodel_CL if best_model is None else best_model
         metricsDict = w.allPlot(model=[best_model],
-                                name="transformer",
+                                name=model_name,
                                 scaler=dataUtil.labelScaler,
                                 datamode="data")
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
                 modelMetricsRecorder[logM] = {}
-            modelMetricsRecorder[logM]["transformer"] = metricsDict[logM]
+            modelMetricsRecorder[logM][model_name] = metricsDict[logM]
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
     if "stationary_convGRU" in parameter.exp_params.model_list:
-        best_perform, best_perform2 = None, None
+        model_name = "stationary_convGRU"
+        best_perform, best_perform2 = float('inf'), float('inf')
         best_model, best_model2 = None, None
-        log.info("stationary_convGRU")
+        log.info(model_name)
         for testEpoch in parameter.exp_params.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
             input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
             time_embedded = time_embedding_factory.TEFac.new_te_module(command=parameter.model_params.time_embedding,
@@ -857,36 +852,39 @@ def run():
                 outputs = nonlinear
 
             if time_embedded is not None:
-                model = tf.keras.Model(inputs=[input_scalar, input_time], outputs=outputs, name="stationary_convGRU")
+                model = tf.keras.Model(inputs=[input_scalar, input_time], outputs=outputs, name=model_name)
             else:
-                model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name="stationary_convGRU")
-            datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
-                                                                  generatorMode="data", testEpoch=testEpoch,
-                                                                  name="stationary_convGRU")
-            print(datamodel_CL_performance)
-            if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
+                model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name=model_name)
+            datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
+                                                 generatorMode="data", testEpoch=testEpoch,
+                                                 name=model_name)
+            if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
-                best_perform = datamodel_CL_performance
+                best_perform = min(history.history["val_loss"])
+                with open('./plot/{}/history-{}.json'.format(parameter.exp_params.experiment_label, model_name),
+                          'w') as f:
+                    json.dump(history.history, f, indent='\t')
             print(best_perform)
             log.info("a model ok")
 
-        log.info("predicting SolarIrradiation by stationary_convGRU...")
-
+        log.info("predicting SolarIrradiation by {}...".format(model_name))
+        best_model = datamodel_CL if best_model is None else best_model
         metricsDict = w.allPlot(model=[best_model],
-                                name="stationary_convGRU",
+                                name=model_name,
                                 scaler=dataUtil.labelScaler,
                                 datamode="data")
 
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
                 modelMetricsRecorder[logM] = {}
-            modelMetricsRecorder[logM]["stationary_convGRU"] = metricsDict[logM]
+            modelMetricsRecorder[logM][model_name] = metricsDict[logM]
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
     if "stationary_transformer" in parameter.exp_params.model_list:
-        best_perform, best_perform2 = None, None
+        model_name = "stationary_transformer"
+        best_perform, best_perform2 = float('inf'), float('inf')
         best_model, best_model2 = None, None
-        log.info("training stationary_transformer model...")
+        log.info("training {} model...".format(model_name))
         for testEpoch in parameter.exp_params.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
             if w.is_sampling_within_day:
                 token_len = input_width
@@ -971,35 +969,38 @@ def run():
 
             if time_embedded is not None:
                 model = tf.keras.Model(inputs=[input_scalar, input_time], outputs=outputs,
-                                       name="stationary_transformer")
+                                       name=model_name)
             else:
-                model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name="stationary_transformer")
-            datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
-                                                                  generatorMode="data", testEpoch=testEpoch,
-                                                                  name="stationary_transformer")
-            print(datamodel_CL_performance)
-            if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
+                model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name=model_name)
+            datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
+                                                 generatorMode="data", testEpoch=testEpoch,
+                                                 name=model_name)
+            if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
-                best_perform = datamodel_CL_performance
+                best_perform = min(history.history["val_loss"])
+                with open('./plot/{}/history-{}.json'.format(parameter.exp_params.experiment_label, model_name),
+                          'w') as f:
+                    json.dump(history.history, f, indent='\t')
             print(best_perform)
             log.info("a model ok")
 
-        log.info("predicting SolarIrradiation by stationary_transformer...")
-
+        log.info("predicting SolarIrradiation by {}...".format(model_name))
+        best_model = datamodel_CL if best_model is None else best_model
         metricsDict = w.allPlot(model=[best_model],
-                                name="stationary_transformer",
+                                name=model_name,
                                 scaler=dataUtil.labelScaler,
                                 datamode="data")
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
                 modelMetricsRecorder[logM] = {}
-            modelMetricsRecorder[logM]["stationary_transformer"] = metricsDict[logM]
+            modelMetricsRecorder[logM][model_name] = metricsDict[logM]
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
     if "znorm_convGRU" in parameter.exp_params.model_list:
-        best_perform, best_perform2 = None, None
+        model_name = "znorm_convGRU"
+        best_perform, best_perform2 = float('inf'), float('inf')
         best_model, best_model2 = None, None
-        log.info("znorm_convGRU")
+        log.info(model_name)
         for testEpoch in parameter.exp_params.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
             input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
 
@@ -1073,36 +1074,39 @@ def run():
                 outputs = nonlinear
 
             if time_embedded is not None:
-                model = tf.keras.Model(inputs=[input_scalar, input_time], outputs=outputs, name="znorm_convGRU")
+                model = tf.keras.Model(inputs=[input_scalar, input_time], outputs=outputs, name=model_name)
             else:
-                model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name="znorm_convGRU")
-            datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
-                                                                  generatorMode="data", testEpoch=testEpoch,
-                                                                  name="znorm_convGRU")
-            print(datamodel_CL_performance)
-            if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
+                model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name=model_name)
+            datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
+                                                 generatorMode="data", testEpoch=testEpoch,
+                                                 name=model_name)
+            if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
-                best_perform = datamodel_CL_performance
+                best_perform = min(history.history["val_loss"])
+                with open('./plot/{}/history-{}.json'.format(parameter.exp_params.experiment_label, model_name),
+                          'w') as f:
+                    json.dump(history.history, f, indent='\t')
             print(best_perform)
             log.info("a model ok")
 
-        log.info("predicting SolarIrradiation by znorm_convGRU...")
-
+        log.info("predicting SolarIrradiation by {}...".format(model_name))
+        best_model = datamodel_CL if best_model is None else best_model
         metricsDict = w.allPlot(model=[best_model],
-                                name="znorm_convGRU",
+                                name=model_name,
                                 scaler=dataUtil.labelScaler,
                                 datamode="data")
 
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
                 modelMetricsRecorder[logM] = {}
-            modelMetricsRecorder[logM]["znorm_convGRU"] = metricsDict[logM]
+            modelMetricsRecorder[logM][model_name] = metricsDict[logM]
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
     if "znorm_transformer" in parameter.exp_params.model_list:
-        best_perform, best_perform2 = None, None
+        model_name = "znorm_transformer"
+        best_perform, best_perform2 = float('inf'), float('inf')
         best_model, best_model2 = None, None
-        log.info("training znorm_transformer model...")
+        log.info("training {} model...".format(model_name))
         for testEpoch in parameter.exp_params.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
             if w.is_sampling_within_day:
                 token_len = input_width
@@ -1186,36 +1190,39 @@ def run():
                 outputs = nonlinear
 
             if time_embedded is not None:
-                model = tf.keras.Model(inputs=[input_scalar, input_time], outputs=outputs, name="znorm_transformer")
+                model = tf.keras.Model(inputs=[input_scalar, input_time], outputs=outputs, name=model_name)
             else:
-                model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name="znorm_transformer")
-            datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
-                                                                  generatorMode="data", testEpoch=testEpoch,
-                                                                  name="znorm_transformer")
-            print(datamodel_CL_performance)
-            if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
+                model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name=model_name)
+            datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
+                                                 generatorMode="data", testEpoch=testEpoch,
+                                                 name=model_name)
+            if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
-                best_perform = datamodel_CL_performance
+                best_perform = min(history.history["val_loss"])
+                with open('./plot/{}/history-{}.json'.format(parameter.exp_params.experiment_label, model_name),
+                          'w') as f:
+                    json.dump(history.history, f, indent='\t')
             print(best_perform)
             log.info("a model ok")
 
-        log.info("predicting SolarIrradiation by znorm_transformer...")
-
+        log.info("predicting SolarIrradiation by {}...".format(model_name))
+        best_model = datamodel_CL if best_model is None else best_model
         metricsDict = w.allPlot(model=[best_model],
-                                name="znorm_transformer",
+                                name=model_name,
                                 scaler=dataUtil.labelScaler,
                                 datamode="data")
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
                 modelMetricsRecorder[logM] = {}
-            modelMetricsRecorder[logM]["znorm_transformer"] = metricsDict[logM]
+            modelMetricsRecorder[logM][model_name] = metricsDict[logM]
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
     if "LSTNet" in parameter.exp_params.model_list:
         assert label_width == 1
-        best_perform, best_perform2 = None, None
+        model_name = "LSTNet"
+        best_perform, best_perform2 = float('inf'), float('inf')
         best_model, best_model2 = None, None
-        log.info("LSTNet")
+        log.info(model_name)
         for testEpoch in parameter.exp_params.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
             args_dict = GetArgumentsDict()
             init = LSTNetInit(args_dict, True)
@@ -1223,26 +1230,28 @@ def run():
             init.skip = w.samples_per_day if w.samples_per_day < input_width else input_width
             init.highway = w.samples_per_day if w.samples_per_day < input_width else input_width
             model = LSTNetModel(init, (None, input_width, len(parameter.data_params.features)))
-            datamodel_CL, datamodel_CL_performance = ModelTrainer(dataGnerator=w, model=model,
-                                                                  generatorMode="data", testEpoch=testEpoch,
-                                                                  name="LSTNet")
-            print(datamodel_CL_performance)
-            if ((best_perform == None) or (best_perform[3] > datamodel_CL_performance[3])):
+            datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
+                                                 generatorMode="data", testEpoch=testEpoch,
+                                                 name="LSTNet")
+            if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
-                best_perform = datamodel_CL_performance
+                best_perform = min(history.history["val_loss"])
+                with open('./plot/{}/history-{}.json'.format(parameter.exp_params.experiment_label, model_name),
+                          'w') as f:
+                    json.dump(history.history, f, indent='\t')
             print(best_perform)
             log.info("a model ok")
 
-        log.info("predicting SolarIrradiation by LSTNet...")
-
+        log.info("predicting SolarIrradiation by {}...".format(model_name))
+        best_model = datamodel_CL if best_model is None else best_model
         metricsDict = w.allPlot(model=[best_model],
-                                name="LSTNet",
+                                name=model_name,
                                 scaler=dataUtil.labelScaler,
                                 datamode="data")
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
                 modelMetricsRecorder[logM] = {}
-            modelMetricsRecorder[logM]["LSTNet"] = metricsDict[logM]
+            modelMetricsRecorder[logM][model_name] = metricsDict[logM]
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
     metrics_path = "plot/{}/{}".format(parameter.exp_params.experiment_label, "all_metric")
