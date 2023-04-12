@@ -343,12 +343,12 @@ def args_parse():
 
 
 def run():
-    args = args_parse()
-
     # Initialize logging
     log = Msglog.LogInit(parameter.exp_params.experiment_label, "logs/{}".format(parameter.exp_params.experiment_label),
                          10, True, True)
-    parameter.log_params()
+    log.info("\n######Current Configuration######\n{}{}{}".format(parameter.data_params,
+                                                                  parameter.exp_params,
+                                                                  parameter.model_params))
 
     log.info("Python version: %s", sys.version)
     log.info("Tensorflow version: %s", tf.__version__)
@@ -1263,4 +1263,13 @@ def run():
 if __name__ == '__main__':
     # tf.config.experimental_run_functions_eagerly(run_eagerly=True)
     # tf.data.experimental.enable_debug_mode()
+
+    # parse and assign arguments
+    args = args_parse()
+    # create exp. dir
+    try:
+        os.mkdir("./plot/{}".format(parameter.exp_params.experiment_label))
+    except:
+        pass
+    # run core business logic
     result = run()

@@ -179,11 +179,6 @@ data_params = _DataParams()
 exp_params = _ExpParams()
 model_params = _ModelParams()
 
-
-def log_params():
-    log = logging.getLogger(exp_params.experiment_label)
-    log.info("\n######Current Configuration######\n{}{}{}".format(data_params, exp_params, model_params))
-
 # dynamic
 static_suffle = False
 dynamic_suffle = False
