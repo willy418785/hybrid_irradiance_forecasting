@@ -1273,3 +1273,9 @@ if __name__ == '__main__':
         pass
     # run core business logic
     result = run()
+    # save exp. config
+    with open('./plot/{}/config.txt'.format(parameter.exp_params.experiment_label),
+              'w') as f:
+        f.write(str(parameter.data_params))
+        f.write(str(parameter.exp_params))
+        f.write(str(parameter.model_params))
