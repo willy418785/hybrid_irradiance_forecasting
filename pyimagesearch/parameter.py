@@ -110,6 +110,8 @@ class _DataParams(_Params):
 
 
 class _ExpParams(_Params):
+    MAX_COL_TO_PLOT = 5
+
     def __init__(self, name="Experiment"):
         super().__init__(name)
         self.epochs = 300

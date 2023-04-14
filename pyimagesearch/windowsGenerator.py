@@ -834,7 +834,7 @@ class WindowGenerator():
         ####plot all column
         if save_plot:
             pattern = "[" + "|\'\"" + "]"
-            for col_name in df_pred.columns:
+            for col_name in df_pred.columns[:parameter.exp_params.MAX_COL_TO_PLOT]:
                 fig = go.Figure()
                 fig.add_trace(go.Scatter(
                     x=df_pred.index,
