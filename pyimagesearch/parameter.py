@@ -21,6 +21,7 @@ class _Params:
 
 class _DataParams(_Params):
     DEFAULT_IMAGE_DEPTH = 3  # RGB image
+
     def __init__(self, name="Data"):
         super().__init__(name)
         # miscellaneous parameters
@@ -84,6 +85,8 @@ class _DataParams(_Params):
         if self.csv_name == 'EC.csv':
             self.features = ["MT_{}".format(str(i).zfill(3)) for i in range(1, 371)]
             # feat = ["MT_{}".format(str(i).zfill(3)) for i in range(1, 2)]
+        elif self.csv_name == 'ori_EC.csv':
+            self.features = ["MT_{}".format(str(i).zfill(3)) for i in range(1, 322)]
         elif self.csv_name == '2020new.csv':
             self.features = ['ShortWaveDown']
         elif self.csv_name == 'dataset_renheo_[2019].csv':
