@@ -529,6 +529,8 @@ def run():
         metricsDict = w_for_persistance.allPlot(model=[baseline],
                                                 name="Persistence",
                                                 scaler=dataUtil.labelScaler,
+                                                save_csv=parameter.exp_params.save_csv,
+                                                save_plot=parameter.exp_params.save_plot,
                                                 datamode="data")
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
@@ -547,6 +549,8 @@ def run():
         metricsDict = w_for_MA.allPlot(model=[movingAverage],
                                        name="MA",
                                        scaler=dataUtil.labelScaler,
+                                       save_csv=parameter.exp_params.save_csv,
+                                       save_plot=parameter.exp_params.save_plot,
                                        datamode="data")
 
         for logM in metricsDict:
@@ -657,6 +661,8 @@ def run():
         metricsDict = w.allPlot(model=[best_model],
                                 name=model_name,
                                 scaler=dataUtil.labelScaler,
+                                save_csv=parameter.exp_params.save_csv,
+                                save_plot=parameter.exp_params.save_plot,
                                 datamode="data")
 
         for logM in metricsDict:
@@ -768,6 +774,8 @@ def run():
         metricsDict = w.allPlot(model=[best_model],
                                 name=model_name,
                                 scaler=dataUtil.labelScaler,
+                                save_csv=parameter.exp_params.save_csv,
+                                save_plot=parameter.exp_params.save_plot,
                                 datamode="data")
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
@@ -872,6 +880,8 @@ def run():
         metricsDict = w.allPlot(model=[best_model],
                                 name=model_name,
                                 scaler=dataUtil.labelScaler,
+                                save_csv=parameter.exp_params.save_csv,
+                                save_plot=parameter.exp_params.save_plot,
                                 datamode="data")
 
         for logM in metricsDict:
@@ -989,6 +999,8 @@ def run():
         metricsDict = w.allPlot(model=[best_model],
                                 name=model_name,
                                 scaler=dataUtil.labelScaler,
+                                save_csv=parameter.exp_params.save_csv,
+                                save_plot=parameter.exp_params.save_plot,
                                 datamode="data")
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
@@ -1094,6 +1106,8 @@ def run():
         metricsDict = w.allPlot(model=[best_model],
                                 name=model_name,
                                 scaler=dataUtil.labelScaler,
+                                save_csv=parameter.exp_params.save_csv,
+                                save_plot=parameter.exp_params.save_plot,
                                 datamode="data")
 
         for logM in metricsDict:
@@ -1210,6 +1224,8 @@ def run():
         metricsDict = w.allPlot(model=[best_model],
                                 name=model_name,
                                 scaler=dataUtil.labelScaler,
+                                save_csv=parameter.exp_params.save_csv,
+                                save_plot=parameter.exp_params.save_plot,
                                 datamode="data")
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:
@@ -1247,6 +1263,8 @@ def run():
         metricsDict = w.allPlot(model=[best_model],
                                 name=model_name,
                                 scaler=dataUtil.labelScaler,
+                                save_csv=parameter.exp_params.save_csv,
+                                save_plot=parameter.exp_params.save_plot,
                                 datamode="data")
         for logM in metricsDict:
             if modelMetricsRecorder.get(logM) is None:

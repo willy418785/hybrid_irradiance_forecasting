@@ -3,13 +3,11 @@ import numpy as np
 from pyimagesearch import parameter, time_embedding_factory
 import pandas as pd
 import logging
-from sklearn.metrics import mean_squared_error, mean_absolute_error
 import re
 import plotly.graph_objects as go
 from pathlib import Path
 from pyimagesearch import my_metrics
 import os
-import gc
 
 
 class WindowGenerator():
@@ -132,9 +130,8 @@ class WindowGenerator():
         #     labels = labels[:, -1, :]
         return labels
 
-    def input_dataset(self, data, label, cloudData=None, image=None,
-                      is_timestamp_as_data=False, ganIndex=False,
-                      sequence_stride=parameter.data_params.sample_rate, use_shuffle=False):
+    def input_dataset(self, data, label, sequence_stride, cloudData=None, image=None,
+                      is_timestamp_as_data=False, ganIndex=False, use_shuffle=False):
         ds_t, ds_u, ds_c, ds_v, ds_d = None, None, None, None, None
         rows_counter = 0
         if ganIndex:
@@ -423,35 +420,44 @@ class WindowGenerator():
 
     def train(self, sample_rate, addcloud=False, using_timestamp_data=False, is_shuffle=False):
         if addcloud:
-            return self.input_dataset(self.trainDataX, self.trainY_nor, cloudData=self.trainCloudX,
-                                      image=self.trainImagesX, is_timestamp_as_data=using_timestamp_data,
-                                      sequence_stride=sample_rate, use_shuffle=is_shuffle)
-        else:
-            return self.input_dataset(self.trainDataX, self.trainY_nor, image=self.trainImagesX,
+            return self.input_dataset(self.trainDataX, self.trainY_nor, sample_rate,
+                                      cloudData=self.trainCloudX,
+                                      image=self.trainImagesX,
                                       is_timestamp_as_data=using_timestamp_data,
-                                      sequence_stride=sample_rate, use_shuffle=is_shuffle)
+                                      use_shuffle=is_shuffle)
+        else:
+            return self.input_dataset(self.trainDataX, self.trainY_nor, sample_rate,
+                                      image=self.trainImagesX,
+                                      is_timestamp_as_data=using_timestamp_data,
+                                      use_shuffle=is_shuffle)
 
     def val(self, sample_rate, addcloud=False, using_timestamp_data=False, is_shuffle=False):
         if addcloud:
-            return self.input_dataset(self.valDataX, self.valY_nor, cloudData=self.valCloudX, image=self.valImageX,
+            return self.input_dataset(self.valDataX, self.valY_nor, sample_rate,
+                                      cloudData=self.valCloudX,
+                                      image=self.valImageX,
                                       is_timestamp_as_data=using_timestamp_data,
-                                      sequence_stride=sample_rate, use_shuffle=is_shuffle)
+                                      use_shuffle=is_shuffle)
         else:
-            return self.input_dataset(self.valDataX, self.valY_nor, image=self.valImageX,
+            return self.input_dataset(self.valDataX, self.valY_nor, sample_rate,
+                                      image=self.valImageX,
                                       is_timestamp_as_data=using_timestamp_data,
-                                      sequence_stride=sample_rate, use_shuffle=is_shuffle)
+                                      use_shuffle=is_shuffle)
 
     def test(self, sample_rate, ganIndex=False, addcloud=False, using_timestamp_data=False):
         if addcloud:
-            return self.input_dataset(self.testDataX, self.testY, cloudData=self.testCloudX, image=self.testImagesX,
+            return self.input_dataset(self.testDataX, self.testY, sample_rate,
+                                      cloudData=self.testCloudX,
+                                      image=self.testImagesX,
                                       is_timestamp_as_data=using_timestamp_data,
                                       ganIndex=ganIndex,
-                                      sequence_stride=sample_rate, use_shuffle=False)
+                                      use_shuffle=False)
         else:
-            return self.input_dataset(self.testDataX, self.testY, image=self.testImagesX,
+            return self.input_dataset(self.testDataX, self.testY, sample_rate,
+                                      image=self.testImagesX,
                                       is_timestamp_as_data=using_timestamp_data,
                                       ganIndex=ganIndex,
-                                      sequence_stride=sample_rate, use_shuffle=False)
+                                      use_shuffle=False)
 
     ##############################################################################################################################################
     ## two model
@@ -668,7 +674,7 @@ class WindowGenerator():
         return all_x_index, all_y_index
 
     def allPlot(self, model=None, plot_col_index=0, name="Example", scaler=None,
-                save_csv=parameter.exp_params.save_csv, save_plot=parameter.exp_params.save_plot,
+                save_csv=False, save_plot=False,
                 rainSepMode=False, datamode="data"):
         pattern = "[" + "|\'\"" + "]"
         output_filelabel = "plot/{}/{}".format(parameter.exp_params.experiment_label, name)
