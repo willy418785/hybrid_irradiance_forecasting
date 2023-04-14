@@ -147,20 +147,22 @@ class _ModelParams(_Params):
     class _TransformerParams(_Params):
         def __init__(self, name="Transformer"):
             super().__init__(name)
-            self.layers = 1
-            self.d_model = 32
-            self.n_heads = 1
-            self.dff = 128
-            self.embedding_kernel_size = 3
-            self.dropout_rate = 0.1
+            # 0.7M parameters
+            self.layers = 3
+            self.d_model = 64
+            self.n_heads = 4
+            self.dff = 256
+            self.embedding_kernel_size = 7
+            self.dropout_rate = 0
 
     class _ConvGRUParams(_Params):
         def __init__(self, name="ConvGRU"):
             super().__init__(name)
-            self.layers = 1
-            self.embedding_filters = 32
-            self.gru_units = 32
-            self.embedding_kernel_size = 3
+            # 0.7M parameters
+            self.layers = 2
+            self.embedding_filters = 256
+            self.gru_units = 128
+            self.embedding_kernel_size = 1
             self.dropout_rate = 0.1
 
     class _BypassParams(_Params):
