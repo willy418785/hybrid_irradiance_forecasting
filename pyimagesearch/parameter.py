@@ -154,6 +154,11 @@ class _ModelParams(_Params):
             self.dff = 256
             self.embedding_kernel_size = 7
             self.dropout_rate = 0
+            self.token_length = 96
+
+        def adjust(self, input_len):
+            if input_len < self.token_length:
+                self.token_length = input_len
 
     class _ConvGRUParams(_Params):
         def __init__(self, name="ConvGRU"):

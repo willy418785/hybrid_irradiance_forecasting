@@ -261,6 +261,8 @@ def args_parse():
                     help="number of heads of transformer model")
     ap.add_argument("--dff", type=int, required=False, default=parameter.model_params.transformer_params.dff,
                     help="number of intermediate dimensions of feed-forward layer of transformer model")
+    ap.add_argument("--token", type=int, required=False, default=parameter.model_params.transformer_params.token_length,
+                    help="length of token which is used as a part of decoder input")
     # convGRU model arguments
     ap.add_argument("--filters", type=int, required=False,
                     default=parameter.model_params.convGRU_params.embedding_filters,
@@ -294,6 +296,7 @@ def args_parse():
     parameter.data_params.is_using_shuffle = args["shuffle"]
     parameter.data_params.is_using_image_data = args["use_image"]
     parameter.data_params.image_input_width3D = args["image_length"]
+    # dynamic data related params adjustment
     parameter.data_params.set_dataset_params()
     parameter.data_params.set_start_end_time()
     parameter.data_params.set_image_params()
@@ -301,6 +304,7 @@ def args_parse():
     parameter.model_params.bypass = args["bypass"]
     parameter.model_params.time_embedding = args["time_embedding"]
     parameter.model_params.split_days = args["split_day"]
+    # universal params of each models
     if args["layers"] is not None:
         parameter.model_params.transformer_params.layers = args["layers"]
         parameter.model_params.convGRU_params.layers = args["layers"]
@@ -310,13 +314,20 @@ def args_parse():
     if args["dropout"] is not None:
         parameter.model_params.transformer_params.dropout_rate = args["dropout"]
         parameter.model_params.convGRU_params.dropout_rate = args["dropout"]
+    # transformer params
     parameter.model_params.transformer_params.d_model = args["d_model"]
     parameter.model_params.transformer_params.n_heads = args["n_heads"]
     parameter.model_params.transformer_params.dff = args["dff"]
+    parameter.model_params.transformer_params.token_length = args["token"]
+    # convGRU params
     parameter.model_params.convGRU_params.embedding_filters = args["filters"]
     parameter.model_params.convGRU_params.gru_units = args["units"]
+    # bypass module params
     parameter.model_params.bypass_params.order = args["order"]
+    # decomposition module params
     parameter.model_params.decompose_params.avg_window = args["window"]
+    # dynamic model params adjustment
+    parameter.model_params.transformer_params.adjust(parameter.data_params.input_width)  # adjust token length of transformer
 
     # format directory name of this experiment
     file_name, _ = os.path.splitext(parameter.data_params.csv_name)
@@ -677,10 +688,7 @@ def run():
         best_model, best_model2 = None, None
         log.info("training {} model...".format(model_name))
         for testEpoch in parameter.exp_params.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
-            if w.is_sampling_within_day:
-                token_len = input_width
-            else:
-                token_len = (min(input_width, label_width) // w.samples_per_day // 2 + 1) * w.samples_per_day
+            token_len = parameter.model_params.transformer_params.token_length
             input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
             time_embedded = time_embedding_factory.TEFac.new_te_module(command=parameter.model_params.time_embedding,
                                                                        tar_dim=parameter.model_params.convGRU_params.embedding_filters,
@@ -896,11 +904,7 @@ def run():
         best_model, best_model2 = None, None
         log.info("training {} model...".format(model_name))
         for testEpoch in parameter.exp_params.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
-            if w.is_sampling_within_day:
-                token_len = input_width
-            else:
-                token_len = (min(input_width, label_width) // w.samples_per_day // 2 + 1) * w.samples_per_day
-
+            token_len = parameter.model_params.transformer_params.token_length
             input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
             time_embedded = time_embedding_factory.TEFac.new_te_module(command=parameter.model_params.time_embedding,
                                                                        tar_dim=parameter.model_params.convGRU_params.embedding_filters,
@@ -1122,11 +1126,7 @@ def run():
         best_model, best_model2 = None, None
         log.info("training {} model...".format(model_name))
         for testEpoch in parameter.exp_params.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
-            if w.is_sampling_within_day:
-                token_len = input_width
-            else:
-                token_len = (min(input_width, label_width) // w.samples_per_day // 2 + 1) * w.samples_per_day
-
+            token_len = parameter.model_params.transformer_params.token_length
             input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
             time_embedded = time_embedding_factory.TEFac.new_te_module(command=parameter.model_params.time_embedding,
                                                                        tar_dim=parameter.model_params.convGRU_params.embedding_filters,
