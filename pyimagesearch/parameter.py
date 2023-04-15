@@ -175,6 +175,10 @@ class _ModelParams(_Params):
             super().__init__(name)
             self.order = 24
 
+        def adjust(self, input_len):
+            if input_len < self.order:
+                self.order = input_len
+
     class _DecomposeParams(_Params):
         def __init__(self, name="Series Decomposition"):
             super().__init__(name)

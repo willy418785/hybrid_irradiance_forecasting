@@ -328,6 +328,7 @@ def args_parse():
     parameter.model_params.decompose_params.avg_window = args["window"]
     # dynamic model params adjustment
     parameter.model_params.transformer_params.adjust(parameter.data_params.input_width)  # adjust token length of transformer
+    parameter.model_params.bypass_params.adjust(parameter.data_params.input_width)  # adjust order of bypass LR
 
     # format directory name of this experiment
     file_name, _ = os.path.splitext(parameter.data_params.csv_name)
