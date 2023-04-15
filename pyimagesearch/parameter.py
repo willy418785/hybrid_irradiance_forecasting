@@ -154,7 +154,7 @@ class _ModelParams(_Params):
             self.dff = 256
             self.embedding_kernel_size = 7
             self.dropout_rate = 0
-            self.token_length = 96
+            self.token_length = 72
 
         def adjust(self, input_len):
             if input_len < self.token_length:
@@ -173,7 +173,7 @@ class _ModelParams(_Params):
     class _BypassParams(_Params):
         def __init__(self, name="Bypass"):
             super().__init__(name)
-            self.order = 24
+            self.order = 72
 
         def adjust(self, input_len):
             if input_len < self.order:
@@ -182,7 +182,7 @@ class _ModelParams(_Params):
     class _DecomposeParams(_Params):
         def __init__(self, name="Series Decomposition"):
             super().__init__(name)
-            self.avg_window = 17
+            self.avg_window = 15
 
     class _SplitDayModuleParams(_Params):
         def __init__(self, name="Split-day Module"):
