@@ -692,7 +692,7 @@ def run():
             token_len = parameter.model_params.transformer_params.token_length
             input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
             time_embedded = time_embedding_factory.TEFac.new_te_module(command=parameter.model_params.time_embedding,
-                                                                       tar_dim=parameter.model_params.convGRU_params.embedding_filters,
+                                                                       tar_dim=parameter.model_params.transformer_params.d_model,
                                                                        seq_structure=(input_width, shift, label_width))
             if time_embedded is not None:
                 input_time = Input(shape=(input_width + shift + label_width, len(time_embedding.vocab_size)))
@@ -908,7 +908,7 @@ def run():
             token_len = parameter.model_params.transformer_params.token_length
             input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
             time_embedded = time_embedding_factory.TEFac.new_te_module(command=parameter.model_params.time_embedding,
-                                                                       tar_dim=parameter.model_params.convGRU_params.embedding_filters,
+                                                                       tar_dim=parameter.model_params.transformer_params.d_model,
                                                                        seq_structure=(input_width, shift, label_width))
             if time_embedded is not None:
                 input_time = Input(shape=(input_width + shift + label_width, len(time_embedding.vocab_size)))
@@ -1130,7 +1130,7 @@ def run():
             token_len = parameter.model_params.transformer_params.token_length
             input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
             time_embedded = time_embedding_factory.TEFac.new_te_module(command=parameter.model_params.time_embedding,
-                                                                       tar_dim=parameter.model_params.convGRU_params.embedding_filters,
+                                                                       tar_dim=parameter.model_params.transformer_params.d_model,
                                                                        seq_structure=(input_width, shift, label_width))
             if time_embedded is not None:
                 input_time = Input(shape=(input_width + shift + label_width, len(time_embedding.vocab_size)))
