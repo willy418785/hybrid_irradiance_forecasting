@@ -23,7 +23,6 @@ class MovingZScoreNorm(tf.keras.layers.Layer):
     def call(self, inputs, training):
         # Compute the dimensions of inputs
         num_channels = int(inputs.shape[-1])
-        seq_len = int(inputs.shape[1])
 
         # Compute the moving mean
         moving_mean = self.avg_pool(inputs)
