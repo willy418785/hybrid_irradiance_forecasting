@@ -173,12 +173,15 @@ class StationaryEncoder(tf.keras.layers.Layer):
         if self.pos_vec is not None:
             x += self.pos_vec
         states = []
+        trends = []
         for i in range(self.layers):
             x, state = self.gru_layers[i](x, training=training)
-            x, _ = self.decompose(x)
+            x, t = self.decompose(x)
             states.append(state)
+            trends.append(t)
         states = tf.stack(states, axis=-1)
-        return x, states
+        trends = tf.concat(trends, axis=-1)
+        return x, trends, states
 
 
 class StationaryDecoder(tf.keras.layers.Layer):
@@ -202,37 +205,68 @@ class StationaryDecoder(tf.keras.layers.Layer):
 
     def call(self, input_seq, initial_states, training, timestamp_embedding=None, iter_step=None):
         x = self.conv(input_seq)
-        states = []
         if timestamp_embedding is not None:
             x += timestamp_embedding if iter_step is None else timestamp_embedding[:, iter_step:iter_step + 1, :]
         if self.pos_vec is not None:
             x += self.pos_vec if iter_step is None else self.pos_vec[:, iter_step:iter_step + 1, :]
+        states = []
+        trends = []
         for i in range(self.layers):
             x, state = self.gru_layers[i](x, training=training, initial_state=initial_states[:, :, i])
-            x, _ = self.decompose(x)
+            x, t = self.decompose(x)
             states.append(state)
+            trends.append(t)
         states = tf.stack(states, axis=-1)
-        return x, states
+        trends = tf.concat(trends, axis=-1)
+        return x, trends, states
 
 
-class StationaryConvGRU(ConvGRU):
+class StationaryConvGRU(tf.keras.Model):
     def __init__(self, num_layers, in_seq_len, in_dim, out_seq_len, out_dim, units, filters=None, kernel_size=3,
                  gen_mode='unistep',
                  is_seq_continuous=False, rate=0.1, avg_window=9):
-        super().__init__(num_layers, in_seq_len, in_dim, out_seq_len, out_dim, units, filters=filters,
-                         kernel_size=kernel_size,
-                         gen_mode=gen_mode,
-                         is_seq_continuous=is_seq_continuous, rate=rate)
+        super().__init__()
+        assert gen_mode in gen_modes
+        assert gen_mode != 'auto'
+        self.num_layers = num_layers
+        self.out_seq_len = out_seq_len
+        self.out_dim = out_dim
+        self.units = units
+        self.gen_mode = gen_mode
+        self.is_seq_continuous = is_seq_continuous
+        if filters is None:
+            self.filters = units
+        else:
+            self.filters = filters
         self.decompose = SeriesDecompose(avg_window)
         self.encoder = StationaryEncoder(num_layers, units, avg_window, seq_len=in_seq_len, filters=filters,
                                          kernel_size=kernel_size, rate=rate)
         self.decoder = StationaryDecoder(num_layers, units, avg_window, seq_len=out_seq_len, filters=filters,
                                          kernel_size=kernel_size, rate=rate)
+        if gen_mode == "unistep":
+            self.fc = Dense(out_dim)
+            self.trend_aggregate = Dense(out_dim)
+        elif gen_mode == "mlp":
+            self.fc = Sequential([Dense(out_seq_len * out_dim), Reshape((out_seq_len, out_dim))])
 
     def call(self, input_seq, training, time_embedding_tuple=None):
         seasonality, _ = self.decompose(input_seq)
-        out = super().call(seasonality, training, time_embedding_tuple=time_embedding_tuple)
-        return out
+        trend_init = tf.reduce_mean(input_seq, axis=1, keepdims=True)
+        trend_init = tf.repeat(trend_init, self.out_seq_len, axis=1)
+        src_timestamps, shift_timestamps, tar_timestamps = time_embedding_tuple if time_embedding_tuple is not None else (
+            None, None, None)
+        enc_seq, enc_trends, enc_states = self.encoder(seasonality, training=training,
+                                                       timestamp_embedding=src_timestamps)
+        if self.gen_mode == "unistep":
+            inputs = tf.stack([tf.shape(enc_seq)[0], self.out_seq_len, self.filters])
+            inputs = tf.fill(inputs, 0.0)
+            dec_out, dec_trends, dec_states = self.decoder(inputs, enc_states, training=training,
+                                                           timestamp_embedding=tar_timestamps)
+            output = self.fc(dec_out) + self.trend_aggregate(dec_trends) + trend_init
+        elif self.gen_mode == "mlp":
+            states = Flatten()(enc_states[:, :, -1])
+            output = self.fc(states)
+        return output
 
 
 class MovingZNormEncoder(tf.keras.layers.Layer):
@@ -261,12 +295,15 @@ class MovingZNormEncoder(tf.keras.layers.Layer):
         if self.pos_vec is not None:
             x += self.pos_vec
         states = []
+        trends = []
         for i in range(self.layers):
             x, state = self.gru_layers[i](x, training=training)
-            x, _ = self.decompose(x)
+            x, t = self.decompose(x)
             states.append(state)
+            trends.append(t)
         states = tf.stack(states, axis=-1)
-        return x, states
+        trends = tf.concat(trends, axis=-1)
+        return x, trends, states
 
 
 class MovingZNormDecoder(tf.keras.layers.Layer):
@@ -290,37 +327,68 @@ class MovingZNormDecoder(tf.keras.layers.Layer):
 
     def call(self, input_seq, initial_states, training, timestamp_embedding=None, iter_step=None):
         x = self.conv(input_seq)
-        states = []
         if timestamp_embedding is not None:
             x += timestamp_embedding if iter_step is None else timestamp_embedding[:, iter_step:iter_step + 1, :]
         if self.pos_vec is not None:
             x += self.pos_vec if iter_step is None else self.pos_vec[:, iter_step:iter_step + 1, :]
+        states = []
+        trends =[]
         for i in range(self.layers):
             x, state = self.gru_layers[i](x, training=training, initial_state=initial_states[:, :, i])
-            x, _ = self.decompose(x)
+            x, t = self.decompose(x)
             states.append(state)
+            trends.append(t)
         states = tf.stack(states, axis=-1)
-        return x, states
+        trends = tf.concat(trends, axis=-1)
+        return x, trends, states
 
 
-class MovingZNormConvGRU(ConvGRU):
+class MovingZNormConvGRU(tf.keras.Model):
     def __init__(self, num_layers, in_seq_len, in_dim, out_seq_len, out_dim, units, filters=None, kernel_size=3,
                  gen_mode='unistep',
                  is_seq_continuous=False, rate=0.1, avg_window=9):
-        super().__init__(num_layers, in_seq_len, in_dim, out_seq_len, out_dim, units, filters=filters,
-                         kernel_size=kernel_size,
-                         gen_mode=gen_mode,
-                         is_seq_continuous=is_seq_continuous, rate=rate)
-        self.decompose = MovingZScoreNorm(avg_window)
+        super().__init__()
+        assert gen_mode in gen_modes
+        assert gen_mode != 'auto'
+        self.num_layers = num_layers
+        self.out_seq_len = out_seq_len
+        self.out_dim = out_dim
+        self.units = units
+        self.gen_mode = gen_mode
+        self.is_seq_continuous = is_seq_continuous
+        if filters is None:
+            self.filters = units
+        else:
+            self.filters = filters
+        self.decompose = SeriesDecompose(avg_window)
         self.encoder = MovingZNormEncoder(num_layers, units, avg_window, seq_len=in_seq_len, filters=filters,
                                           kernel_size=kernel_size, rate=rate)
         self.decoder = MovingZNormDecoder(num_layers, units, avg_window, seq_len=out_seq_len, filters=filters,
                                           kernel_size=kernel_size, rate=rate)
+        if gen_mode == "unistep":
+            self.fc = Dense(out_dim)
+            self.trend_aggregate = Dense(out_dim)
+        elif gen_mode == "mlp":
+            self.fc = Sequential([Dense(out_seq_len * out_dim), Reshape((out_seq_len, out_dim))])
 
     def call(self, input_seq, training, time_embedding_tuple=None):
-        seasonality, trend = self.decompose(input_seq)
-        out = super().call(seasonality, training, time_embedding_tuple=time_embedding_tuple)
-        return out
+        seasonality, _ = self.decompose(input_seq)
+        trend_init = tf.reduce_mean(input_seq, axis=1, keepdims=True)
+        trend_init = tf.repeat(trend_init, self.out_seq_len, axis=1)
+        src_timestamps, shift_timestamps, tar_timestamps = time_embedding_tuple if time_embedding_tuple is not None else (
+            None, None, None)
+        enc_seq, enc_trends, enc_states = self.encoder(seasonality, training=training,
+                                                       timestamp_embedding=src_timestamps)
+        if self.gen_mode == "unistep":
+            inputs = tf.stack([tf.shape(enc_seq)[0], self.out_seq_len, self.filters])
+            inputs = tf.fill(inputs, 0.0)
+            dec_out, dec_trends, dec_states = self.decoder(inputs, enc_states, training=training,
+                                                           timestamp_embedding=tar_timestamps)
+            output = self.fc(dec_out) + self.trend_aggregate(dec_trends) + trend_init
+        elif self.gen_mode == "mlp":
+            states = Flatten()(enc_states[:, :, -1])
+            output = self.fc(states)
+        return output
 
 
 if __name__ == '__main__':

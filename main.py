@@ -937,7 +937,7 @@ def run():
                     rate=parameter.model_params.transformer_params.dropout_rate,
                     gen_mode="unistep",
                     is_seq_continuous=is_input_continuous_with_output,
-                    is_pooling=False, token_len=0,
+                    token_len=0,
                     avg_window=parameter.model_params.decompose_params.avg_window)
                 if time_embedded is not None:
                     input_time_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
@@ -965,7 +965,7 @@ def run():
                     rate=parameter.model_params.transformer_params.dropout_rate,
                     gen_mode="unistep",
                     is_seq_continuous=is_input_continuous_with_output,
-                    is_pooling=False, token_len=token_len,
+                    token_len=token_len,
                     avg_window=parameter.model_params.decompose_params.avg_window)
                 nonlinear = model(input_scalar, time_embedding_tuple=time_embedded)
 
@@ -1159,7 +1159,7 @@ def run():
                     rate=parameter.model_params.transformer_params.dropout_rate,
                     gen_mode="unistep",
                     is_seq_continuous=is_input_continuous_with_output,
-                    is_pooling=False, token_len=0,
+                    token_len=0,
                     avg_window=parameter.model_params.decompose_params.avg_window)
                 if time_embedded is not None:
                     input_time_embedded = SplitInputByDay(n_days=n_days, n_samples=w.samples_per_day)(
@@ -1187,7 +1187,7 @@ def run():
                     rate=parameter.model_params.transformer_params.dropout_rate,
                     gen_mode="unistep",
                     is_seq_continuous=is_input_continuous_with_output,
-                    is_pooling=False, token_len=token_len,
+                    token_len=token_len,
                     avg_window=parameter.model_params.decompose_params.avg_window)
                 nonlinear = model(input_scalar, time_embedding_tuple=time_embedded)
 
