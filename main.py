@@ -72,7 +72,8 @@ def ModelTrainer(dataGnerator: WindowGenerator,
     model.summary()
     tf.keras.backend.clear_session()
     print("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&")
-    using_timestamp_data = time_embedding_factory.TEFac.get_te_mode(parameter.model_params.time_embedding) is not None
+    using_timestamp_data = time_embedding_factory.TEFac.get_te_mode(
+        parameter.model_params.time_embedding) is not None and name not in parameter.exp_params.baselines
     if generatorMode == "combined" or generatorMode == "data":
         history = model.fit(
             dataGnerator.train(parameter.data_params.sample_rate, addcloud=parameter.data_params.addAverage,
@@ -327,7 +328,8 @@ def args_parse():
     # decomposition module params
     parameter.model_params.decompose_params.avg_window = args["window"]
     # dynamic model params adjustment
-    parameter.model_params.transformer_params.adjust(parameter.data_params.input_width)  # adjust token length of transformer
+    parameter.model_params.transformer_params.adjust(
+        parameter.data_params.input_width)  # adjust token length of transformer
     parameter.model_params.bypass_params.adjust(parameter.data_params.input_width)  # adjust order of bypass LR
 
     # format directory name of this experiment
@@ -572,6 +574,36 @@ def run():
         metrics_path = "plot/{}/{}".format(parameter.exp_params.experiment_label, "all_metric")
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
+    if "LR" in parameter.exp_params.model_list:
+        w = w2
+        model_name = "LR"
+        log.info("training {} model...".format(model_name))
+        testEpoch = parameter.exp_params.epoch_list[0]
+        input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
+        linear_regression = model_AR.TemporalChannelIndependentLR(order=parameter.model_params.bypass_params.order,
+                                                                  tar_seq_len=label_width,
+                                                                  src_dims=len(parameter.data_params.features))
+        linear_regression = linear_regression(input_scalar)
+        model = tf.keras.Model(inputs=input_scalar, outputs=linear_regression, name=model_name)
+        datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
+                                             generatorMode="data", testEpoch=testEpoch,
+                                             name=model_name)
+        if 'val_loss' in history.history:
+            with open('./plot/{}/history-{}.json'.format(parameter.exp_params.experiment_label, model_name),
+                      'w') as f:
+                json.dump(history.history, f, indent='\t')
+        log.info("predicting SolarIrradiation by {}...".format(model_name))
+        metricsDict = w.allPlot(model=[datamodel_CL],
+                                name=model_name,
+                                scaler=dataUtil.labelScaler,
+                                save_csv=parameter.exp_params.save_csv,
+                                save_plot=parameter.exp_params.save_plot,
+                                datamode="data")
+        for logM in metricsDict:
+            if modelMetricsRecorder.get(logM) is None:
+                modelMetricsRecorder[logM] = {}
+            modelMetricsRecorder[logM][model_name] = metricsDict[logM]
+        pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
     # test learning models
     dataUtil = data_with_weather_info
     w = w2
