@@ -84,13 +84,14 @@ class _DataParams(_Params):
         #                  "CWB_WindDirection_Sine"]
         if self.csv_name == 'EC.csv':
             self.features = ["MT_{}".format(str(i).zfill(3)) for i in range(1, 371)]
-            # feat = ["MT_{}".format(str(i).zfill(3)) for i in range(1, 2)]
         elif self.csv_name == 'ori_EC.csv':
             self.features = ["MT_{}".format(str(i).zfill(3)) for i in range(1, 322)]
         elif self.csv_name == '2020new.csv':
             self.features = ['ShortWaveDown']
         elif self.csv_name == 'dataset_renheo_[2019].csv':
             self.features = ["DC-1|Pdc", "DC-2|Pdc"]
+        elif self.csv_name == 'dataset_renheo.csv':
+            self.features = ["DC-1_Pdc", "DC-2_Pdc"]
         self.target = self.features
 
     def set_start_end_time(self):
