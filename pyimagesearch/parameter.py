@@ -92,6 +92,10 @@ class _DataParams(_Params):
             self.features = ["DC-1|Pdc", "DC-2|Pdc"]
         elif self.csv_name == 'dataset_renheo.csv':
             self.features = ["DC-1_Pdc", "DC-2_Pdc"]
+        elif self.csv_name == "speed_index_california.csv":
+            self.features = ["NorthCentralSI", "BayAreaSI", "CentralCoastSI",
+                             "SouthCentralSI", "LAVenturaSI", "SanBernardinoRiversideSI",
+                             "CentralSI", "SanDiegoImperialSI", "OrangeCountySI"]
         self.target = self.features
 
     def set_start_end_time(self):
