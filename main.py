@@ -58,11 +58,7 @@ sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_opti
 # config.gpu_options.allow_growth = True
 # session = InteractiveSession(config=config)
 
-def ModelTrainer(dataGnerator: WindowGenerator,
-                 model,
-                 generatorMode="",
-                 testEpoch=0,
-                 name="Example"):
+def ModelTrainer(dataGnerator: WindowGenerator, model, sample_rate, generatorMode="", testEpoch=0, name="Example"):
     model.compile(loss=tf.losses.MeanSquaredError(), optimizer="Adam"
                   , metrics=[tf.metrics.MeanAbsoluteError()
             , tf.metrics.MeanAbsolutePercentageError()
@@ -76,10 +72,10 @@ def ModelTrainer(dataGnerator: WindowGenerator,
         parameter.model_params.time_embedding) is not None and name not in parameter.exp_params.baselines
     if generatorMode == "combined" or generatorMode == "data":
         history = model.fit(
-            dataGnerator.train(parameter.data_params.sample_rate, addcloud=parameter.data_params.addAverage,
+            dataGnerator.train(sample_rate, addcloud=parameter.data_params.addAverage,
                                using_timestamp_data=using_timestamp_data,
                                is_shuffle=parameter.data_params.is_using_shuffle),
-            validation_data=dataGnerator.val(parameter.data_params.sample_rate,
+            validation_data=dataGnerator.val(sample_rate,
                                              addcloud=parameter.data_params.addAverage,
                                              using_timestamp_data=using_timestamp_data,
                                              is_shuffle=parameter.data_params.is_using_shuffle),
@@ -585,9 +581,8 @@ def run():
                                                                   src_dims=len(parameter.data_params.features))
         linear_regression = linear_regression(input_scalar)
         model = tf.keras.Model(inputs=input_scalar, outputs=linear_regression, name=model_name)
-        datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
-                                             generatorMode="data", testEpoch=testEpoch,
-                                             name=model_name)
+        datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model, sample_rate=parameter.data_params.sample_rate,
+                                             generatorMode="data", testEpoch=testEpoch, name=model_name)
         if 'val_loss' in history.history:
             with open('./plot/{}/history-{}.json'.format(parameter.exp_params.experiment_label, model_name),
                       'w') as f:
@@ -688,8 +683,8 @@ def run():
                 model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name=model_name)
 
             datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
-                                                 generatorMode="data", testEpoch=testEpoch,
-                                                 name=model_name)
+                                                 sample_rate=parameter.data_params.sample_rate, generatorMode="data",
+                                                 testEpoch=testEpoch, name=model_name)
 
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
@@ -799,8 +794,8 @@ def run():
             else:
                 model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name=model_name)
             datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
-                                                 generatorMode="data", testEpoch=testEpoch,
-                                                 name=model_name)
+                                                 sample_rate=parameter.data_params.sample_rate, generatorMode="data",
+                                                 testEpoch=testEpoch, name=model_name)
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
                 best_perform = min(history.history["val_loss"])
@@ -905,8 +900,8 @@ def run():
             else:
                 model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name=model_name)
             datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
-                                                 generatorMode="data", testEpoch=testEpoch,
-                                                 name=model_name)
+                                                 sample_rate=parameter.data_params.sample_rate, generatorMode="data",
+                                                 testEpoch=testEpoch, name=model_name)
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
                 best_perform = min(history.history["val_loss"])
@@ -1020,8 +1015,8 @@ def run():
             else:
                 model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name=model_name)
             datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
-                                                 generatorMode="data", testEpoch=testEpoch,
-                                                 name=model_name)
+                                                 sample_rate=parameter.data_params.sample_rate, generatorMode="data",
+                                                 testEpoch=testEpoch, name=model_name)
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
                 best_perform = min(history.history["val_loss"])
@@ -1127,8 +1122,8 @@ def run():
             else:
                 model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name=model_name)
             datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
-                                                 generatorMode="data", testEpoch=testEpoch,
-                                                 name=model_name)
+                                                 sample_rate=parameter.data_params.sample_rate, generatorMode="data",
+                                                 testEpoch=testEpoch, name=model_name)
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
                 best_perform = min(history.history["val_loss"])
@@ -1241,8 +1236,8 @@ def run():
             else:
                 model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name=model_name)
             datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
-                                                 generatorMode="data", testEpoch=testEpoch,
-                                                 name=model_name)
+                                                 sample_rate=parameter.data_params.sample_rate, generatorMode="data",
+                                                 testEpoch=testEpoch, name=model_name)
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
                 best_perform = min(history.history["val_loss"])
@@ -1280,8 +1275,8 @@ def run():
             init.highway = w.samples_per_day if w.samples_per_day < input_width else input_width
             model = LSTNetModel(init, (None, input_width, len(parameter.data_params.features)))
             datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
-                                                 generatorMode="data", testEpoch=testEpoch,
-                                                 name="LSTNet")
+                                                 sample_rate=parameter.data_params.sample_rate, generatorMode="data",
+                                                 testEpoch=testEpoch, name="LSTNet")
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
                 best_perform = min(history.history["val_loss"])
