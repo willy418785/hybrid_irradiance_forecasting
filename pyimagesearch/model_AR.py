@@ -10,6 +10,53 @@ from pyimagesearch.datautil import DataUtil
 gen_modes = ['unistep', 'auto', "mlp"]
 
 
+class ARModel(tf.keras.Model):
+    def __init__(self, ar, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.ar = ar
+
+    def train_step(self, data):
+        # Unpack the data. Its structure depends on your model and
+        # on what you pass to `fit()`.
+        x, y = data
+        len = tf.shape(y)[1]
+        with tf.GradientTape() as tape:
+            y_pred = self(x, training=True, tar_len=len)  # Forward pass
+            # Compute the loss value
+            # (the loss function is configured in `compile()`)
+            loss = self.compiled_loss(y, y_pred, regularization_losses=self.losses)
+
+        # Compute gradients
+        trainable_vars = self.trainable_variables
+        gradients = tape.gradient(loss, trainable_vars)
+        # Update weights
+        self.optimizer.apply_gradients(zip(gradients, trainable_vars))
+        # Update metrics (includes the metric that tracks the loss)
+        self.compiled_metrics.update_state(y, y_pred)
+        # Return a dict mapping metric names to current value
+        return {m.name: m.result() for m in self.metrics}
+
+    def test_step(self, data):
+        # Unpack the data
+        x, y = data
+        len = tf.shape(y)[1]
+        # Compute predictions
+        y_pred = self(x, training=False, tar_len=len)
+        # Updates the metrics tracking the loss
+        self.compiled_loss(y, y_pred, regularization_losses=self.losses)
+        # Update the metrics.
+        self.compiled_metrics.update_state(y, y_pred)
+        # Return a dict mapping metric names to current value.
+        # Note that it will include the loss (tracked in self.metrics).
+        return {m.name: m.result() for m in self.metrics}
+
+    def call(self, inputs, training, tar_len=None):
+        if tar_len is None:
+            tar_len = self.ar.tar_seq_len
+        output = self.ar(inputs, training=training, tar_len=tar_len)
+        return output
+
+
 class AR(tf.keras.layers.Layer):
     def __init__(self, order, tar_seq_len, src_dims):
         super().__init__()
@@ -18,19 +65,21 @@ class AR(tf.keras.layers.Layer):
         self.src_dims = src_dims
         self.linear = Dense(1)
 
-    def call(self, inputs, training):
+    def call(self, inputs, training, tar_len=None):
         temporal_last = tf.transpose(inputs, perm=[0, 2, 1])
+        if tar_len is None:
+            tar_len = self.tar_seq_len
 
         @tf.function(input_signature=[tf.TensorSpec(shape=(None, self.src_dims, self.order), dtype=tf.float32)],
                      experimental_relax_shapes=True)
         def autoregress(tar):
             out = tf.stack([tf.shape(inputs)[0], self.src_dims, 0])
             out = tf.fill(out, 0.0)
-            for i in tf.range(self.tar_seq_len):
+            for i in tf.range(tar_len):
                 tf.autograph.experimental.set_loop_options(
                     shape_invariants=[(out, tf.TensorShape([None, self.src_dims, None]))])
                 y = self.linear(tar)
-                tar = tf.concat([tar[:, :, -(self.order-1):], y], axis=-1)
+                tar = tf.concat([tar[:, :, -(self.order - 1):], y], axis=-1)
                 out = tf.concat([out, y], axis=-1)
             return out
 
@@ -47,20 +96,22 @@ class ChannelIndependentAR(tf.keras.layers.Layer):
         self.src_dims = src_dims
         self.linears = [Dense(1) for _ in range(src_dims)]
 
-    def call(self, inputs, training):
+    def call(self, inputs, training, tar_len=None):
         temporal_last = tf.transpose(inputs, perm=[0, 2, 1])
+        if tar_len is None:
+            tar_len = self.tar_seq_len
 
         @tf.function(input_signature=[tf.TensorSpec(shape=(None, self.src_dims, self.order), dtype=tf.float32)],
                      experimental_relax_shapes=True)
         def autoregress(tar):
             out = tf.stack([tf.shape(inputs)[0], self.src_dims, 0])
             out = tf.fill(out, 0.0)
-            for _ in tf.range(self.tar_seq_len):
+            for _ in tf.range(tar_len):
                 tf.autograph.experimental.set_loop_options(
                     shape_invariants=[(out, tf.TensorShape([None, self.src_dims, None]))])
                 y = [self.linears[i](tar[:, i, :]) for i in range(self.src_dims)]
                 y = tf.stack(y, axis=1)
-                tar = tf.concat([tar[:, :, -(self.order-1):], y], axis=-1)
+                tar = tf.concat([tar[:, :, -(self.order - 1):], y], axis=-1)
                 out = tf.concat([out, y], axis=-1)
             return out
 
@@ -127,16 +178,24 @@ if __name__ == '__main__':
                          batch_size=1,
                          label_columns="ShortWaveDown",
                          samples_per_day=dataUtil.samples_per_day)
-    model = Sequential([Input(shape=(src_len, len(parameter.data_params.features))),
-                        ChannelIndependentAR(5, 10, len(parameter.data_params.features))])
-    model.compile(loss=tf.losses.MeanSquaredError(), optimizer="Adam"
-                  , metrics=[tf.metrics.MeanAbsoluteError()
-            , tf.metrics.MeanAbsolutePercentageError()])
+    input = Input(shape=(src_len, len(parameter.data_params.features)))
+    ar = ChannelIndependentAR(5, 10, len(parameter.data_params.features))
+    output = ar(input)
+    model = ARModel(ar=ar, inputs=input, outputs=output)
+    model.compile(loss=tf.losses.MeanSquaredError(), optimizer="Adam",
+                  metrics=[tf.metrics.MeanAbsoluteError(),
+                           tf.metrics.MeanAbsolutePercentageError()])
     model.summary()
     tf.keras.backend.clear_session()
-    # history = model.fit(w2.trainData(addcloud=parameter.addAverage),
-    #                     validation_data=w2.valData(addcloud=parameter.addAverage),
-    #                     epochs=100, batch_size=5, callbacks=[parameter.earlystoper])
+    history = model.fit(w2.train(1,
+                                 addcloud=parameter.data_params.addAverage,
+                                 using_timestamp_data=False,
+                                 is_shuffle=parameter.data_params.is_using_shuffle),
+                        validation_data=w2.val(1,
+                                               addcloud=parameter.data_params.addAverage,
+                                               using_timestamp_data=False,
+                                               is_shuffle=parameter.data_params.is_using_shuffle),
+                        epochs=1)
     for x, y in w2.train(w2.samples_per_day, addcloud=False, using_timestamp_data=False, is_shuffle=False):
         c = model(x[:1, :, :])
     model.summary()
