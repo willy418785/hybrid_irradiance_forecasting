@@ -346,10 +346,11 @@ def args_parse():
     parameter.exp_params.experiment_label += "_norm[{}]scale[{}]".format(
         datautil.get_mode(parameter.data_params.norm_mode, datautil.norm_type_list),
         datautil.get_mode(parameter.data_params.label_norm_mode, datautil.norm_type_list))
-    parameter.exp_params.experiment_label += "_bypass[{}]TE[{}]split[{}]".format(
-        bypass_factory.BypassFac.get_bypass_mode(parameter.model_params.bypass),
-        time_embedding_factory.TEFac.get_te_mode(parameter.model_params.time_embedding),
-        parameter.model_params.split_days)
+    if not args['base_only']:
+        parameter.exp_params.experiment_label += "_bypass[{}]TE[{}]split[{}]".format(
+            bypass_factory.BypassFac.get_bypass_mode(parameter.model_params.bypass),
+            time_embedding_factory.TEFac.get_te_mode(parameter.model_params.time_embedding),
+            parameter.model_params.split_days)
     if get_mode(parameter.data_params.split_mode, datautil.split_mode_list) != "all_year":
         parameter.exp_params.experiment_label += "_datasplit[{}]_test_on_{}".format(
             get_mode(parameter.data_params.split_mode, datautil.split_mode_list),
