@@ -599,6 +599,58 @@ def run():
                 modelMetricsRecorder[logM] = {}
             modelMetricsRecorder[logM][model_name] = metricsDict[logM]
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
+
+    if "AR" in parameter.exp_params.model_list:
+        teacher_forcing_w = WindowGenerator(input_width=input_width,
+                                            image_input_width=image_input_width,
+                                            label_width=1,
+                                            shift=shift,
+                                            trainImages=dataUtil.trainImages,
+                                            trainData=dataUtil.train_df[dataUtil.feature_col],
+                                            trainCloud=dataUtil.train_df_cloud,  ######
+                                            trainAverage=dataUtil.train_df_average,  ######
+                                            trainY=dataUtil.train_df[dataUtil.label_col],
+                                            valImage=dataUtil.valImages,
+                                            valData=dataUtil.val_df[dataUtil.feature_col],
+                                            valCloud=dataUtil.val_df_cloud,  ######
+                                            valAverage=dataUtil.val_df_average,  ######
+                                            valY=dataUtil.val_df[dataUtil.label_col],
+                                            testImage=dataUtil.testImages,
+                                            testData=dataUtil.test_df[dataUtil.feature_col],
+                                            testCloud=dataUtil.test_df_cloud,  ######
+                                            testAverage=dataUtil.test_df_average,  ######
+                                            testY=dataUtil.test_df[dataUtil.label_col],
+                                            batch_size=parameter.exp_params.batch_size,
+                                            label_columns="ShortWaveDown",
+                                            samples_per_day=dataUtil.samples_per_day)
+        model_name = "AR"
+        log.info("training {} model...".format(model_name))
+        testEpoch = 10
+        input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
+        auto_regression = model_AR.ChannelIndependentAR(order=parameter.model_params.bypass_params.order,
+                                                        tar_seq_len=label_width,
+                                                        src_dims=len(parameter.data_params.features))
+        output = auto_regression(input_scalar)
+        model = model_AR.ARModel(ar=auto_regression, inputs=input_scalar, outputs=output)
+        datamodel_CL, history = ModelTrainer(dataGnerator=teacher_forcing_w, model=model, sample_rate=1,
+                                             generatorMode="data", testEpoch=testEpoch, name=model_name)
+        if 'val_loss' in history.history:
+            with open('./plot/{}/history-{}.json'.format(parameter.exp_params.experiment_label, model_name),
+                      'w') as f:
+                json.dump(history.history, f, indent='\t')
+        log.info("predicting SolarIrradiation by {}...".format(model_name))
+        evaluation_w = w2
+        metricsDict = evaluation_w.allPlot(model=[datamodel_CL],
+                                           name=model_name,
+                                           scaler=dataUtil.labelScaler,
+                                           save_csv=parameter.exp_params.save_csv,
+                                           save_plot=parameter.exp_params.save_plot,
+                                           datamode="data")
+        for logM in metricsDict:
+            if modelMetricsRecorder.get(logM) is None:
+                modelMetricsRecorder[logM] = {}
+            modelMetricsRecorder[logM][model_name] = metricsDict[logM]
+        pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
     # test learning models
     dataUtil = data_with_weather_info
     w = w2

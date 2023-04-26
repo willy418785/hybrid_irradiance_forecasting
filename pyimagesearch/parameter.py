@@ -128,11 +128,11 @@ class _ExpParams(_Params):
         self.experiment_label = "test"
         self.callbacks = [EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=10, min_delta=0.0001,
                                         restore_best_weights=True)]
-        self.model_list = ["Persistence", "MA", "LR",
+        self.model_list = ["Persistence", "MA", "LR", "AR",
                            "convGRU", "transformer",
                            'stationary_convGRU', "stationary_transformer",
                            'znorm_convGRU', 'znorm_transformer']
-        self.baselines = ["Persistence", "MA", "LR"]
+        self.baselines = ["Persistence", "MA", "LR", "AR"]
         self.save_plot = False
         self.save_csv = False
 
