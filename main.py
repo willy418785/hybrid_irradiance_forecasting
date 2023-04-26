@@ -204,7 +204,8 @@ def args_parse():
                     help='save plot figure as html or not')
     ap.add_argument('--save_csv', required=False, default=parameter.exp_params.save_csv, action='store_true',
                     help='save prediction as csv or not')
-
+    ap.add_argument('--base_only', required=False, default=False, action='store_true',
+                    help='evaluate baseline method only')
     # data related arguments
     ap.add_argument("-i", "--input", type=int, required=False, default=parameter.data_params.input_width,
                     help="length of input seq.")
@@ -279,6 +280,8 @@ def args_parse():
     parameter.exp_params.batch_size = args["batch_size"]
     parameter.exp_params.save_plot = args["save_plot"]
     parameter.exp_params.save_csv = args["save_csv"]
+    if args["base_only"]:
+        parameter.exp_params.model_list = parameter.exp_params.baselines
     # data related params assignment
     parameter.data_params.input_width = args["input"]
     parameter.data_params.shifted_width = args["shift"]
@@ -329,6 +332,8 @@ def args_parse():
     parameter.model_params.bypass_params.adjust(parameter.data_params.input_width)  # adjust order of bypass LR
 
     # format directory name of this experiment
+    if args['base_only']:
+        parameter.exp_params.experiment_label += "_base"
     file_name, _ = os.path.splitext(parameter.data_params.csv_name)
     parameter.exp_params.experiment_label += "_{}".format(file_name)
     parameter.exp_params.experiment_label += "_i{}s{}o{}".format(
