@@ -6,7 +6,6 @@ from tensorflow.keras.layers import Dense, Input
 
 from pyimagesearch import parameter
 from pyimagesearch.datautil import DataUtil
-from pyimagesearch.windowsGenerator import WindowGenerator
 
 gen_modes = ['unistep', 'auto', "mlp"]
 
@@ -31,7 +30,7 @@ class AR(tf.keras.layers.Layer):
                 tf.autograph.experimental.set_loop_options(
                     shape_invariants=[(out, tf.TensorShape([None, self.src_dims, None]))])
                 y = self.linear(tar)
-                tar = tf.concat([tar[:, :, 1:], y], axis=-1)
+                tar = tf.concat([tar[:, :, -(self.order-1):], y], axis=-1)
                 out = tf.concat([out, y], axis=-1)
             return out
 
@@ -61,7 +60,7 @@ class ChannelIndependentAR(tf.keras.layers.Layer):
                     shape_invariants=[(out, tf.TensorShape([None, self.src_dims, None]))])
                 y = [self.linears[i](tar[:, i, :]) for i in range(self.src_dims)]
                 y = tf.stack(y, axis=1)
-                tar = tf.concat([tar[:, :, 1:], y], axis=-1)
+                tar = tf.concat([tar[:, :, -(self.order-1):], y], axis=-1)
                 out = tf.concat([out, y], axis=-1)
             return out
 
@@ -100,6 +99,8 @@ if __name__ == '__main__':
     src_len = 10
     tar_len = 10
     shift = 0
+
+    from pyimagesearch.windowsGenerator import WindowGenerator
     w2 = WindowGenerator(input_width=src_len,
                          image_input_width=0,
                          label_width=tar_len,
@@ -127,7 +128,7 @@ if __name__ == '__main__':
                          label_columns="ShortWaveDown",
                          samples_per_day=dataUtil.samples_per_day)
     model = Sequential([Input(shape=(src_len, len(parameter.data_params.features))),
-                        TemporalChannelIndependentLR(5, 10, len(parameter.data_params.features))])
+                        ChannelIndependentAR(5, 10, len(parameter.data_params.features))])
     model.compile(loss=tf.losses.MeanSquaredError(), optimizer="Adam"
                   , metrics=[tf.metrics.MeanAbsoluteError()
             , tf.metrics.MeanAbsolutePercentageError()])
