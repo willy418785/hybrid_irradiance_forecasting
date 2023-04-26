@@ -472,7 +472,14 @@ def run():
                          batch_size=parameter.exp_params.batch_size,
                          label_columns="ShortWaveDown",
                          samples_per_day=dataUtil.samples_per_day)
-    # log.info(w2)  # 3D
+    #############################################################
+    log = logging.getLogger(parameter.exp_params.experiment_label)
+    w = w2
+    is_input_continuous_with_output = (shift == 0) and (
+            not parameter.data_params.between8_17 or w.is_sampling_within_day)
+    metrics_path = "plot/{}/{}".format(parameter.exp_params.experiment_label, "all_metric")
+
+    # test baseline model
     dataUtil = data_for_baseline
     if "Persistence" in parameter.exp_params.model_list:
         w_for_persistance = WindowGenerator(input_width=input_width,
@@ -497,40 +504,6 @@ def run():
                                             batch_size=parameter.exp_params.batch_size,
                                             label_columns="ShortWaveDown",
                                             samples_per_day=dataUtil.samples_per_day)
-    if "MA" in parameter.exp_params.model_list:
-        w_for_MA = WindowGenerator(input_width=MA_width,
-                                   image_input_width=image_input_width,
-                                   label_width=label_width,
-                                   shift=shift,
-                                   trainImages=dataUtil.trainImages,
-                                   trainData=dataUtil.train_df[dataUtil.feature_col],
-                                   trainCloud=dataUtil.train_df_cloud,  ######
-                                   trainAverage=dataUtil.train_df_average,  ######
-                                   trainY=dataUtil.train_df[dataUtil.label_col],
-                                   valImage=dataUtil.valImages,
-                                   valData=dataUtil.val_df[dataUtil.feature_col],
-                                   valCloud=dataUtil.val_df_cloud,  ######
-                                   valAverage=dataUtil.val_df_average,  ######
-                                   valY=dataUtil.val_df[dataUtil.label_col],
-                                   testImage=dataUtil.testImages,
-                                   testData=dataUtil.test_df[dataUtil.feature_col],
-                                   testCloud=dataUtil.test_df_cloud,  ######
-                                   testAverage=dataUtil.test_df_average,  ######
-                                   testY=dataUtil.test_df[dataUtil.label_col],
-                                   batch_size=parameter.exp_params.batch_size,
-                                   label_columns="ShortWaveDown",
-                                   samples_per_day=dataUtil.samples_per_day)
-
-    #############################################################
-    log = logging.getLogger(parameter.exp_params.experiment_label)
-    w = w2
-    is_input_continuous_with_output = (shift == 0) and (
-            not parameter.data_params.between8_17 or w.is_sampling_within_day)
-    metrics_path = "plot/{}/{}".format(parameter.exp_params.experiment_label, "all_metric")
-
-    # test baseline model
-    dataUtil = data_for_baseline
-    if "Persistence" in parameter.exp_params.model_list:
         baseline = Persistence(w_for_persistance.is_sampling_within_day,
                                w_for_persistance.samples_per_day,
                                label_width)
@@ -555,6 +528,28 @@ def run():
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
     if "MA" in parameter.exp_params.model_list:
+        w_for_MA = WindowGenerator(input_width=MA_width,
+                                   image_input_width=image_input_width,
+                                   label_width=label_width,
+                                   shift=shift,
+                                   trainImages=dataUtil.trainImages,
+                                   trainData=dataUtil.train_df[dataUtil.feature_col],
+                                   trainCloud=dataUtil.train_df_cloud,  ######
+                                   trainAverage=dataUtil.train_df_average,  ######
+                                   trainY=dataUtil.train_df[dataUtil.label_col],
+                                   valImage=dataUtil.valImages,
+                                   valData=dataUtil.val_df[dataUtil.feature_col],
+                                   valCloud=dataUtil.val_df_cloud,  ######
+                                   valAverage=dataUtil.val_df_average,  ######
+                                   valY=dataUtil.val_df[dataUtil.label_col],
+                                   testImage=dataUtil.testImages,
+                                   testData=dataUtil.test_df[dataUtil.feature_col],
+                                   testCloud=dataUtil.test_df_cloud,  ######
+                                   testAverage=dataUtil.test_df_average,  ######
+                                   testY=dataUtil.test_df[dataUtil.label_col],
+                                   batch_size=parameter.exp_params.batch_size,
+                                   label_columns="ShortWaveDown",
+                                   samples_per_day=dataUtil.samples_per_day)
         movingAverage = MA(MA_width, w_for_MA.is_sampling_within_day, w_for_MA.samples_per_day, label_width)
         movingAverage.compile(loss=tf.losses.MeanSquaredError(),
                               metrics=[tf.metrics.MeanAbsoluteError(),
