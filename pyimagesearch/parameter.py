@@ -1,5 +1,4 @@
 from tensorflow.keras.callbacks import EarlyStopping
-import logging
 
 
 class _Params:
@@ -116,6 +115,8 @@ class _DataParams(_Params):
 
 class _ExpParams(_Params):
     MAX_COL_TO_PLOT = 5
+    model_selection_mode = ['default', "baseline", "all", "valid", "convGRU", "transformer", "series-decomposition"]
+    baselines = ["Persistence", "MA", "LR", "AR"]
 
     def __init__(self, name="Experiment"):
         super().__init__(name)
@@ -131,9 +132,36 @@ class _ExpParams(_Params):
         self.model_list = ["convGRU", "transformer",
                            'stationary_convGRU', "stationary_transformer",
                            'znorm_convGRU', 'znorm_transformer']
-        self.baselines = ["Persistence", "MA", "LR", "AR"]
         self.save_plot = False
         self.save_csv = False
+
+    def set_tested_models(self, mode):
+        if type(mode) is int:
+            if mode < 0 or mode > len(_ExpParams.model_selection_mode):
+                mode = _ExpParams.model_selection_mode[0]
+            else:
+                mode = _ExpParams.model_selection_mode[mode]
+        else:
+            if mode not in _ExpParams.model_selection_mode:
+                mode = _ExpParams.model_selection_mode[0]
+        if mode == 'default':
+            self.model_list = self.model_list
+        elif mode == "baseline":
+            self.model_list = _ExpParams.baselines
+        elif mode == "all":
+            self.model_list = ["Persistence", "MA", "LR", "AR",
+                               "convGRU", "transformer",
+                               'stationary_convGRU', "stationary_transformer",
+                               'znorm_convGRU', 'znorm_transformer']
+        elif mode == "valid":
+            self.model_list = ["convGRU", "transformer"]
+        elif mode == "convGRU":
+            self.model_list = ["convGRU", 'stationary_convGRU', 'znorm_convGRU']
+        elif mode == "transformer":
+            self.model_list = ["transformer", "stationary_transformer", 'znorm_transformer']
+        elif mode == "series-decomposition":
+            self.model_list = ['stationary_convGRU', "stationary_transformer", 'znorm_convGRU', 'znorm_transformer']
+        return mode
 
 
 class _ModelParams(_Params):
