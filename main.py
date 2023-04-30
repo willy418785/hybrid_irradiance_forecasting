@@ -58,7 +58,8 @@ sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_opti
 # config.gpu_options.allow_growth = True
 # session = InteractiveSession(config=config)
 
-def ModelTrainer(dataGnerator: WindowGenerator, model, sample_rate, generatorMode="", testEpoch=0, name="Example"):
+def ModelTrainer(dataGnerator: WindowGenerator, model, sample_rate, generatorMode="", testEpoch=0, name="Example",
+                 is_shuffle=False):
     model.compile(loss=tf.losses.MeanSquaredError(), optimizer="Adam"
                   , metrics=[tf.metrics.MeanAbsoluteError()
             , tf.metrics.MeanAbsolutePercentageError()
@@ -74,11 +75,11 @@ def ModelTrainer(dataGnerator: WindowGenerator, model, sample_rate, generatorMod
         history = model.fit(
             dataGnerator.train(sample_rate, addcloud=parameter.data_params.addAverage,
                                using_timestamp_data=using_timestamp_data,
-                               is_shuffle=parameter.data_params.is_using_shuffle),
+                               is_shuffle=is_shuffle),
             validation_data=dataGnerator.val(sample_rate,
                                              addcloud=parameter.data_params.addAverage,
                                              using_timestamp_data=using_timestamp_data,
-                                             is_shuffle=parameter.data_params.is_using_shuffle),
+                                             is_shuffle=is_shuffle),
             epochs=testEpoch, batch_size=parameter.exp_params.batch_size, callbacks=parameter.exp_params.callbacks)
 
     elif generatorMode == "image":
@@ -735,7 +736,8 @@ def run():
 
             datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
                                                  sample_rate=parameter.data_params.sample_rate, generatorMode="data",
-                                                 testEpoch=testEpoch, name=model_name)
+                                                 testEpoch=testEpoch, name=model_name,
+                                                 is_shuffle=parameter.data_params.is_using_shuffle)
 
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
@@ -846,7 +848,8 @@ def run():
                 model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name=model_name)
             datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
                                                  sample_rate=parameter.data_params.sample_rate, generatorMode="data",
-                                                 testEpoch=testEpoch, name=model_name)
+                                                 testEpoch=testEpoch, name=model_name,
+                                                 is_shuffle=parameter.data_params.is_using_shuffle)
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
                 best_perform = min(history.history["val_loss"])
@@ -952,7 +955,8 @@ def run():
                 model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name=model_name)
             datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
                                                  sample_rate=parameter.data_params.sample_rate, generatorMode="data",
-                                                 testEpoch=testEpoch, name=model_name)
+                                                 testEpoch=testEpoch, name=model_name,
+                                                 is_shuffle=parameter.data_params.is_using_shuffle)
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
                 best_perform = min(history.history["val_loss"])
@@ -1067,7 +1071,8 @@ def run():
                 model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name=model_name)
             datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
                                                  sample_rate=parameter.data_params.sample_rate, generatorMode="data",
-                                                 testEpoch=testEpoch, name=model_name)
+                                                 testEpoch=testEpoch, name=model_name,
+                                                 is_shuffle=parameter.data_params.is_using_shuffle)
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
                 best_perform = min(history.history["val_loss"])
@@ -1174,7 +1179,8 @@ def run():
                 model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name=model_name)
             datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
                                                  sample_rate=parameter.data_params.sample_rate, generatorMode="data",
-                                                 testEpoch=testEpoch, name=model_name)
+                                                 testEpoch=testEpoch, name=model_name,
+                                                 is_shuffle=parameter.data_params.is_using_shuffle)
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
                 best_perform = min(history.history["val_loss"])
@@ -1288,7 +1294,8 @@ def run():
                 model = tf.keras.Model(inputs=[input_scalar], outputs=outputs, name=model_name)
             datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
                                                  sample_rate=parameter.data_params.sample_rate, generatorMode="data",
-                                                 testEpoch=testEpoch, name=model_name)
+                                                 testEpoch=testEpoch, name=model_name,
+                                                 is_shuffle=parameter.data_params.is_using_shuffle)
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
                 best_perform = min(history.history["val_loss"])
@@ -1327,7 +1334,8 @@ def run():
             model = LSTNetModel(init, (None, input_width, len(parameter.data_params.features)))
             datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
                                                  sample_rate=parameter.data_params.sample_rate, generatorMode="data",
-                                                 testEpoch=testEpoch, name="LSTNet")
+                                                 testEpoch=testEpoch, name="LSTNet",
+                                                 is_shuffle=parameter.data_params.is_using_shuffle)
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
                 best_perform = min(history.history["val_loss"])
