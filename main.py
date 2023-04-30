@@ -624,7 +624,7 @@ def run():
                                             samples_per_day=dataUtil.samples_per_day)
         model_name = "AR"
         log.info("training {} model...".format(model_name))
-        testEpoch = 10
+        testEpoch = parameter.exp_params.epoch_list[0]
         input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
         auto_regression = model_AR.ChannelIndependentAR(order=parameter.model_params.bypass_params.order,
                                                         tar_seq_len=label_width,
