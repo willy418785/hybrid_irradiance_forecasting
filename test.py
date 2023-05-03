@@ -70,7 +70,7 @@ if __name__ == '__main__':
     # experiment_name = "transformer-nheads-dmodel[256]-{}".format(dataset)
 
     # TRANSFORMER TOKEN
-    # base = 'transformer-token[{}]_transformer_dataset_renheo_i168s0o168_rate24trate24_norm[std]scale[None]_bypass[None]TE[None]split[False]'
+    # base = 'transformer-token[{}]_{}_{}_i168s0o168_rate24trate24_norm[std]scale[None]_bypass[None]TE[None]split[False]'
     # labels = [base.format(i*24, mode, dataset) for i in range(0, 7 + 1)]
     # alt_labels = ["token-{}".format(i*24) for i in range(0, 7 + 1)]
     # experiment_name = "transformer-token-{}".format(dataset)
