@@ -176,6 +176,13 @@ class _ModelParams(_Params):
         self.decompose_params = self._DecomposeParams()
         self.split_day_params = self._SplitDayModuleParams()
 
+    def set_ideal(self, dataset_name):
+        self.transformer_params.set_ideal(dataset_name)
+        self.convGRU_params.set_ideal(dataset_name)
+        self.bypass_params.set_ideal(dataset_name)
+        self.decompose_params.set_ideal(dataset_name)
+        self.split_day_params.set_ideal(dataset_name)
+
     class _TransformerParams(_Params):
         def __init__(self, name="Transformer"):
             super().__init__(name)
@@ -192,6 +199,14 @@ class _ModelParams(_Params):
             if input_len < self.token_length:
                 self.token_length = input_len
 
+        def set_ideal(self, dataset_name):
+            if dataset_name == "EC.csv":
+                pass
+            elif dataset_name == "dataset_renheo.csv":
+                self.layers = 4
+            elif dataset_name == "speed_index_california.csv":
+                self.token_length = 144
+
     class _ConvGRUParams(_Params):
         def __init__(self, name="ConvGRU"):
             super().__init__(name)
@@ -202,6 +217,16 @@ class _ModelParams(_Params):
             self.embedding_kernel_size = 1
             self.dropout_rate = 0.1
 
+        def set_ideal(self, dataset_name):
+            if dataset_name == "EC.csv":
+                pass
+            elif dataset_name == "dataset_renheo.csv":
+                self.dropout_rate = 0
+                self.layers = 3
+            elif dataset_name == "speed_index_california.csv":
+                self.dropout_rate = 0.2
+                self.layers = 1
+
     class _BypassParams(_Params):
         def __init__(self, name="Bypass"):
             super().__init__(name)
@@ -211,16 +236,40 @@ class _ModelParams(_Params):
             if input_len < self.order:
                 self.order = input_len
 
+        def set_ideal(self, dataset_name):
+            if dataset_name == "EC.csv":
+                pass
+            elif dataset_name == "dataset_renheo.csv":
+                self.order = 24
+            elif dataset_name == "speed_index_california.csv":
+                self.order = 120
+
     class _DecomposeParams(_Params):
         def __init__(self, name="Series Decomposition"):
             super().__init__(name)
-            self.avg_window = 15
+            self.avg_window = 13
+
+        def set_ideal(self, dataset_name):
+            if dataset_name == "EC.csv":
+                pass
+            elif dataset_name == "dataset_renheo.csv":
+                self.avg_window = 17
+            elif dataset_name == "speed_index_california.csv":
+                pass
 
     class _SplitDayModuleParams(_Params):
         def __init__(self, name="Split-day Module"):
             super().__init__(name)
             self.filters = 32
             self.kernel_size = 3
+
+        def set_ideal(self, dataset_name):
+            if dataset_name == "EC.csv":
+                pass
+            elif dataset_name == "dataset_renheo.csv":
+                pass
+            elif dataset_name == "speed_index_california.csv":
+                pass
 
 
 data_params = _DataParams()

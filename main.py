@@ -304,6 +304,8 @@ def args_parse():
     parameter.model_params.bypass = args["bypass"]
     parameter.model_params.time_embedding = args["time_embedding"]
     parameter.model_params.split_days = args["split_day"]
+    # set optimized hyper parameters corresponding to different dataset
+    parameter.model_params.set_ideal(args["dataset"])
     # universal params of each models
     if args["layers"] is not None:
         parameter.model_params.transformer_params.layers = args["layers"]
