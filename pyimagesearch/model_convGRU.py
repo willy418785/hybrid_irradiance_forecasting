@@ -7,7 +7,7 @@ from tensorflow.keras.layers import Dense, Flatten, Input, Conv1D, GRU, Reshape
 
 from pyimagesearch import parameter, time_embedding
 from pyimagesearch.datautil import DataUtil
-from pyimagesearch.series_decomposition import SeriesDecompose, MovingZScoreNorm
+from pyimagesearch.series_decomposition import SeriesDecompose, MovingZNorm
 from pyimagesearch.windowsGenerator import WindowGenerator
 from pyimagesearch.model_transformer import positional_encoding
 
@@ -286,7 +286,7 @@ class MovingZNormEncoder(tf.keras.layers.Layer):
         self.gru_layers = [
             GRU(units, return_sequences=True, return_state=True, dropout=rate)
             for _ in range(layers)]
-        self.decomposes = [MovingZScoreNorm(avg_window) for _ in range(layers)]
+        self.decomposes = [MovingZNorm(avg_window) for _ in range(layers)]
 
     def call(self, input_seq, training, timestamp_embedding=None):
         x = self.conv(input_seq)
@@ -323,7 +323,7 @@ class MovingZNormDecoder(tf.keras.layers.Layer):
         self.gru_layers = [
             GRU(units, return_sequences=True, return_state=True, dropout=rate)
             for _ in range(layers)]
-        self.decomposes = [MovingZScoreNorm(avg_window) for _ in range(layers)]
+        self.decomposes = [MovingZNorm(avg_window) for _ in range(layers)]
 
     def call(self, input_seq, initial_states, training, timestamp_embedding=None, iter_step=None):
         x = self.conv(input_seq)

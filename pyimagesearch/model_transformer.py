@@ -11,7 +11,7 @@ from tensorflow.keras.models import Model
 
 from pyimagesearch import parameter, time_embedding
 from pyimagesearch.datautil import DataUtil
-from pyimagesearch.series_decomposition import SeriesDecompose, MovingZScoreNorm
+from pyimagesearch.series_decomposition import SeriesDecompose, MovingZNorm
 from pyimagesearch.windowsGenerator import WindowGenerator
 
 gen_modes = ['unistep', 'auto', "mlp"]
@@ -467,8 +467,8 @@ class MovingZScoreNormEncoderLayer(tf.keras.layers.Layer):
         super().__init__()
         self.mha = MultiHeadAttention(num_heads=num_heads, key_dim=key_dim, value_dim=value_dim, dropout=rate)
         self.ff = feed_forward(d_model, dff, rate)
-        self.zn1 = MovingZScoreNorm(avg_window)
-        self.zn2 = MovingZScoreNorm(avg_window)
+        self.zn1 = MovingZNorm(avg_window)
+        self.zn2 = MovingZNorm(avg_window)
         self.pooling = MaxPooling1D(pool_size=2, strides=2, padding='same')
 
     def call(self, x, training, mask):
@@ -520,9 +520,9 @@ class MovingZScoreNormDecoderLayer(tf.keras.layers.Layer):
         self.mha1 = MultiHeadAttention(num_heads=num_heads, key_dim=key_dim, value_dim=value_dim, dropout=rate)
         self.mha2 = MultiHeadAttention(num_heads=num_heads, key_dim=key_dim, value_dim=value_dim, dropout=rate)
         self.ff = feed_forward(d_model, dff, rate)
-        self.zn1 = MovingZScoreNorm(avg_window)
-        self.zn2 = MovingZScoreNorm(avg_window)
-        self.zn3 = MovingZScoreNorm(avg_window)
+        self.zn1 = MovingZNorm(avg_window)
+        self.zn2 = MovingZNorm(avg_window)
+        self.zn3 = MovingZNorm(avg_window)
         self.pooling = MaxPooling1D(pool_size=2, strides=2, padding='same')
 
     def call(self, x, enc_output, training):

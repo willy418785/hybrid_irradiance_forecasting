@@ -16,7 +16,7 @@ class SeriesDecompose(tf.keras.layers.Layer):
         return seasonal_component, trend_component
 
 
-class MovingZScoreNorm(tf.keras.layers.Layer):
+class MovingZNorm(tf.keras.layers.Layer):
     def __init__(self, window_size,
                  epsilon=1e-3,
                  center=True,
@@ -93,7 +93,7 @@ class MovingZScoreNorm(tf.keras.layers.Layer):
 if __name__ == '__main__':
     i = tf.keras.Input(shape=(20, 2))
     s, t = SeriesDecompose(window_size=5)(i)
-    s = MovingZScoreNorm(window_size=5)(i)
+    s = MovingZNorm(window_size=5)(i)
     model = tf.keras.Model(inputs=[i], outputs=[s, t])
     model.summary()
     x = tf.random.normal([200, 20, 2])
