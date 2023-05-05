@@ -286,7 +286,7 @@ class MovingZNormEncoder(tf.keras.layers.Layer):
         self.gru_layers = [
             GRU(units, return_sequences=True, return_state=True, dropout=rate)
             for _ in range(layers)]
-        self.decompose = MovingZScoreNorm(avg_window)
+        self.decomposes = [MovingZScoreNorm(avg_window) for _ in range(layers)]
 
     def call(self, input_seq, training, timestamp_embedding=None):
         x = self.conv(input_seq)
@@ -298,7 +298,7 @@ class MovingZNormEncoder(tf.keras.layers.Layer):
         trends = []
         for i in range(self.layers):
             x, state = self.gru_layers[i](x, training=training)
-            x, t = self.decompose(x)
+            x, t = self.decomposes[i](x)
             states.append(state)
             trends.append(t)
         states = tf.stack(states, axis=-1)
@@ -323,7 +323,7 @@ class MovingZNormDecoder(tf.keras.layers.Layer):
         self.gru_layers = [
             GRU(units, return_sequences=True, return_state=True, dropout=rate)
             for _ in range(layers)]
-        self.decompose = MovingZScoreNorm(avg_window)
+        self.decomposes = [MovingZScoreNorm(avg_window) for _ in range(layers)]
 
     def call(self, input_seq, initial_states, training, timestamp_embedding=None, iter_step=None):
         x = self.conv(input_seq)
@@ -332,10 +332,10 @@ class MovingZNormDecoder(tf.keras.layers.Layer):
         if self.pos_vec is not None:
             x += self.pos_vec if iter_step is None else self.pos_vec[:, iter_step:iter_step + 1, :]
         states = []
-        trends =[]
+        trends = []
         for i in range(self.layers):
             x, state = self.gru_layers[i](x, training=training, initial_state=initial_states[:, :, i])
-            x, t = self.decompose(x)
+            x, t = self.decomposes[i](x)
             states.append(state)
             trends.append(t)
         states = tf.stack(states, axis=-1)
@@ -436,7 +436,7 @@ if __name__ == '__main__':
     embedding = time_embedding.TimeEmbedding(output_dims=parameter.model_params.convGRU_params.embedding_filters,
                                              input_len=src_len, shift_len=shift,
                                              label_len=tar_len)(input_time)
-    LR = StationaryConvGRU(num_layers=parameter.model_params.convGRU_params.layers, in_seq_len=src_len,
+    LR = MovingZNormConvGRU(num_layers=parameter.model_params.convGRU_params.layers, in_seq_len=src_len,
                            in_dim=len(parameter.data_params.features),
                            out_seq_len=tar_len,
                            out_dim=len(parameter.data_params.target),
