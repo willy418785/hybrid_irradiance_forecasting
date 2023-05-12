@@ -25,12 +25,15 @@ def feed_forward(d_model, dff, dropout):
     ])
 
 
-def positional_encoding(position, d_model):
+def positional_encoding(seq_len, d_model, max_len=None):
+    if max_len is None:
+        max_len = seq_len
+        
     def get_angles(pos, i, d_model):
-        angle_rates = 1 / np.power(10000, (2 * (i // 2)) / np.float32(d_model))
+        angle_rates = 1 / np.power(max_len, (2 * (i // 2)) / np.float32(d_model))
         return pos * angle_rates
 
-    angle_rads = get_angles(np.arange(position)[:, np.newaxis],
+    angle_rads = get_angles(np.arange(seq_len)[:, np.newaxis],
                             np.arange(d_model)[np.newaxis, :],
                             d_model)
 
