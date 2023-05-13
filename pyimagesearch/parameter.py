@@ -154,7 +154,7 @@ class _ExpParams(_Params):
                                'stationary_convGRU', "stationary_transformer",
                                'znorm_convGRU', 'znorm_transformer']
         elif mode == "valid":
-            self.model_list = ["convGRU", "transformer"]
+            self.model_list = _ExpParams.baselines + ["convGRU", "transformer"]
         elif mode == "convGRU":
             self.model_list = ["convGRU", 'stationary_convGRU', 'znorm_convGRU']
         elif mode == "transformer":
