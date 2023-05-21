@@ -630,10 +630,9 @@ def run():
         testEpoch = parameter.exp_params.epoch_list[0]
         input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
         auto_regression = model_AR.ChannelIndependentAR(order=parameter.model_params.bypass_params.order,
-                                                        tar_seq_len=label_width,
                                                         src_dims=len(parameter.data_params.features))
         output = auto_regression(input_scalar)
-        model = model_AR.ARModel(ar=auto_regression, inputs=input_scalar, outputs=output)
+        model = model_AR.ARModel(ar=auto_regression, tar_len=label_width, inputs=input_scalar, outputs=output)
         datamodel_CL, history = ModelTrainer(dataGnerator=teacher_forcing_w, model=model, sample_rate=1,
                                              generatorMode="data", testEpoch=testEpoch, name=model_name)
         if 'val_loss' in history.history:
