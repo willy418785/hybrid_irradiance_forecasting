@@ -280,16 +280,17 @@ def LSTNetModel(init, input_shape):
     
     # m is the number of time-series
     m = input_shape[2]
-
-    # Get tensor shape except batchsize
-    tensor_shape = input_shape[1:]
     
     if K.image_data_format() == 'channels_last':
         ch_axis = 3
     else:
         ch_axis = 1
-    
-    X = Input(shape = tensor_shape)
+
+    # Preserve dynamic length of input seq. for AR compatibility
+    I = Input(shape = (None, m))
+
+    # Slice desired length from input seq.
+    X = I[:, -input_shape[1]:, :]
 
     # CNN
     if init.CNNFilters > 0 and init.CNNKernel > 0:
@@ -337,9 +338,11 @@ def LSTNetModel(init, input_shape):
 
 	# Generate output as the summation of the Dense layer output and the AR one
         Y = Add()([Y,Z])
+
+    # Recover time axis of single-step output
     Y = tf.expand_dims(Y, axis=1)
     # Generate Model
-    model = Model(inputs = X, outputs = Y)
+    model = Model(inputs = I, outputs = Y)
     
     return model
 

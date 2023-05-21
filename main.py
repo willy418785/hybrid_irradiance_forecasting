@@ -652,6 +652,68 @@ def run():
                 modelMetricsRecorder[logM] = {}
             modelMetricsRecorder[logM][model_name] = metricsDict[logM]
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
+
+    if "LSTNet" in parameter.exp_params.model_list:
+        teacher_forcing_w = WindowGenerator(input_width=input_width,
+                                            image_input_width=image_input_width,
+                                            label_width=1,
+                                            shift=shift,
+                                            trainImages=dataUtil.trainImages,
+                                            trainData=dataUtil.train_df[dataUtil.feature_col],
+                                            trainCloud=dataUtil.train_df_cloud,  ######
+                                            trainAverage=dataUtil.train_df_average,  ######
+                                            trainY=dataUtil.train_df[dataUtil.label_col],
+                                            valImage=dataUtil.valImages,
+                                            valData=dataUtil.val_df[dataUtil.feature_col],
+                                            valCloud=dataUtil.val_df_cloud,  ######
+                                            valAverage=dataUtil.val_df_average,  ######
+                                            valY=dataUtil.val_df[dataUtil.label_col],
+                                            testImage=dataUtil.testImages,
+                                            testData=dataUtil.test_df[dataUtil.feature_col],
+                                            testCloud=dataUtil.test_df_cloud,  ######
+                                            testAverage=dataUtil.test_df_average,  ######
+                                            testY=dataUtil.test_df[dataUtil.label_col],
+                                            batch_size=parameter.exp_params.batch_size,
+                                            label_columns="ShortWaveDown",
+                                            samples_per_day=dataUtil.samples_per_day)
+        model_name = "LSTNet"
+        best_perform, best_perform2 = float('inf'), float('inf')
+        best_model, best_model2 = None, None
+        log.info(model_name)
+        testEpoch = parameter.exp_params.epoch_list[0]
+
+        args_dict = GetArgumentsDict()
+        init = LSTNetInit(args_dict, True)
+        init.window = input_width
+        init.skip = w.samples_per_day if w.samples_per_day < input_width else input_width
+        init.highway = w.samples_per_day if w.samples_per_day < input_width else input_width
+        model = LSTNetModel(init, (None, input_width, len(parameter.data_params.features)))
+        model = model_AR.ARModel(ar=model, tar_len=label_width, inputs=model.inputs, outputs=model.outputs)
+        datamodel_CL, history = ModelTrainer(dataGnerator=teacher_forcing_w, model=model, sample_rate=1,
+                                             generatorMode="data",
+                                             testEpoch=testEpoch, name="LSTNet",
+                                             is_shuffle=parameter.data_params.is_using_shuffle)
+        if 'val_loss' in history.history:
+            with open('./plot/{}/history-{}.json'.format(parameter.exp_params.experiment_label, model_name),
+                      'w') as f:
+                json.dump(history.history, f, indent='\t')
+        print(best_perform)
+        log.info("a model ok")
+
+        log.info("predicting SolarIrradiation by {}...".format(model_name))
+        best_model = datamodel_CL if best_model is None else best_model
+        evaluation_w = w2
+        metricsDict = evaluation_w.allPlot(model=[best_model],
+                                           name=model_name,
+                                           scaler=dataUtil.labelScaler,
+                                           save_csv=parameter.exp_params.save_csv,
+                                           save_plot=parameter.exp_params.save_plot,
+                                           datamode="data")
+        for logM in metricsDict:
+            if modelMetricsRecorder.get(logM) is None:
+                modelMetricsRecorder[logM] = {}
+            modelMetricsRecorder[logM][model_name] = metricsDict[logM]
+        pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
     # test learning models
     dataUtil = data_with_weather_info
     w = w2
@@ -1296,46 +1358,6 @@ def run():
             datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
                                                  sample_rate=parameter.data_params.sample_rate, generatorMode="data",
                                                  testEpoch=testEpoch, name=model_name,
-                                                 is_shuffle=parameter.data_params.is_using_shuffle)
-            if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
-                best_model = datamodel_CL
-                best_perform = min(history.history["val_loss"])
-                with open('./plot/{}/history-{}.json'.format(parameter.exp_params.experiment_label, model_name),
-                          'w') as f:
-                    json.dump(history.history, f, indent='\t')
-            print(best_perform)
-            log.info("a model ok")
-
-        log.info("predicting SolarIrradiation by {}...".format(model_name))
-        best_model = datamodel_CL if best_model is None else best_model
-        metricsDict = w.allPlot(model=[best_model],
-                                name=model_name,
-                                scaler=dataUtil.labelScaler,
-                                save_csv=parameter.exp_params.save_csv,
-                                save_plot=parameter.exp_params.save_plot,
-                                datamode="data")
-        for logM in metricsDict:
-            if modelMetricsRecorder.get(logM) is None:
-                modelMetricsRecorder[logM] = {}
-            modelMetricsRecorder[logM][model_name] = metricsDict[logM]
-        pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
-
-    if "LSTNet" in parameter.exp_params.model_list:
-        assert label_width == 1
-        model_name = "LSTNet"
-        best_perform, best_perform2 = float('inf'), float('inf')
-        best_model, best_model2 = None, None
-        log.info(model_name)
-        for testEpoch in parameter.exp_params.epoch_list:  # 要在model input前就跑回圈才能讓weight不一樣，weight初始的點是在model input的地方
-            args_dict = GetArgumentsDict()
-            init = LSTNetInit(args_dict, True)
-            init.window = input_width
-            init.skip = w.samples_per_day if w.samples_per_day < input_width else input_width
-            init.highway = w.samples_per_day if w.samples_per_day < input_width else input_width
-            model = LSTNetModel(init, (None, input_width, len(parameter.data_params.features)))
-            datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
-                                                 sample_rate=parameter.data_params.sample_rate, generatorMode="data",
-                                                 testEpoch=testEpoch, name="LSTNet",
                                                  is_shuffle=parameter.data_params.is_using_shuffle)
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL

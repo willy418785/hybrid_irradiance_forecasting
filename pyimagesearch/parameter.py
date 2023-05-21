@@ -116,7 +116,7 @@ class _DataParams(_Params):
 class _ExpParams(_Params):
     MAX_COL_TO_PLOT = 5
     model_selection_mode = ['default', "baseline", "all", "valid", "convGRU", "transformer", "series-decomposition"]
-    baselines = ["Persistence", "MA", "LR", "AR"]
+    baselines = ["Persistence", "MA", "LR", "AR", "LSTNet"]
 
     def __init__(self, name="Experiment"):
         super().__init__(name)
