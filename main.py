@@ -608,6 +608,9 @@ def run():
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
     if "AR" in parameter.exp_params.model_list:
+        model_name = "AR"
+        best_perform = float('inf')
+        best_model = None
         teacher_forcing_w = WindowGenerator(input_width=input_width,
                                             image_input_width=image_input_width,
                                             label_width=1,
@@ -630,23 +633,27 @@ def run():
                                             batch_size=parameter.exp_params.batch_size,
                                             label_columns="ShortWaveDown",
                                             samples_per_day=dataUtil.samples_per_day)
-        model_name = "AR"
         log.info("training {} model...".format(model_name))
-        testEpoch = parameter.exp_params.epoch_list[0]
-        input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
-        auto_regression = model_AR.ChannelIndependentAR(order=parameter.model_params.bypass_params.order,
-                                                        src_dims=len(parameter.data_params.features))
-        output = auto_regression(input_scalar)
-        model = model_AR.ARModel(ar=auto_regression, tar_len=label_width, inputs=input_scalar, outputs=output)
-        datamodel_CL, history = ModelTrainer(dataGnerator=teacher_forcing_w, model=model, sample_rate=1,
-                                             generatorMode="data", testEpoch=testEpoch, name=model_name)
-        if 'val_loss' in history.history:
-            with open('./plot/{}/history-{}.json'.format(parameter.exp_params.experiment_label, model_name),
-                      'w') as f:
-                json.dump(history.history, f, indent='\t')
+        for testEpoch in parameter.exp_params.epoch_list:
+            input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
+            auto_regression = model_AR.ChannelIndependentAR(order=parameter.model_params.bypass_params.order,
+                                                            src_dims=len(parameter.data_params.features))
+            output = auto_regression(input_scalar)
+            model = model_AR.ARModel(ar=auto_regression, tar_len=label_width, inputs=input_scalar, outputs=output)
+            datamodel_CL, history = ModelTrainer(dataGnerator=teacher_forcing_w, model=model, sample_rate=1,
+                                                 generatorMode="data", testEpoch=testEpoch, name=model_name)
+            if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
+                best_model = datamodel_CL
+                best_perform = min(history.history["val_loss"])
+                with open('./plot/{}/history-{}.json'.format(parameter.exp_params.experiment_label, model_name),
+                          'w') as f:
+                    json.dump(history.history, f, indent='\t')
+            print(best_perform)
+            log.info("a model ok")
         log.info("predicting SolarIrradiation by {}...".format(model_name))
         evaluation_w = w2
-        metricsDict = evaluation_w.allPlot(model=[datamodel_CL],
+        best_model = datamodel_CL if best_model is None else best_model
+        metricsDict = evaluation_w.allPlot(model=[best_model],
                                            name=model_name,
                                            scaler=dataUtil.labelScaler,
                                            save_csv=parameter.exp_params.save_csv,
@@ -659,6 +666,10 @@ def run():
         pd.DataFrame(modelMetricsRecorder).to_csv(Path(metrics_path + ".csv"))
 
     if "LSTNet" in parameter.exp_params.model_list:
+        model_name = "LSTNet"
+        log.info(model_name)
+        best_perform = float('inf')
+        best_model = None
         teacher_forcing_w = WindowGenerator(input_width=input_width,
                                             image_input_width=image_input_width,
                                             label_width=1,
@@ -681,30 +692,27 @@ def run():
                                             batch_size=parameter.exp_params.batch_size,
                                             label_columns="ShortWaveDown",
                                             samples_per_day=dataUtil.samples_per_day)
-        model_name = "LSTNet"
-        best_perform, best_perform2 = float('inf'), float('inf')
-        best_model, best_model2 = None, None
-        log.info(model_name)
-        testEpoch = parameter.exp_params.epoch_list[0]
-
-        args_dict = GetArgumentsDict()
-        init = LSTNetInit(args_dict, True)
-        init.window = input_width
-        init.skip = w.samples_per_day if w.samples_per_day < input_width else input_width
-        init.highway = w.samples_per_day if w.samples_per_day < input_width else input_width
-        model = LSTNetModel(init, (None, input_width, len(parameter.data_params.features)))
-        model = model_AR.ARModel(ar=model, tar_len=label_width, inputs=model.inputs, outputs=model.outputs)
-        datamodel_CL, history = ModelTrainer(dataGnerator=teacher_forcing_w, model=model, sample_rate=1,
-                                             generatorMode="data",
-                                             testEpoch=testEpoch, name="LSTNet",
-                                             is_shuffle=parameter.data_params.is_using_shuffle)
-        if 'val_loss' in history.history:
-            with open('./plot/{}/history-{}.json'.format(parameter.exp_params.experiment_label, model_name),
-                      'w') as f:
-                json.dump(history.history, f, indent='\t')
-        print(best_perform)
-        log.info("a model ok")
-
+        log.info("training {} model...".format(model_name))
+        for testEpoch in parameter.exp_params.epoch_list:
+            args_dict = GetArgumentsDict()
+            init = LSTNetInit(args_dict, True)
+            init.window = input_width
+            init.skip = w.samples_per_day if w.samples_per_day < input_width else input_width
+            init.highway = w.samples_per_day if w.samples_per_day < input_width else input_width
+            model = LSTNetModel(init, (None, input_width, len(parameter.data_params.features)))
+            model = model_AR.ARModel(ar=model, tar_len=label_width, inputs=model.inputs, outputs=model.outputs)
+            datamodel_CL, history = ModelTrainer(dataGnerator=teacher_forcing_w, model=model, sample_rate=1,
+                                                 generatorMode="data",
+                                                 testEpoch=testEpoch, name="LSTNet",
+                                                 is_shuffle=parameter.data_params.is_using_shuffle)
+            if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
+                best_model = datamodel_CL
+                best_perform = min(history.history["val_loss"])
+                with open('./plot/{}/history-{}.json'.format(parameter.exp_params.experiment_label, model_name),
+                          'w') as f:
+                    json.dump(history.history, f, indent='\t')
+            print(best_perform)
+            log.info("a model ok")
         log.info("predicting SolarIrradiation by {}...".format(model_name))
         best_model = datamodel_CL if best_model is None else best_model
         evaluation_w = w2
