@@ -205,7 +205,7 @@ def args_parse():
                     help='save plot figure as html or not')
     ap.add_argument('--save_csv', required=False, default=parameter.exp_params.save_csv, action='store_true',
                     help='save prediction as csv or not')
-    ap.add_argument('--model_selection', type=cast_int_if_possible, required=False, default='default',
+    ap.add_argument('--model_selection', nargs='*', type=cast_int_if_possible, required=False, default='default',
                     help="models selection mode: {}".format(parameter.exp_params.model_selection_mode))
     # data related arguments
     ap.add_argument("-i", "--input", type=int, required=False, default=parameter.data_params.input_width,
@@ -347,7 +347,8 @@ def args_parse():
     parameter.exp_params.experiment_label += "_norm[{}]scale[{}]".format(
         datautil.get_mode(parameter.data_params.norm_mode, datautil.norm_type_list),
         datautil.get_mode(parameter.data_params.label_norm_mode, datautil.norm_type_list))
-    if model_selection != "baseline":
+    if not set(parameter.exp_params.model_list).issubset(set(parameter.exp_params.baselines)):
+        # add setup info to dir name if not testing baseline methods only
         parameter.exp_params.experiment_label += "_bypass[{}]TE[{}]split[{}]".format(
             bypass_factory.BypassFac.get_bypass_mode(parameter.model_params.bypass),
             time_embedding_factory.TEFac.get_te_mode(parameter.model_params.time_embedding),

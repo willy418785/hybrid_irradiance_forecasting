@@ -136,22 +136,20 @@ class _ExpParams(_Params):
         self.save_csv = False
 
     def set_tested_models(self, mode):
-        if type(mode) is int:
-            if mode < 0 or mode > len(_ExpParams.model_selection_mode):
-                mode = _ExpParams.model_selection_mode[0]
-            else:
-                mode = _ExpParams.model_selection_mode[mode]
-        else:
-            if mode not in _ExpParams.model_selection_mode:
-                mode = _ExpParams.model_selection_mode[0]
+        if isinstance(mode, list):
+            if len(mode) == 1:
+                mode = mode[0]
+                if type(mode) is int:
+                    if mode < 0 or mode > len(_ExpParams.model_selection_mode):
+                        mode = _ExpParams.model_selection_mode[0]
+                    else:
+                        mode = _ExpParams.model_selection_mode[mode]
         if mode == 'default':
             self.model_list = self.model_list
         elif mode == "baseline":
             self.model_list = _ExpParams.baselines
         elif mode == "all":
-            self.model_list = _ExpParams.baselines + ["convGRU", "transformer",
-                                                      'stationary_convGRU', "stationary_transformer",
-                                                      'znorm_convGRU', 'znorm_transformer']
+            self.model_list = _ExpParams.baselines + self.model_list
         elif mode == "valid":
             self.model_list = _ExpParams.baselines + ["convGRU", "transformer"]
         elif mode == "convGRU":
@@ -160,6 +158,12 @@ class _ExpParams(_Params):
             self.model_list = ["transformer", "stationary_transformer", 'znorm_transformer']
         elif mode == "series-decomposition":
             self.model_list = ['stationary_convGRU', "stationary_transformer", 'znorm_convGRU', 'znorm_transformer']
+        else:   # user specify all tested models one by one
+            if isinstance(mode, list):
+                self.model_list = mode
+                mode = "custom"
+            else:
+                self.model_list = [mode]
         return mode
 
 
