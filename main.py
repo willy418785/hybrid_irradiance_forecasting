@@ -207,6 +207,9 @@ def args_parse():
                     help='save prediction as csv or not')
     ap.add_argument('--model_selection', nargs='*', type=cast_int_if_possible, required=False, default='default',
                     help="models selection mode: {}".format(parameter.exp_params.model_selection_mode))
+    ap.add_argument('--epoch_list', nargs='*', type=int, required=False, default=parameter.exp_params.epoch_list,
+                    help="list of number of epoch for each independent training process")
+
     # data related arguments
     ap.add_argument("-i", "--input", type=int, required=False, default=parameter.data_params.input_width,
                     help="length of input seq.")
@@ -282,6 +285,7 @@ def args_parse():
     parameter.exp_params.save_plot = args["save_plot"]
     parameter.exp_params.save_csv = args["save_csv"]
     model_selection = parameter.exp_params.set_tested_models(args["model_selection"])
+    parameter.exp_params.epoch_list = args["epoch_list"]
     # data related params assignment
     parameter.data_params.input_width = args["input"]
     parameter.data_params.shifted_width = args["shift"]
