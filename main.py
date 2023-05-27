@@ -257,25 +257,25 @@ def args_parse():
     ap.add_argument("--kernel_size", type=int, required=False, default=None, help="kernel's size of Conv1D")
     ap.add_argument("--dropout", type=float, required=False, default=None, help="dropout rate")
     # transformer model arguments
-    ap.add_argument("--d_model", type=int, required=False, default=parameter.model_params.transformer_params.d_model,
+    ap.add_argument("--d_model", type=int, required=False, default=None,
                     help="number of inner dimensions of transformer model")
-    ap.add_argument("--n_heads", type=int, required=False, default=parameter.model_params.transformer_params.n_heads,
+    ap.add_argument("--n_heads", type=int, required=False, default=None,
                     help="number of heads of transformer model")
-    ap.add_argument("--dff", type=int, required=False, default=parameter.model_params.transformer_params.dff,
+    ap.add_argument("--dff", type=int, required=False, default=None,
                     help="number of intermediate dimensions of feed-forward layer of transformer model")
-    ap.add_argument("--token", type=int, required=False, default=parameter.model_params.transformer_params.token_length,
+    ap.add_argument("--token", type=int, required=False, default=None,
                     help="length of token which is used as a part of decoder input")
     # convGRU model arguments
     ap.add_argument("--filters", type=int, required=False,
-                    default=parameter.model_params.convGRU_params.embedding_filters,
+                    default=None,
                     help="number of filters of Conv1D for convGRU model")
-    ap.add_argument("--units", type=int, required=False, default=parameter.model_params.convGRU_params.gru_units,
+    ap.add_argument("--units", type=int, required=False, default=None,
                     help="number of units of convGRU model")
     # bypass LR arguments
-    ap.add_argument("--order", type=int, required=False, default=parameter.model_params.bypass_params.order,
+    ap.add_argument("--order", type=int, required=False, default=None,
                     help="order of bypass LR")
     # series decomposition arguments
-    ap.add_argument("--window", type=int, required=False, default=parameter.model_params.bypass_params.order,
+    ap.add_argument("--window", type=int, required=False, default=None,
                     help="size of moving average window used in series decomposition block")
 
     args = vars(ap.parse_args())
@@ -321,17 +321,17 @@ def args_parse():
         parameter.model_params.transformer_params.dropout_rate = args["dropout"]
         parameter.model_params.convGRU_params.dropout_rate = args["dropout"]
     # transformer params
-    parameter.model_params.transformer_params.d_model = args["d_model"]
-    parameter.model_params.transformer_params.n_heads = args["n_heads"]
-    parameter.model_params.transformer_params.dff = args["dff"]
-    parameter.model_params.transformer_params.token_length = args["token"]
+    if args["d_model"] is not None: parameter.model_params.transformer_params.d_model = args["d_model"]
+    if args["n_heads"] is not None: parameter.model_params.transformer_params.n_heads = args["n_heads"]
+    if args["dff"] is not None: parameter.model_params.transformer_params.dff = args["dff"]
+    if args["token"] is not None: parameter.model_params.transformer_params.token_length = args["token"]
     # convGRU params
-    parameter.model_params.convGRU_params.embedding_filters = args["filters"]
-    parameter.model_params.convGRU_params.gru_units = args["units"]
+    if args["filters"] is not None: parameter.model_params.convGRU_params.embedding_filters = args["filters"]
+    if args["units"] is not None: parameter.model_params.convGRU_params.gru_units = args["units"]
     # bypass module params
-    parameter.model_params.bypass_params.order = args["order"]
+    if args["order"] is not None: parameter.model_params.bypass_params.order = args["order"]
     # decomposition module params
-    parameter.model_params.decompose_params.avg_window = args["window"]
+    if args["window"] is not None:  parameter.model_params.decompose_params.avg_window = args["window"]
     # dynamic model params adjustment
     parameter.model_params.transformer_params.adjust(
         parameter.data_params.input_width)  # adjust token length of transformer
