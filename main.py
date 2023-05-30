@@ -586,7 +586,7 @@ def run(exp_args):
         log.info("training {} model...".format(model_name))
         testEpoch = parameter.exp_params.epoch_list[0]
         input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
-        linear_regression = model_AR.TemporalChannelIndependentLR(order=parameter.model_params.bypass_params.order,
+        linear_regression = model_AR.TemporalChannelIndependentLR(order=w.samples_per_day,
                                                                   tar_seq_len=label_width,
                                                                   src_dims=len(parameter.data_params.features))
         linear_regression = linear_regression(input_scalar)
@@ -639,7 +639,7 @@ def run(exp_args):
         log.info("training {} model...".format(model_name))
         for testEpoch in parameter.exp_params.epoch_list:
             input_scalar = Input(shape=(input_width, len(parameter.data_params.features)))
-            auto_regression = model_AR.ChannelIndependentAR(order=parameter.model_params.bypass_params.order,
+            auto_regression = model_AR.ChannelIndependentAR(order=teacher_forcing_w.samples_per_day,
                                                             src_dims=len(parameter.data_params.features))
             output = auto_regression(input_scalar)
             model = model_AR.ARModel(ar=auto_regression, tar_len=label_width, inputs=input_scalar, outputs=output)
