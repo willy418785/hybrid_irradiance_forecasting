@@ -223,7 +223,7 @@ class PostARTrans(tf.keras.layers.Layer):
     def build(self, input_shape):
         super(PostARTrans, self).build(input_shape)
     
-    def call(self, inputs):
+    def call(self, inputs, out_len=None):
         # Get input tensors
 	# - First one is the output of the Dense(1) layer which we will operate on
 	# - The second is the oiriginal model input tensor which we will use to get
@@ -238,7 +238,11 @@ class PostARTrans(tf.keras.layers.Layer):
         
         # Reshape the output to have the batch size equal to the original batchsize before PreARTrans
         # and the second dimension as the number of timeseries
-        output = tf.reshape(x, [batchsize, self.m])
+        if out_len is None:
+            output = tf.reshape(x, [batchsize, self.m, 1])
+        else:
+            output = tf.reshape(x, [batchsize, self.m, out_len])
+        output = tf.transpose(output, perm=[0, 2, 1])
         
         # Adjust the output shape by setting back the batch size dimension to None
         output_shape = tf.TensorShape([None]).concatenate(output.get_shape()[1:])
@@ -276,7 +280,7 @@ class PostARTrans(tf.keras.layers.Layer):
 # - AR                                                                                                                #
 #######################################################################################################################
 
-def LSTNetModel(init, input_shape):
+def LSTNetModel(init, input_shape, output_length = None):
     
     # m is the number of time-series
     m = input_shape[2]
@@ -327,20 +331,27 @@ def LSTNetModel(init, input_shape):
     
     # Dense layer
     Y = Flatten()(R)
-    Y = Dense(m)(Y)
-    
+    if output_length is None:
+        Y = Dense(m)(Y)
+        Y = tf.expand_dims(Y, axis=1)
+    else:
+        assert type(output_length) is int
+        Y = Dense(m*output_length)(Y)
+        Y = tf.reshape(Y, [-1, output_length, m])
     # AR
     if init.highway > 0:
         Z = PreARTrans(init.highway)(X)
         Z = Flatten()(Z)
-        Z = Dense(1)(Z)
-        Z = PostARTrans(m)([Z,X])
+        if output_length is None:
+            Z = Dense(1)(Z)
+        else:
+            assert type(output_length) is int
+            Z = Dense(output_length)(Z)
+        Z = PostARTrans(m)([Z,X], out_len=output_length)
 
 	# Generate output as the summation of the Dense layer output and the AR one
         Y = Add()([Y,Z])
 
-    # Recover time axis of single-step output
-    Y = tf.expand_dims(Y, axis=1)
     # Generate Model
     model = Model(inputs = I, outputs = Y)
     

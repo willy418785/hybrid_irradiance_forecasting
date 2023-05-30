@@ -278,6 +278,9 @@ def args_parse():
     ap.add_argument("--window", type=int, required=False, default=None,
                     help="size of moving average window used in series decomposition block")
 
+    ap.add_argument('--ar_policy', required=False, default=False, action='store_true',
+                    help='use ar policy for point-estimating baseline model(train with teacher forcing)')
+
     args = vars(ap.parse_args())
     # exp. related params assignment
     parameter.exp_params.experiment_label = args["experiment_label"]
@@ -364,7 +367,7 @@ def args_parse():
     return args
 
 
-def run():
+def run(exp_args):
     # Initialize logging
     log = Msglog.LogInit(parameter.exp_params.experiment_label, "logs/{}".format(parameter.exp_params.experiment_label),
                          10, True, True)
@@ -699,9 +702,17 @@ def run():
             init.window = input_width
             init.skip = w.samples_per_day if w.samples_per_day < input_width else input_width
             init.highway = w.samples_per_day if w.samples_per_day < input_width else input_width
-            model = LSTNetModel(init, (None, input_width, len(parameter.data_params.features)))
-            model = model_AR.ARModel(ar=model, tar_len=label_width, inputs=model.inputs, outputs=model.outputs)
-            datamodel_CL, history = ModelTrainer(dataGnerator=teacher_forcing_w, model=model, sample_rate=1,
+            if exp_args["ar_policy"]:
+                model = LSTNetModel(init, (None, input_width, len(parameter.data_params.features)))
+                model = model_AR.ARModel(ar=model, tar_len=label_width, inputs=model.inputs, outputs=model.outputs)
+                sample_stride = 1
+                train_w = teacher_forcing_w
+            else:
+                model = LSTNetModel(init, (None, input_width, len(parameter.data_params.features)),
+                                    output_length=label_width)
+                sample_stride = 24
+                train_w = w2
+            datamodel_CL, history = ModelTrainer(dataGnerator=train_w, model=model, sample_rate=sample_stride,
                                                  generatorMode="data",
                                                  testEpoch=testEpoch, name="LSTNet",
                                                  is_shuffle=parameter.data_params.is_using_shuffle)
@@ -1413,7 +1424,7 @@ if __name__ == '__main__':
     except:
         pass
     # run core business logic
-    result = run()
+    result = run(args)
     # save exp. config
     with open('./plot/{}/config.txt'.format(parameter.exp_params.experiment_label),
               'w') as f:
