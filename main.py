@@ -59,9 +59,11 @@ sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_opti
 # session = InteractiveSession(config=config)
 
 def ModelTrainer(dataGnerator: WindowGenerator, model, sample_rate, generatorMode="", testEpoch=0, name="Example",
-                 is_shuffle=False):
-    model.compile(loss=tf.losses.MeanSquaredError(), optimizer="Adam"
-                  , metrics=[tf.metrics.MeanAbsoluteError()
+                 is_shuffle=False, loss='mse'):
+    model.compile(loss=loss, optimizer="Adam"
+                  , metrics=[
+            tf.metrics.MeanSquaredError()
+            , tf.metrics.MeanAbsoluteError()
             , tf.metrics.MeanAbsolutePercentageError()
             , my_metrics.VWMAPE
             , my_metrics.root_relative_squared_error
@@ -209,6 +211,8 @@ def args_parse():
                     help="models selection mode: {}".format(parameter.exp_params.model_selection_mode))
     ap.add_argument('--epoch_list', nargs='*', type=int, required=False, default=parameter.exp_params.epoch_list,
                     help="list of number of epoch for each independent training process")
+    ap.add_argument('-l', "--loss", type=str, required=False, default=parameter.exp_params.loss,
+                    help="loss function: mse or mae")
 
     # data related arguments
     ap.add_argument("-i", "--input", type=int, required=False, default=parameter.data_params.input_width,
@@ -289,6 +293,7 @@ def args_parse():
     parameter.exp_params.save_csv = args["save_csv"]
     model_selection = parameter.exp_params.set_tested_models(args["model_selection"])
     parameter.exp_params.epoch_list = args["epoch_list"]
+    parameter.exp_params.loss = args["loss"]
     # data related params assignment
     parameter.data_params.input_width = args["input"]
     parameter.data_params.shifted_width = args["shift"]
@@ -592,7 +597,8 @@ def run(exp_args):
         linear_regression = linear_regression(input_scalar)
         model = tf.keras.Model(inputs=input_scalar, outputs=linear_regression, name=model_name)
         datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model, sample_rate=parameter.data_params.sample_rate,
-                                             generatorMode="data", testEpoch=testEpoch, name=model_name)
+                                             generatorMode="data", testEpoch=testEpoch, name=model_name,
+                                             loss=parameter.exp_params.loss)
         if 'val_loss' in history.history:
             with open('./plot/{}/history-{}.json'.format(parameter.exp_params.experiment_label, model_name),
                       'w') as f:
@@ -644,7 +650,8 @@ def run(exp_args):
             output = auto_regression(input_scalar)
             model = model_AR.ARModel(ar=auto_regression, tar_len=label_width, inputs=input_scalar, outputs=output)
             datamodel_CL, history = ModelTrainer(dataGnerator=teacher_forcing_w, model=model, sample_rate=1,
-                                                 generatorMode="data", testEpoch=testEpoch, name=model_name)
+                                                 generatorMode="data", testEpoch=testEpoch, name=model_name,
+                                                 loss=parameter.exp_params.loss)
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
                 best_perform = min(history.history["val_loss"])
@@ -715,7 +722,8 @@ def run(exp_args):
             datamodel_CL, history = ModelTrainer(dataGnerator=train_w, model=model, sample_rate=sample_stride,
                                                  generatorMode="data",
                                                  testEpoch=testEpoch, name="LSTNet",
-                                                 is_shuffle=parameter.data_params.is_using_shuffle)
+                                                 is_shuffle=parameter.data_params.is_using_shuffle,
+                                                 loss=parameter.exp_params.loss)
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
                 best_perform = min(history.history["val_loss"])
@@ -824,7 +832,8 @@ def run(exp_args):
             datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
                                                  sample_rate=parameter.data_params.sample_rate, generatorMode="data",
                                                  testEpoch=testEpoch, name=model_name,
-                                                 is_shuffle=parameter.data_params.is_using_shuffle)
+                                                 is_shuffle=parameter.data_params.is_using_shuffle,
+                                                 loss=parameter.exp_params.loss)
 
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
@@ -936,7 +945,8 @@ def run(exp_args):
             datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
                                                  sample_rate=parameter.data_params.sample_rate, generatorMode="data",
                                                  testEpoch=testEpoch, name=model_name,
-                                                 is_shuffle=parameter.data_params.is_using_shuffle)
+                                                 is_shuffle=parameter.data_params.is_using_shuffle,
+                                                 loss=parameter.exp_params.loss)
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
                 best_perform = min(history.history["val_loss"])
@@ -1043,7 +1053,8 @@ def run(exp_args):
             datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
                                                  sample_rate=parameter.data_params.sample_rate, generatorMode="data",
                                                  testEpoch=testEpoch, name=model_name,
-                                                 is_shuffle=parameter.data_params.is_using_shuffle)
+                                                 is_shuffle=parameter.data_params.is_using_shuffle,
+                                                 loss=parameter.exp_params.loss)
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
                 best_perform = min(history.history["val_loss"])
@@ -1159,7 +1170,8 @@ def run(exp_args):
             datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
                                                  sample_rate=parameter.data_params.sample_rate, generatorMode="data",
                                                  testEpoch=testEpoch, name=model_name,
-                                                 is_shuffle=parameter.data_params.is_using_shuffle)
+                                                 is_shuffle=parameter.data_params.is_using_shuffle,
+                                                 loss=parameter.exp_params.loss)
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
                 best_perform = min(history.history["val_loss"])
@@ -1267,7 +1279,8 @@ def run(exp_args):
             datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
                                                  sample_rate=parameter.data_params.sample_rate, generatorMode="data",
                                                  testEpoch=testEpoch, name=model_name,
-                                                 is_shuffle=parameter.data_params.is_using_shuffle)
+                                                 is_shuffle=parameter.data_params.is_using_shuffle,
+                                                 loss=parameter.exp_params.loss)
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
                 best_perform = min(history.history["val_loss"])
@@ -1382,7 +1395,8 @@ def run(exp_args):
             datamodel_CL, history = ModelTrainer(dataGnerator=w, model=model,
                                                  sample_rate=parameter.data_params.sample_rate, generatorMode="data",
                                                  testEpoch=testEpoch, name=model_name,
-                                                 is_shuffle=parameter.data_params.is_using_shuffle)
+                                                 is_shuffle=parameter.data_params.is_using_shuffle,
+                                                 loss=parameter.exp_params.loss)
             if 'val_loss' in history.history and best_perform > min(history.history["val_loss"]):
                 best_model = datamodel_CL
                 best_perform = min(history.history["val_loss"])

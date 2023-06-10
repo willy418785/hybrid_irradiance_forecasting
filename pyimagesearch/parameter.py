@@ -134,6 +134,7 @@ class _ExpParams(_Params):
                            'znorm_convGRU', 'znorm_transformer']
         self.save_plot = False
         self.save_csv = False
+        self.loss = 'mse'
 
     def set_tested_models(self, mode):
         if isinstance(mode, list):
