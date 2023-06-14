@@ -213,6 +213,8 @@ def args_parse():
                     help="list of number of epoch for each independent training process")
     ap.add_argument('-l', "--loss", type=str, required=False, default=parameter.exp_params.loss,
                     help="loss function: mse or mae")
+    ap.add_argument('-v', '--validate', required=False, default=parameter.exp_params.is_val, action='store_true',
+                    help='leave out test set to avoid biased estimation or not')
 
     # data related arguments
     ap.add_argument("-i", "--input", type=int, required=False, default=parameter.data_params.input_width,
@@ -294,6 +296,7 @@ def args_parse():
     model_selection = parameter.exp_params.set_tested_models(args["model_selection"])
     parameter.exp_params.epoch_list = args["epoch_list"]
     parameter.exp_params.loss = args["loss"]
+    parameter.exp_params.is_val = args['validate']
     # data related params assignment
     parameter.data_params.input_width = args["input"]
     parameter.data_params.shifted_width = args["shift"]
@@ -426,7 +429,8 @@ def run(exp_args):
                                       month_sep=parameter.data_params.test_month,
                                       using_images=parameter.data_params.is_using_image_data,
                                       smoothing_mode=parameter.data_params.smoothing_type,
-                                      smoothing_parameter=parameter.data_params.smoothing_parameter)
+                                      smoothing_parameter=parameter.data_params.smoothing_parameter,
+                                      is_val=parameter.exp_params.is_val)
 
     data_for_baseline = DataUtil(train_path=train_path,
                                  val_path=val_path,
@@ -438,7 +442,8 @@ def run(exp_args):
                                  split_mode=parameter.data_params.split_mode,
                                  month_sep=parameter.data_params.test_month,
                                  smoothing_mode=parameter.data_params.smoothing_type,
-                                 smoothing_parameter=parameter.data_params.smoothing_parameter)
+                                 smoothing_parameter=parameter.data_params.smoothing_parameter,
+                                 is_val=parameter.exp_params.is_val)
 
     # windows generator#########################################################################################################################
     modelMetricsRecorder = {}

@@ -22,7 +22,8 @@ data = DataUtil(train_path=train_path,
                 label_col=parameter.data_params.target,
                 feature_col=parameter.data_params.features,
                 split_mode=parameter.data_params.split_mode,
-                month_sep=parameter.data_params.test_month)
+                month_sep=parameter.data_params.test_month,
+                is_val=True)
 
 
 class HyperTransformer(keras_tuner.HyperModel):

@@ -135,6 +135,7 @@ class _ExpParams(_Params):
         self.save_plot = False
         self.save_csv = False
         self.loss = 'mse'
+        self.is_val = False
 
     def set_tested_models(self, mode):
         if isinstance(mode, list):

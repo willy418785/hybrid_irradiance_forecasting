@@ -42,7 +42,7 @@ class DataUtil(object):
                  val_path=None, test_path=None,
                  train_split=0.8, val_split=0.1, test_split=0.1,
                  split_mode=False, month_sep=None, keep_date=False,
-                 using_images=False, smoothing_mode=None, smoothing_parameter=None):
+                 using_images=False, smoothing_mode=None, smoothing_parameter=None, is_val=False):
         # 0.8,0.05,0.15
         """
         使用的天氣欄目
@@ -132,6 +132,9 @@ class DataUtil(object):
             self.val_df = self.train_df[self.train_df.index.month == val_month]
             self.train_df = self.train_df[self.train_df.index.month != month_sep]
             self.train_df = self.train_df[self.train_df.index.month != val_month]
+        if is_val:
+            # leave out test set to avoid biased estimation e.g. when doing hyper-parameters tuning
+            self.test_df = self.val_df
         ######################資料急保留時間欄目
         if (keep_date):
             try:
