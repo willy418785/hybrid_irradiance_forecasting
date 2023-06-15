@@ -153,13 +153,7 @@ class _ExpParams(_Params):
         elif mode == "all":
             self.model_list = _ExpParams.baselines + self.model_list
         elif mode == "valid":
-            self.model_list = _ExpParams.baselines + ["convGRU", "transformer"]
-        elif mode == "convGRU":
-            self.model_list = ["convGRU", 'stationary_convGRU', 'znorm_convGRU']
-        elif mode == "transformer":
-            self.model_list = ["transformer", "stationary_transformer", 'znorm_transformer']
-        elif mode == "series-decomposition":
-            self.model_list = ['stationary_convGRU', "stationary_transformer", 'znorm_convGRU', 'znorm_transformer']
+            self.model_list = ["convGRU", "transformer"]
         else:   # user specify all tested models one by one
             if isinstance(mode, list):
                 self.model_list = mode
