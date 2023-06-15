@@ -153,7 +153,7 @@ class _ExpParams(_Params):
         elif mode == "all":
             self.model_list = _ExpParams.baselines + self.model_list
         elif mode == "valid":
-            self.model_list = ["convGRU", "transformer"]
+            self.model_list = _ExpParams.baselines + ["convGRU", "transformer"]
         else:   # user specify all tested models one by one
             if isinstance(mode, list):
                 self.model_list = mode
